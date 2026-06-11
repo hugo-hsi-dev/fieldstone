@@ -1,15 +1,15 @@
-import type {
-	CollectionDefinition,
-	FieldstoneConfigInput,
-	TextFieldDefinition
-} from './types.ts';
+import type { CollectionDefinition, FieldstoneConfigInput, TextFieldDefinition } from './types.ts';
 
 export type {
 	CollectionDefinition,
+	CollectionData,
+	CollectionDocument,
 	CollectionRuntimeConfig,
+	CollectionSlug,
 	FieldstoneConfig,
 	FieldstoneConfigInput,
 	GeneratedCollections,
+	SystemFieldName,
 	TextFieldDefinition
 } from './types.ts';
 

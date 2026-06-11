@@ -25,3 +25,30 @@ export type FieldstoneConfig = FieldstoneConfigInput & {
 };
 
 export interface GeneratedCollections {}
+
+type GeneratedCollectionSlug = keyof GeneratedCollections & string;
+
+export type CollectionSlug = [GeneratedCollectionSlug] extends [never]
+	? string
+	: GeneratedCollectionSlug;
+
+export type SystemFieldName = 'id' | 'createdAt' | 'updatedAt';
+
+export type CollectionDocument<TCollection extends string> =
+	TCollection extends keyof GeneratedCollections
+		? GeneratedCollections[TCollection]
+		: {
+				id: string;
+				createdAt: Date;
+				updatedAt: Date;
+			} & Record<string, unknown>;
+
+export type CollectionData<TCollection extends string> =
+	TCollection extends keyof GeneratedCollections
+		? {
+				[K in Exclude<keyof GeneratedCollections[TCollection], SystemFieldName> &
+					string]: GeneratedCollections[TCollection][K] extends string
+					? string
+					: GeneratedCollections[TCollection][K];
+			}
+		: Record<string, string>;

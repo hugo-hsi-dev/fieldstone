@@ -41,7 +41,7 @@ describe('fieldstone compiler', () => {
 			}
 		});
 
-		expect(output).toContain('declare namespace Fieldstone');
+		expect(output).toContain("declare module '@fieldstone/core'");
 		expect(output).toContain('"posts"');
 		expect(output).toContain('"title": string');
 	});
@@ -49,10 +49,7 @@ describe('fieldstone compiler', () => {
 	it('rejects duplicate field names in one collection', () => {
 		expect(() =>
 			collection({
-				fields: [
-					text({ name: 'title', required: true }),
-					text({ name: 'title', required: true })
-				]
+				fields: [text({ name: 'title', required: true }), text({ name: 'title', required: true })]
 			})
 		).toThrow('Duplicate field name: title');
 	});
@@ -79,10 +76,7 @@ describe('fieldstone compiler', () => {
 	it('rejects case-only duplicate field names', () => {
 		expect(() =>
 			collection({
-				fields: [
-					text({ name: 'title', required: true }),
-					text({ name: 'Title', required: true })
-				]
+				fields: [text({ name: 'title', required: true }), text({ name: 'Title', required: true })]
 			})
 		).toThrow('Duplicate field name: Title');
 	});
@@ -99,6 +93,7 @@ describe('fieldstone compiler', () => {
 		});
 
 		expect(output).toContain('export const collection_blog_posts = sqliteTable("blog-posts"');
+		expect(output).toContain("import crypto from 'node:crypto'");
 		expect(output).toContain('title: text("title").notNull()');
 	});
 

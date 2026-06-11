@@ -1,23 +1,28 @@
-import Database from 'better-sqlite3';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { createClient } from '@libsql/client';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { collection, text } from '@fieldstone/plugin';
+import { collection, text } from '@fieldstone/core';
 
-import { createFieldstoneAdmin } from './fieldstone-admin';
+import { createFieldstoneAdmin } from '../src/admin.ts';
 
-describe('fieldstone admin service', () => {
-	let sqlite: Database.Database;
-	let admin: Awaited<ReturnType<typeof createFieldstoneAdmin>>;
+describe('fieldstone admin runtime', () => {
 	let tempDir: string;
 
 	beforeEach(async () => {
-		tempDir = mkdtempSync(path.join(tmpdir(), 'fieldstone-admin-'));
+		tempDir = await mkdtemp(path.join(tmpdir(), 'fieldstone-admin-'));
+	});
+
+	afterEach(async () => {
+		await rm(tempDir, { force: true, recursive: true });
+	});
+
+	it('creates and lists documents through admin methods', async () => {
 		const dbPath = path.join(tempDir, 'test.db');
-		sqlite = new Database(dbPath);
-		sqlite.exec(`
+		const client = createClient({ url: `file:${dbPath}` });
+		await client.executeMultiple(`
 			create table posts (
 				id text primary key not null,
 				title text not null,
@@ -26,8 +31,8 @@ describe('fieldstone admin service', () => {
 				updated_at integer not null
 			);
 		`);
-		sqlite.close();
-		admin = await createFieldstoneAdmin({
+		client.close();
+		const admin = await createFieldstoneAdmin({
 			config: {
 				db: { dialect: 'sqlite', url: dbPath },
 				collections: {
@@ -43,13 +48,7 @@ describe('fieldstone admin service', () => {
 				}
 			}
 		});
-	});
 
-	afterEach(() => {
-		rmSync(tempDir, { force: true, recursive: true });
-	});
-
-	it('creates and lists documents through admin methods', async () => {
 		await admin.createDocument({
 			collection: 'posts',
 			data: { title: 'Admin post', description: 'Created from admin service' }
@@ -62,9 +61,6 @@ describe('fieldstone admin service', () => {
 			title: 'Admin post',
 			description: 'Created from admin service'
 		});
-	});
-
-	it('exposes collection metadata for dashboard routing', () => {
 		expect(admin.getCollection('posts')).toMatchObject({ slug: 'posts' });
 		expect(admin.collections).toHaveLength(1);
 	});

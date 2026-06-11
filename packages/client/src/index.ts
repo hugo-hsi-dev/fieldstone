@@ -1,9 +1,46 @@
 /// <reference path="./fieldstone-config.d.ts" />
 
 import { compileFieldstoneConfig } from '@fieldstone/core';
-import type { CollectionRuntimeConfig, FieldstoneConfig } from '@fieldstone/core';
+import type {
+	CollectionData,
+	CollectionDocument,
+	CollectionRuntimeConfig,
+	CollectionSlug,
+	FieldstoneConfig
+} from '@fieldstone/core';
 
 export type DocumentData = Record<string, string>;
+export type FieldstoneCollectionSlug = CollectionSlug;
+export type FieldstoneDocument<TCollection extends CollectionSlug> =
+	CollectionDocument<TCollection>;
+export type FieldstoneDocumentData<TCollection extends CollectionSlug> =
+	CollectionData<TCollection>;
+
+export type CollectionInput<TCollection extends CollectionSlug = CollectionSlug> = {
+	collection: TCollection;
+};
+
+export type DocumentInput<TCollection extends CollectionSlug = CollectionSlug> =
+	CollectionInput<TCollection> & {
+		id: string;
+	};
+
+export type MutationInput<TCollection extends CollectionSlug = CollectionSlug> =
+	CollectionInput<TCollection> & {
+		data: CollectionData<TCollection>;
+	};
+
+export type CreateInput<TCollection extends CollectionSlug = CollectionSlug> =
+	MutationInput<TCollection> & {
+		createdAt?: Date;
+		updatedAt?: Date;
+	};
+
+export type UpdateInput<TCollection extends CollectionSlug = CollectionSlug> =
+	DocumentInput<TCollection> &
+		MutationInput<TCollection> & {
+			updatedAt?: Date;
+		};
 
 function getCollection(config: FieldstoneConfig, collectionSlug: string): CollectionRuntimeConfig {
 	if (!Object.prototype.hasOwnProperty.call(config.collections, collectionSlug)) {
@@ -15,7 +52,11 @@ function getCollection(config: FieldstoneConfig, collectionSlug: string): Collec
 	return collectionConfig;
 }
 
-function normalizeData(config: FieldstoneConfig, collectionSlug: string, data: DocumentData) {
+function normalizeData(
+	config: FieldstoneConfig,
+	collectionSlug: string,
+	data: Record<string, unknown>
+) {
 	const collectionConfig = getCollection(config, collectionSlug);
 	const allowedFields = new Set(collectionConfig.fields.map((field) => field.name));
 	const normalized: DocumentData = {};
@@ -56,30 +97,32 @@ export async function getFieldstone({ config }: { config: FieldstoneConfig }) {
 				? (config.collections[slug] ?? null)
 				: null,
 
-		find: async ({ collection: collectionSlug }: { collection: string }) => {
+		find: async <TCollection extends CollectionSlug>({
+			collection: collectionSlug
+		}: CollectionInput<TCollection>) => {
 			getCollection(config, collectionSlug);
 			const table = compiled.tables[collectionSlug];
-			return database.select().from(table).orderBy(desc(table.createdAt));
+			return database.select().from(table).orderBy(desc(table.createdAt)) as unknown as Promise<
+				CollectionDocument<TCollection>[]
+			>;
 		},
 
-		findById: async ({ collection: collectionSlug, id }: { collection: string; id: string }) => {
+		findById: async <TCollection extends CollectionSlug>({
+			collection: collectionSlug,
+			id
+		}: DocumentInput<TCollection>) => {
 			getCollection(config, collectionSlug);
 			const table = compiled.tables[collectionSlug];
 			const [document] = await database.select().from(table).where(eq(table.id, id)).limit(1);
-			return document ?? null;
+			return (document ?? null) as CollectionDocument<TCollection> | null;
 		},
 
-		create: async ({
+		create: async <TCollection extends CollectionSlug>({
 			collection: collectionSlug,
 			createdAt,
 			data,
 			updatedAt
-		}: {
-			collection: string;
-			createdAt?: Date;
-			data: DocumentData;
-			updatedAt?: Date;
-		}) => {
+		}: CreateInput<TCollection>) => {
 			const document = normalizeData(config, collectionSlug, data);
 			const table = compiled.tables[collectionSlug];
 			const now = new Date();
@@ -93,20 +136,15 @@ export async function getFieldstone({ config }: { config: FieldstoneConfig }) {
 				.returning()) as any[];
 			const [created] = createdRows;
 
-			return created;
+			return created as CollectionDocument<TCollection>;
 		},
 
-		update: async ({
+		update: async <TCollection extends CollectionSlug>({
 			collection: collectionSlug,
 			data,
 			id,
 			updatedAt
-		}: {
-			collection: string;
-			data: DocumentData;
-			id: string;
-			updatedAt?: Date;
-		}) => {
+		}: UpdateInput<TCollection>) => {
 			const document = normalizeData(config, collectionSlug, data);
 			const table = compiled.tables[collectionSlug];
 			const updatedRows = (await database
@@ -120,10 +158,13 @@ export async function getFieldstone({ config }: { config: FieldstoneConfig }) {
 			const [updated] = updatedRows;
 
 			if (!updated) throw new Error('Document not found');
-			return updated;
+			return updated as CollectionDocument<TCollection>;
 		},
 
-		delete: async ({ collection: collectionSlug, id }: { collection: string; id: string }) => {
+		delete: async <TCollection extends CollectionSlug>({
+			collection: collectionSlug,
+			id
+		}: DocumentInput<TCollection>) => {
 			getCollection(config, collectionSlug);
 			const table = compiled.tables[collectionSlug];
 			const deletedRows = (await database
