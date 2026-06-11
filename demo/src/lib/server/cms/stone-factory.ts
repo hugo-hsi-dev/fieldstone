@@ -1,11 +1,20 @@
 import { desc, eq } from 'drizzle-orm';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 
+import { getCollectionConfig, type CollectionName } from '$lib/cms/config';
 import * as schema from '$lib/server/db/schema';
-import { posts } from '$lib/server/db/schema';
 
-export type CollectionName = 'posts';
-export type Post = typeof posts.$inferSelect;
+import { collectionTables } from './tables';
+
+export type { CollectionName } from '$lib/cms/config';
+
+export type DocumentData = Record<string, string>;
+
+export type Document = {
+	id: string;
+	createdAt: Date;
+	updatedAt: Date;
+} & DocumentData;
 
 type FindInput = {
 	collection: CollectionName;
@@ -15,88 +24,104 @@ type FindByIdInput = FindInput & {
 	id: string;
 };
 
-type PostInput = {
-	title: string;
-	description: string;
+type CreateInput = FindInput & {
+	data: DocumentData;
 	createdAt?: Date;
 	updatedAt?: Date;
 };
 
-type UpdatePostInput = PostInput & {
+type UpdateInput = CreateInput & {
 	id: string;
 };
 
-type DeletePostInput = {
-	id: string;
-};
+type DeleteInput = FindByIdInput;
 
-function assertPostsCollection(collection: CollectionName) {
-	if (collection !== 'posts') throw new Error(`Unsupported collection: ${collection}`);
+function getCollectionOrThrow(collection: string) {
+	const config = getCollectionConfig(collection);
+	if (!config) throw new Error(`Unsupported collection: ${collection}`);
+	return config;
 }
 
-function normalizePostInput(input: PostInput): PostInput {
-	const title = input.title.trim();
-	const description = input.description.trim();
+function getTable(collection: CollectionName) {
+	return collectionTables[collection];
+}
 
-	if (!title) throw new Error('Title is required');
+function normalizeData(collection: CollectionName, data: DocumentData) {
+	const config = getCollectionOrThrow(collection);
+	const allowedFields = new Set(config.fields.map((field) => field.name));
+	const normalized: DocumentData = {};
 
-	return { ...input, title, description };
+	for (const field of config.fields) {
+		const value = String(data[field.name] ?? '').trim();
+		if (field.required && !value) throw new Error(`${field.label ?? field.name} is required`);
+		normalized[field.name] = value;
+	}
+
+	for (const fieldName of Object.keys(data)) {
+		if (!allowedFields.has(fieldName)) throw new Error(`Unknown field: ${fieldName}`);
+	}
+
+	return normalized;
 }
 
 export function createStone(database: BetterSQLite3Database<typeof schema>) {
 	return {
 		find: async ({ collection }: FindInput) => {
-			assertPostsCollection(collection);
+			getCollectionOrThrow(collection);
+			const table = getTable(collection);
 
-			return database.select().from(posts).orderBy(desc(posts.createdAt));
+			return database.select().from(table).orderBy(desc(table.createdAt));
 		},
 
 		findById: async ({ collection, id }: FindByIdInput) => {
-			assertPostsCollection(collection);
+			getCollectionOrThrow(collection);
+			const table = getTable(collection);
 
-			const [post] = await database.select().from(posts).where(eq(posts.id, id)).limit(1);
-			return post ?? null;
+			const [document] = await database.select().from(table).where(eq(table.id, id)).limit(1);
+			return document ?? null;
 		},
 
-		createPost: async (input: PostInput) => {
-			const post = normalizePostInput(input);
+		create: async ({ collection, data, createdAt, updatedAt }: CreateInput) => {
+			const document = normalizeData(collection, data);
+			const table = getTable(collection);
 			const now = new Date();
 			const [created] = await database
-				.insert(posts)
+				.insert(table)
 				.values({
-					title: post.title,
-					description: post.description,
-					createdAt: post.createdAt ?? now,
-					updatedAt: post.updatedAt ?? now
+					...document,
+					createdAt: createdAt ?? now,
+					updatedAt: updatedAt ?? now
 				})
 				.returning();
 
 			return created;
 		},
 
-		updatePost: async ({ id, ...input }: UpdatePostInput) => {
-			const post = normalizePostInput(input);
+		update: async ({ collection, id, data, updatedAt }: UpdateInput) => {
+			const document = normalizeData(collection, data);
+			const table = getTable(collection);
 			const [updated] = await database
-				.update(posts)
+				.update(table)
 				.set({
-					title: post.title,
-					description: post.description,
-					updatedAt: post.updatedAt ?? new Date()
+					...document,
+					updatedAt: updatedAt ?? new Date()
 				})
-				.where(eq(posts.id, id))
+				.where(eq(table.id, id))
 				.returning();
 
-			if (!updated) throw new Error('Post not found');
+			if (!updated) throw new Error('Document not found');
 			return updated;
 		},
 
-		deletePost: async ({ id }: DeletePostInput) => {
+		delete: async ({ collection, id }: DeleteInput) => {
+			getCollectionOrThrow(collection);
+			const table = getTable(collection);
 			const [deleted] = await database
-				.delete(posts)
-				.where(eq(posts.id, id))
-				.returning({ id: posts.id });
+				.delete(table)
+				.where(eq(table.id, id))
+				.returning({ id: table.id });
 
-			if (!deleted) throw new Error('Post not found');
+			if (!deleted) throw new Error('Document not found');
 			return deleted;
 		}
 	};

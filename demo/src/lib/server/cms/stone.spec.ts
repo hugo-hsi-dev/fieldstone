@@ -3,6 +3,7 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createStone } from './stone-factory';
+
 describe('stone cms client', () => {
 	let sqlite: Database.Database;
 	let stone: ReturnType<typeof createStone>;
@@ -18,14 +19,28 @@ describe('stone cms client', () => {
 				created_at integer not null,
 				updated_at integer not null
 			);
+
+			create table pages (
+				id text primary key not null,
+				headline text not null,
+				path text not null,
+				summary text not null,
+				created_at integer not null,
+				updated_at integer not null
+			);
 		`);
 		stone = createStone(drizzle(sqlite));
 	});
 
-	it('finds posts by collection', async () => {
+	it('creates and finds posts through generic collection methods', async () => {
 		const createdAt = new Date('2026-01-01T00:00:00.000Z');
 		const updatedAt = new Date('2026-01-02T00:00:00.000Z');
-		await stone.createPost({ title: 'First post', description: 'POC body', createdAt, updatedAt });
+		await stone.create({
+			collection: 'posts',
+			data: { title: 'First post', description: 'POC body' },
+			createdAt,
+			updatedAt
+		});
 
 		const result = await stone.find({ collection: 'posts' });
 
@@ -38,8 +53,27 @@ describe('stone cms client', () => {
 		});
 	});
 
-	it('finds one post by id', async () => {
-		const post = await stone.createPost({ title: 'Find me', description: 'By id' });
+	it('uses different text fields for different collections', async () => {
+		await stone.create({
+			collection: 'pages',
+			data: { headline: 'About', path: '/about', summary: 'Company page' }
+		});
+
+		const result = await stone.find({ collection: 'pages' });
+
+		expect(result).toHaveLength(1);
+		expect(result[0]).toMatchObject({
+			headline: 'About',
+			path: '/about',
+			summary: 'Company page'
+		});
+	});
+
+	it('finds one document by id', async () => {
+		const post = await stone.create({
+			collection: 'posts',
+			data: { title: 'Find me', description: 'By id' }
+		});
 
 		const result = await stone.findById({ collection: 'posts', id: post.id });
 
@@ -50,18 +84,21 @@ describe('stone cms client', () => {
 		await expect(stone.findById({ collection: 'posts', id: 'missing' })).resolves.toBeNull();
 	});
 
-	it('updates and deletes posts', async () => {
+	it('updates and deletes documents', async () => {
 		const now = new Date('2026-01-03T00:00:00.000Z');
 		vi.useFakeTimers();
 		vi.setSystemTime(now);
-		const post = await stone.createPost({ title: 'Old', description: 'Old body' });
-
-		const updated = await stone.updatePost({
-			id: post.id,
-			title: 'New',
-			description: 'New body'
+		const post = await stone.create({
+			collection: 'posts',
+			data: { title: 'Old', description: 'Old body' }
 		});
-		const deleted = await stone.deletePost({ id: post.id });
+
+		const updated = await stone.update({
+			collection: 'posts',
+			id: post.id,
+			data: { title: 'New', description: 'New body' }
+		});
+		const deleted = await stone.delete({ collection: 'posts', id: post.id });
 
 		expect(updated).toMatchObject({
 			id: post.id,
@@ -74,13 +111,28 @@ describe('stone cms client', () => {
 	});
 
 	it('requires valid collections', async () => {
-		await expect(stone.find({ collection: 'pages' as 'posts' })).rejects.toThrow(
+		await expect(stone.find({ collection: 'unknown' as 'posts' })).rejects.toThrow(
 			'Unsupported collection'
 		);
 	});
 
+	it('requires required fields', async () => {
+		await expect(
+			stone.create({ collection: 'posts', data: { title: '', description: 'Missing title' } })
+		).rejects.toThrow('Title is required');
+	});
+
+	it('rejects unknown fields', async () => {
+		await expect(
+			stone.create({
+				collection: 'posts',
+				data: { title: 'Known', description: 'Known', extra: 'Nope' }
+			})
+		).rejects.toThrow('Unknown field: extra');
+	});
+
 	it('requires collection for find calls', async () => {
-		// @ts-expect-error collection is required for forward-compatible collection routing
+		// @ts-expect-error collection is required for collection routing
 		await expect(stone.find({})).rejects.toThrow('Unsupported collection');
 	});
 });
