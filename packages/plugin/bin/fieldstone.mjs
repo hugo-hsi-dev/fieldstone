@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { mkdir, readdir, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 import { createServer } from 'vite';
 
@@ -13,6 +13,7 @@ if (command !== 'generate') {
 }
 
 const root = process.cwd();
+const require = createRequire(import.meta.url);
 const collectionsDir = path.join(root, 'collections');
 const outputDir = path.join(root, '.fieldstone');
 
@@ -73,9 +74,9 @@ try {
 		};
 	}
 
-	const schemaModulePath = fileURLToPath(new URL('../src/schema.ts', import.meta.url));
+	const coreModulePath = require.resolve('@fieldstone/core');
 	const { generateDrizzleSchemaSource, generateTypes } =
-		await server.ssrLoadModule(schemaModulePath);
+		await server.ssrLoadModule(coreModulePath);
 	const config = {
 		db: {
 			dialect: 'sqlite',

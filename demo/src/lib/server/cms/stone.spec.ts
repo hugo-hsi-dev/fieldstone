@@ -4,7 +4,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { collection, getFieldstone, text } from '@fieldstone/plugin';
+import { getFieldstone } from '@fieldstone/client';
+import { collection, text } from '@fieldstone/plugin';
 
 describe('stone cms client', () => {
 	let sqlite: Database.Database;
