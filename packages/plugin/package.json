@@ -13,6 +13,9 @@
 			"default": "./src/vite.ts"
 		}
 	},
+	"bin": {
+		"fieldstone": "./bin/fieldstone.mjs"
+	},
 	"scripts": {
 		"test": "vitest --run"
 	},

@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { collection, text } from '../src/index.ts';
-import { compileFieldstoneConfig, generateTypes } from '../src/schema.ts';
+import {
+	compileFieldstoneConfig,
+	generateDrizzleSchemaSource,
+	generateTypes
+} from '../src/schema.ts';
 import type { FieldstoneConfig } from '../src/types.ts';
 
 describe('fieldstone compiler', () => {
@@ -59,5 +63,20 @@ describe('fieldstone compiler', () => {
 				fields: [text({ name: 'id', required: true })]
 			})
 		).toThrow('Reserved field name: id');
+	});
+
+	it('generates drizzle schema source for CLI migrations', () => {
+		const output = generateDrizzleSchemaSource({
+			db: { dialect: 'sqlite', url: ':memory:' },
+			collections: {
+				'blog-posts': {
+					fields: [text({ name: 'title', required: true })],
+					slug: 'blog-posts'
+				}
+			}
+		});
+
+		expect(output).toContain('export const blog_posts = sqliteTable("blog-posts"');
+		expect(output).toContain('title: text("title").notNull()');
 	});
 });

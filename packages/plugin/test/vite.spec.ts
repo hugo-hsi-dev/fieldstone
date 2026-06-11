@@ -1,6 +1,14 @@
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import path from 'node:path';
+import { tmpdir } from 'node:os';
+
 import { describe, expect, it } from 'vitest';
 
-import { fieldstone, fieldstoneCollectionScaffold } from '../src/vite.ts';
+import {
+	fieldstone,
+	fieldstoneCollectionScaffold,
+	resolvedFieldstoneConfigModuleID
+} from '../src/vite.ts';
 
 describe('fieldstone vite plugin', () => {
 	it('rejects client imports of $fieldstone-config', () => {
@@ -20,5 +28,21 @@ export default collection({
 \t]
 });
 `);
+	});
+
+	it('reads database url from runtime env in virtual config', async () => {
+		const root = await mkdtemp(path.join(tmpdir(), 'fieldstone-vite-'));
+		await mkdir(path.join(root, 'collections'));
+
+		try {
+			const plugin = fieldstone({ db: { dialect: 'sqlite', url: 'fallback.db' } });
+			plugin.configResolved?.call({} as never, { root } as never);
+			const source = await plugin.load?.call({} as never, resolvedFieldstoneConfigModuleID);
+
+			expect(source).toContain('process.env.DATABASE_URL ?? "fallback.db"');
+			expect(source).toContain('dialect: "sqlite"');
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
 	});
 });

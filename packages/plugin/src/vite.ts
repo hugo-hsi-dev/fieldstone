@@ -87,7 +87,7 @@ async function loadVirtualConfig(root: string, options: FieldstonePluginOptions)
 		.map(({ slug }, index) => `${JSON.stringify(slug)}: runtimeCollection${index}`)
 		.join(',\n');
 
-	return `${imports}\n\nexport default {\n  db: ${JSON.stringify(options.db)},\n  collections: {\n${collectionEntries}\n  }\n};\n`;
+	return `${imports}\n\nconst databaseURL = process.env.DATABASE_URL ?? ${JSON.stringify(options.db.url)};\n\nexport default {\n  db: {\n    dialect: ${JSON.stringify(options.db.dialect)},\n    url: databaseURL\n  },\n  collections: {\n${collectionEntries}\n  }\n};\n`;
 }
 
 async function writeTypes(root: string, config: FieldstoneConfig) {
