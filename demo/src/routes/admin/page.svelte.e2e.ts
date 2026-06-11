@@ -24,6 +24,7 @@ test('updates collection view state after client navigation', async ({ page }) =
 
 	await expect(page).toHaveURL(/\/admin\/collections\/posts$/);
 	await expect(page.getByRole('heading', { name: 'Posts' })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Create post' })).toBeVisible();
 	await expect(page.getByRole('link', { name: 'Posts' })).toHaveAttribute('aria-current', 'page');
 	await expect(page.getByRole('link', { name: 'Pages' })).not.toHaveAttribute(
 		'aria-current',

@@ -50,6 +50,14 @@
 		return titleCase(count === 'singular' ? singularize(collection.slug) : collection.slug);
 	}
 
+	function getSelectedCollection(
+		collections: CollectionRuntimeConfig[],
+		collectionName: string,
+		fallback: CollectionRuntimeConfig
+	) {
+		return collections.find((collection) => collection.slug === collectionName) ?? fallback;
+	}
+
 	function getFieldLabel(field: CollectionRuntimeConfig['fields'][number]) {
 		return titleCase(field.name);
 	}
@@ -166,8 +174,8 @@
 				{/if}
 			</main>
 		{:else}
-			{@const collection = view.collection}
-			{@const collectionName = view.collectionName}
+			{@const collectionName = collectionRouteName ?? view.collectionName}
+			{@const collection = getSelectedCollection(view.collections, collectionName, view.collection)}
 			{@const documents = documentsQuery}
 
 			<main class="fs-admin">
@@ -183,8 +191,10 @@
 						<nav class="fs-admin__nav" aria-label="Collections">
 							{#each view.collections as navCollection (navCollection.slug)}
 								<a
-									class="fs-admin__nav-link"
-									class:fs-admin__nav-link--active={navCollection.slug === collectionName}
+									class={[
+										'fs-admin__nav-link',
+										navCollection.slug === collectionName && 'fs-admin__nav-link--active'
+									]}
 									aria-current={navCollection.slug === collectionName ? 'page' : undefined}
 									href={collectionHref(navCollection.slug)}
 								>
