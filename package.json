@@ -1,0 +1,12 @@
+{
+  "name": "fieldstone",
+  "version": "0.0.1",
+  "description": "monorepo for fieldstone",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm run --dir demo dev",
+    "build": "pnpm run --dir demo build",
+    "test": "pnpm run --dir demo test"
+  }
+}
