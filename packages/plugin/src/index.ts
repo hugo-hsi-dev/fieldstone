@@ -28,7 +28,9 @@ export function collection(config: {
 	fields: readonly TextFieldDefinition[];
 }): CollectionDefinition {
 	const seen = new Set<string>();
+	const reserved = new Set(['id', 'createdAt', 'updatedAt']);
 	for (const field of config.fields) {
+		if (reserved.has(field.name)) throw new Error(`Reserved field name: ${field.name}`);
 		if (seen.has(field.name)) throw new Error(`Duplicate field name: ${field.name}`);
 		seen.add(field.name);
 	}

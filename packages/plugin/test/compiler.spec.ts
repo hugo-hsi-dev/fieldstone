@@ -52,4 +52,12 @@ describe('fieldstone compiler', () => {
 			})
 		).toThrow('Duplicate field name: title');
 	});
+
+	it('rejects reserved system field names', () => {
+		expect(() =>
+			collection({
+				fields: [text({ name: 'id', required: true })]
+			})
+		).toThrow('Reserved field name: id');
+	});
 });

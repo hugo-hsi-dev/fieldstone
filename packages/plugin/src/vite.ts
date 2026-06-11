@@ -137,8 +137,9 @@ async function pushSchema(config: FieldstoneConfig) {
 	const database = drizzle(client, { schema: compiled.schema });
 	const { apply, hasDataLoss, warnings } = await pushSQLiteSchema(compiled.schema, database);
 
-	if (!(await confirmWarnings(warnings, hasDataLoss))) return;
+	if (!(await confirmWarnings(warnings, hasDataLoss))) return false;
 	await apply();
+	return true;
 }
 
 export function fieldstone(options: FieldstonePluginOptions): Plugin {
@@ -155,8 +156,9 @@ export function fieldstone(options: FieldstonePluginOptions): Plugin {
 		await writeTypes(root, config);
 
 		if (fingerprint !== previousFingerprint) {
+			const didPush = await pushSchema(config);
+			if (!didPush) return;
 			previousFingerprint = fingerprint;
-			await pushSchema(config);
 		}
 
 		server.ws.send({ type: 'full-reload' });
@@ -215,6 +217,10 @@ export function fieldstone(options: FieldstonePluginOptions): Plugin {
 			server.watcher.on('unlink', (file) => {
 				if (isCollectionFile(collectionsDir, file)) scheduleRebuild(server);
 			});
+
+			if (process.env.FIELDSTONE_PUSH_ON_CONFIGURE === 'true') {
+				return rebuild(server);
+			}
 
 			return () => scheduleRebuild(server);
 		}

@@ -8,9 +8,7 @@ import { fieldstone } from '@fieldstone/plugin/vite';
 
 export default defineConfig(({ mode }) => {
 	const env = loadEnv(mode, process.cwd(), '');
-	const databaseURL = env.DATABASE_URL ?? process.env.DATABASE_URL;
-
-	if (!databaseURL) throw new Error('DATABASE_URL is not set');
+	const databaseURL = env.DATABASE_URL ?? process.env.DATABASE_URL ?? 'local.db';
 
 	return {
 		plugins: [
