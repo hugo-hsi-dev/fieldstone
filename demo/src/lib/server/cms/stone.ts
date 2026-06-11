@@ -1,5 +1,6 @@
-import { db } from '$lib/server/db';
-export { createStone, type CollectionName, type Post } from './stone-factory';
-import { createStone } from './stone-factory';
+import { getFieldstone } from '@fieldstone/plugin';
+import config from '$fieldstone-config';
 
-export const stone = createStone(db);
+export const stone = await getFieldstone({ config });
+export type CollectionName = keyof typeof config.collections & string;
+export type DocumentData = Record<string, string>;
