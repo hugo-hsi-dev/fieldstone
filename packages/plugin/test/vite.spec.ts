@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -41,6 +41,24 @@ export default collection({
 
 			expect(source).toContain('process.env.DATABASE_URL ?? "fallback.db"');
 			expect(source).toContain('dialect: "sqlite"');
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	it('rejects prototype-mutating collection slugs', async () => {
+		const root = await mkdtemp(path.join(tmpdir(), 'fieldstone-vite-'));
+		const collectionsDir = path.join(root, 'collections');
+		await mkdir(collectionsDir);
+		await writeFile(path.join(collectionsDir, '__proto__.ts'), '');
+
+		try {
+			const plugin = fieldstone({ db: { dialect: 'sqlite', url: ':memory:' } });
+			plugin.configResolved?.call({} as never, { root } as never);
+
+			await expect(
+				plugin.load?.call({} as never, resolvedFieldstoneConfigModuleID)
+			).rejects.toThrow('Reserved collection slug: __proto__');
 		} finally {
 			await rm(root, { recursive: true, force: true });
 		}

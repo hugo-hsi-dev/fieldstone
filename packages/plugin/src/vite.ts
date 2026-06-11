@@ -24,14 +24,48 @@ function normalizeSqliteUrl(url: string) {
 }
 
 function isCollectionFile(collectionsDir: string, file: string) {
+	const basename = path.basename(file);
 	return (
 		file.startsWith(collectionsDir) &&
 		file.endsWith('.ts') &&
 		!file.endsWith('.d.ts') &&
 		!file.includes('.test.') &&
 		!file.includes('.spec.') &&
-		!path.basename(file).startsWith('_')
+		(!basename.startsWith('_') || basename === '__proto__.ts')
 	);
+}
+
+function isCollectionEntry(entry: string) {
+	return (
+		entry.endsWith('.ts') &&
+		!entry.endsWith('.d.ts') &&
+		!entry.includes('.test.') &&
+		!entry.includes('.spec.') &&
+		!entry.startsWith('_')
+	);
+}
+
+function validateCollectionEntries(entries: string[]) {
+	const slugs = new Set<string>();
+
+	for (const entry of entries) {
+		if (
+			!entry.endsWith('.ts') ||
+			entry.endsWith('.d.ts') ||
+			entry.includes('.test.') ||
+			entry.includes('.spec.')
+		) {
+			continue;
+		}
+
+		const slug = path.basename(entry, '.ts');
+		if (slug === '__proto__') throw new Error('Reserved collection slug: __proto__');
+		if (entry.startsWith('_')) continue;
+
+		const normalizedSlug = slug.toLowerCase();
+		if (slugs.has(normalizedSlug)) throw new Error(`Duplicate collection slug: ${slug}`);
+		slugs.add(normalizedSlug);
+	}
 }
 
 function createCollectionScaffold(slug: string) {
@@ -63,11 +97,10 @@ async function discoverCollections(root: string) {
 		return [];
 	}
 
+	validateCollectionEntries(entries);
+
 	return entries
-		.filter((entry) => entry.endsWith('.ts'))
-		.filter((entry) => !entry.endsWith('.d.ts'))
-		.filter((entry) => !entry.includes('.test.') && !entry.includes('.spec.'))
-		.filter((entry) => !entry.startsWith('_'))
+		.filter(isCollectionEntry)
 		.sort()
 		.map((entry) => ({
 			file: path.join(collectionsDir, entry),

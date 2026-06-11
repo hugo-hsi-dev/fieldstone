@@ -89,4 +89,29 @@ export default collection({
 			await rm(root, { recursive: true, force: true });
 		}
 	});
+
+	it('rejects prototype-mutating collection slugs', async () => {
+		const tmpRoot = path.join(packageRoot, '.tmp');
+		await mkdir(tmpRoot, { recursive: true });
+		const root = await mkdtemp(path.join(tmpRoot, 'fieldstone-cli-'));
+
+		try {
+			await mkdir(path.join(root, 'collections'), { recursive: true });
+			await writeFile(
+				path.join(root, 'collections', '__proto__.ts'),
+				`import { collection, text } from '@fieldstone/plugin';
+
+export default collection({
+\tfields: [text({ name: 'title', required: true })]
+});
+`
+			);
+
+			await expect(runFieldstoneGenerate(root)).rejects.toThrow(
+				'Reserved collection slug: __proto__'
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
 });

@@ -26,6 +26,29 @@ function isCollectionFile(entry) {
 	);
 }
 
+function validateCollectionEntries(entries) {
+	const slugs = new Set();
+
+	for (const entry of entries) {
+		if (
+			!entry.endsWith('.ts') ||
+			entry.endsWith('.d.ts') ||
+			entry.includes('.test.') ||
+			entry.includes('.spec.')
+		) {
+			continue;
+		}
+
+		const slug = path.basename(entry, '.ts');
+		if (slug === '__proto__') throw new Error('Reserved collection slug: __proto__');
+		if (entry.startsWith('_')) continue;
+
+		const normalizedSlug = slug.toLowerCase();
+		if (slugs.has(normalizedSlug)) throw new Error(`Duplicate collection slug: ${slug}`);
+		slugs.add(normalizedSlug);
+	}
+}
+
 const previousGenerateEnv = process.env.FIELDSTONE_GENERATE;
 process.env.FIELDSTONE_GENERATE = 'true';
 
@@ -36,6 +59,7 @@ const server = await createServer({
 
 try {
 	const entries = await readdir(collectionsDir).catch(() => []);
+	validateCollectionEntries(entries);
 	const collections = {};
 
 	for (const entry of entries.filter(isCollectionFile).sort()) {

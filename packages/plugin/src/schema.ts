@@ -28,7 +28,22 @@ function toUniqueIdentifier(value: string, used: Set<string>, prefix = '') {
 	return identifier;
 }
 
+function validateCollectionSlugs(config: FieldstoneConfig) {
+	const seen = new Set<string>();
+
+	for (const collection of Object.values(config.collections)) {
+		if (collection.slug === '__proto__') {
+			throw new Error('Reserved collection slug: __proto__');
+		}
+
+		const normalizedSlug = collection.slug.toLowerCase();
+		if (seen.has(normalizedSlug)) throw new Error(`Duplicate collection slug: ${collection.slug}`);
+		seen.add(normalizedSlug);
+	}
+}
+
 export function compileFieldstoneConfig(config: FieldstoneConfig) {
+	validateCollectionSlugs(config);
 	const tables: Record<string, any> = {};
 
 	for (const collection of Object.values(config.collections)) {
@@ -61,6 +76,8 @@ export function compileFieldstoneConfig(config: FieldstoneConfig) {
 }
 
 export function createSchemaFingerprint(config: FieldstoneConfig) {
+	validateCollectionSlugs(config);
+
 	return JSON.stringify(
 		Object.values(config.collections)
 			.map((collection) => ({
@@ -77,6 +94,8 @@ export function createSchemaFingerprint(config: FieldstoneConfig) {
 }
 
 export function generateTypes(config: FieldstoneConfig) {
+	validateCollectionSlugs(config);
+
 	const collections = Object.values(config.collections)
 		.map((collection) => {
 			const fields = collection.fields
@@ -91,6 +110,8 @@ export function generateTypes(config: FieldstoneConfig) {
 }
 
 export function generateDrizzleSchemaSource(config: FieldstoneConfig) {
+	validateCollectionSlugs(config);
+
 	const collectionIdentifiers = new Set<string>();
 	const tableDeclarations = Object.values(config.collections)
 		.map((collection) => {

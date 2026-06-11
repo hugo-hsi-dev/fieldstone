@@ -68,6 +68,25 @@ describe('fieldstone compiler', () => {
 		}
 	);
 
+	it('rejects prototype-mutating field names', () => {
+		expect(() =>
+			collection({
+				fields: [text({ name: '__proto__', required: true })]
+			})
+		).toThrow('Reserved field name: __proto__');
+	});
+
+	it('rejects case-only duplicate field names', () => {
+		expect(() =>
+			collection({
+				fields: [
+					text({ name: 'title', required: true }),
+					text({ name: 'Title', required: true })
+				]
+			})
+		).toThrow('Duplicate field name: Title');
+	});
+
 	it('generates drizzle schema source for CLI migrations', () => {
 		const output = generateDrizzleSchemaSource({
 			db: { dialect: 'sqlite', url: ':memory:' },
@@ -119,5 +138,23 @@ describe('fieldstone compiler', () => {
 		expect(output).toContain('export const collection_class = sqliteTable("class"');
 		expect(output).toContain('export const collection_class_name = sqliteTable("class-name"');
 		expect(output).not.toContain('export const class =');
+	});
+
+	it('rejects case-only duplicate collection slugs', () => {
+		expect(() =>
+			generateDrizzleSchemaSource({
+				db: { dialect: 'sqlite', url: ':memory:' },
+				collections: {
+					posts: {
+						fields: [text({ name: 'title', required: true })],
+						slug: 'posts'
+					},
+					Posts: {
+						fields: [text({ name: 'title', required: true })],
+						slug: 'Posts'
+					}
+				}
+			})
+		).toThrow('Duplicate collection slug: Posts');
 	});
 });
