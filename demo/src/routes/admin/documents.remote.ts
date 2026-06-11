@@ -1,8 +1,9 @@
 import { command, query } from '$app/server';
 import { error } from '@sveltejs/kit';
 
-import { getCollectionConfig, type CollectionName } from '$lib/cms/config';
 import { stone, type DocumentData } from '$lib/server/cms/stone';
+
+type CollectionName = string;
 
 type CollectionInput = {
 	collection: CollectionName;
@@ -21,7 +22,7 @@ type UpdateInput = MutationInput & {
 };
 
 function requireCollection(collection: CollectionName) {
-	if (!getCollectionConfig(collection)) error(400, 'Unsupported collection');
+	if (!stone.getCollection(collection)) error(400, 'Unsupported collection');
 }
 
 export const listDocuments = query<CollectionInput, Awaited<ReturnType<typeof stone.find>>>(

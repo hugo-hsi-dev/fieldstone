@@ -1,13 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-
-	import {
-		cmsConfig,
-		getCollectionLabel,
-		getFieldLabel,
-		type CollectionConfig,
-		type CollectionName
-	} from '$lib/cms/config';
+	import type { CollectionRuntimeConfig } from '@fieldstone/plugin';
 
 	import {
 		createDocument,
@@ -17,12 +10,39 @@
 		updateDocument
 	} from '../documents.remote';
 
-	let { data }: { data: { collection: CollectionConfig; collectionName: CollectionName } } =
-		$props();
+	let {
+		data
+	}: {
+		data: {
+			collection: CollectionRuntimeConfig;
+			collectionName: string;
+			collections: CollectionRuntimeConfig[];
+		};
+	} = $props();
 
 	const collection = $derived(data.collection);
 	const collectionName = $derived(data.collectionName);
 	const documentsQuery = $derived(listDocuments({ collection: collectionName }));
+
+	function titleCase(value: string) {
+		return value
+			.split(/[-_\s]+/)
+			.filter(Boolean)
+			.map((part) => `${part[0]?.toUpperCase() ?? ''}${part.slice(1)}`)
+			.join(' ');
+	}
+
+	function singularize(slug: string) {
+		return slug.endsWith('s') ? slug.slice(0, -1) : slug;
+	}
+
+	function getCollectionLabel(collection: CollectionRuntimeConfig, count: 'singular' | 'plural') {
+		return titleCase(count === 'singular' ? singularize(collection.slug) : collection.slug);
+	}
+
+	function getFieldLabel(field: CollectionRuntimeConfig['fields'][number]) {
+		return titleCase(field.name);
+	}
 
 	let editingId = $state<string | null>(null);
 	let editData = $state<Record<string, string>>({});
@@ -39,8 +59,8 @@
 		return String(document[fieldName] ?? '');
 	}
 
-	function shouldUseTextarea(field: CollectionConfig['fields'][number]) {
-		return field.admin?.input === 'textarea';
+	function shouldUseTextarea(field: CollectionRuntimeConfig['fields'][number]) {
+		return Boolean(field.multiline);
 	}
 
 	async function refreshDocuments() {
@@ -121,7 +141,7 @@
 			</div>
 
 			<nav class="flex flex-wrap gap-2" aria-label="Collections">
-				{#each cmsConfig.collections as navCollection (navCollection.slug)}
+				{#each data.collections as navCollection (navCollection.slug)}
 					<a
 						class="rounded-md border px-3 py-2 text-sm font-medium {navCollection.slug ===
 						collectionName
