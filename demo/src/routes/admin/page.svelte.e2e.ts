@@ -1,8 +1,12 @@
 import { expect, test } from '@playwright/test';
 
-test('redirects unauthenticated visitors to login', async ({ page }) => {
+test('creates a post from admin', async ({ page }) => {
 	await page.goto('/admin');
 
-	await expect(page).toHaveURL('/demo/better-auth/login');
-	await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
+	await page.getByLabel('Title').fill('POC post');
+	await page.getByLabel('Description').fill('Created from admin');
+	await page.getByRole('button', { name: 'Create post' }).click();
+
+	await expect(page.getByRole('heading', { name: 'POC post' })).toBeVisible();
+	await expect(page.getByText('Created from admin')).toBeVisible();
 });
