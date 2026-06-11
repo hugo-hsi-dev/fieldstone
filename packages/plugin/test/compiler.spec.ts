@@ -76,7 +76,45 @@ describe('fieldstone compiler', () => {
 			}
 		});
 
-		expect(output).toContain('export const blog_posts = sqliteTable("blog-posts"');
+		expect(output).toContain('export const collection_blog_posts = sqliteTable("blog-posts"');
 		expect(output).toContain('title: text("title").notNull()');
+	});
+
+	it('preserves fields whose generated identifiers collide', () => {
+		const output = generateDrizzleSchemaSource({
+			db: { dialect: 'sqlite', url: ':memory:' },
+			collections: {
+				posts: {
+					fields: [
+						text({ name: 'seo-title', required: true }),
+						text({ name: 'seo_title', required: false })
+					],
+					slug: 'posts'
+				}
+			}
+		});
+
+		expect(output).toContain('seo_title: text("seo-title").notNull()');
+		expect(output).toContain('seo_title_2: text("seo_title")');
+	});
+
+	it('generates valid export identifiers for reserved collection slugs', () => {
+		const output = generateDrizzleSchemaSource({
+			db: { dialect: 'sqlite', url: ':memory:' },
+			collections: {
+				class: {
+					fields: [text({ name: 'title', required: true })],
+					slug: 'class'
+				},
+				'class-name': {
+					fields: [text({ name: 'title', required: true })],
+					slug: 'class-name'
+				}
+			}
+		});
+
+		expect(output).toContain('export const collection_class = sqliteTable("class"');
+		expect(output).toContain('export const collection_class_name = sqliteTable("class-name"');
+		expect(output).not.toContain('export const class =');
 	});
 });

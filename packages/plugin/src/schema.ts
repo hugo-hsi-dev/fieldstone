@@ -14,6 +14,20 @@ function toIdentifier(value: string) {
 	return identifier || 'collection';
 }
 
+function toUniqueIdentifier(value: string, used: Set<string>, prefix = '') {
+	const base = toIdentifier(`${prefix}${value}`);
+	let identifier = base;
+	let index = 2;
+
+	while (used.has(identifier)) {
+		identifier = `${base}_${index}`;
+		index += 1;
+	}
+
+	used.add(identifier);
+	return identifier;
+}
+
 export function compileFieldstoneConfig(config: FieldstoneConfig) {
 	const tables: Record<string, any> = {};
 
@@ -77,16 +91,24 @@ export function generateTypes(config: FieldstoneConfig) {
 }
 
 export function generateDrizzleSchemaSource(config: FieldstoneConfig) {
+	const collectionIdentifiers = new Set<string>();
 	const tableDeclarations = Object.values(config.collections)
 		.map((collection) => {
+			const fieldIdentifiers = new Set<string>();
 			const fields = collection.fields
 				.map((field) => {
+					const identifier = toUniqueIdentifier(field.name, fieldIdentifiers);
 					const column = `text(${JSON.stringify(field.name)})${field.required ? '.notNull()' : ''}`;
-					return `\t${toIdentifier(field.name)}: ${column},`;
+					return `\t${identifier}: ${column},`;
 				})
 				.join('\n');
+			const collectionIdentifier = toUniqueIdentifier(
+				collection.slug,
+				collectionIdentifiers,
+				'collection_'
+			);
 
-			return `export const ${toIdentifier(collection.slug)} = sqliteTable(${JSON.stringify(collection.slug)}, {
+			return `export const ${collectionIdentifier} = sqliteTable(${JSON.stringify(collection.slug)}, {
 \tid: text('id')
 \t\t.primaryKey()
 \t\t.$defaultFn(() => crypto.randomUUID()),

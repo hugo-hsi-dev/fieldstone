@@ -43,6 +43,10 @@ export function defineConfig(config: FieldstoneConfigInput): FieldstoneConfigInp
 }
 
 function getCollection(config: FieldstoneConfig, collectionSlug: string): CollectionRuntimeConfig {
+	if (!Object.prototype.hasOwnProperty.call(config.collections, collectionSlug)) {
+		throw new Error(`Unsupported collection: ${collectionSlug}`);
+	}
+
 	const collectionConfig = config.collections[collectionSlug];
 	if (!collectionConfig) throw new Error(`Unsupported collection: ${collectionSlug}`);
 	return collectionConfig;
@@ -84,7 +88,10 @@ export async function getFieldstone({ config }: { config: FieldstoneConfig }) {
 	return {
 		collections: Object.values(config.collections),
 
-		getCollection: (slug: string) => config.collections[slug] ?? null,
+		getCollection: (slug: string) =>
+			Object.prototype.hasOwnProperty.call(config.collections, slug)
+				? (config.collections[slug] ?? null)
+				: null,
 
 		find: async ({ collection: collectionSlug }: { collection: string }) => {
 			getCollection(config, collectionSlug);
