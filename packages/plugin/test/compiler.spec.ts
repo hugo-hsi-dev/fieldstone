@@ -57,13 +57,16 @@ describe('fieldstone compiler', () => {
 		).toThrow('Duplicate field name: title');
 	});
 
-	it('rejects reserved system field names', () => {
-		expect(() =>
-			collection({
-				fields: [text({ name: 'id', required: true })]
-			})
-		).toThrow('Reserved field name: id');
-	});
+	it.each(['id', 'createdAt', 'updatedAt', 'created_at', 'updated_at'])(
+		'rejects reserved system field name %s',
+		(fieldName) => {
+			expect(() =>
+				collection({
+					fields: [text({ name: fieldName, required: true })]
+				})
+			).toThrow(`Reserved field name: ${fieldName}`);
+		}
+	);
 
 	it('generates drizzle schema source for CLI migrations', () => {
 		const output = generateDrizzleSchemaSource({

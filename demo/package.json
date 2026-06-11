@@ -18,8 +18,8 @@
 		"fieldstone:generate": "node ../packages/plugin/bin/fieldstone.mjs generate",
 		"db:push": "npm run fieldstone:generate && drizzle-kit push --force",
 		"db:generate": "npm run fieldstone:generate && drizzle-kit generate",
-		"db:migrate": "drizzle-kit migrate",
-		"db:studio": "drizzle-kit studio",
+		"db:migrate": "npm run fieldstone:generate && drizzle-kit migrate",
+		"db:studio": "npm run fieldstone:generate && drizzle-kit studio",
 		"auth:schema": "better-auth generate --config src/lib/server/auth.ts --output src/lib/server/db/auth.schema.ts --yes"
 	},
 	"devDependencies": {

@@ -26,8 +26,10 @@ function isCollectionFile(entry) {
 	);
 }
 
+const previousGenerateEnv = process.env.FIELDSTONE_GENERATE;
+process.env.FIELDSTONE_GENERATE = 'true';
+
 const server = await createServer({
-	configFile: false,
 	root,
 	server: { middlewareMode: true }
 });
@@ -65,4 +67,9 @@ try {
 	]);
 } finally {
 	await server.close();
+	if (previousGenerateEnv === undefined) {
+		delete process.env.FIELDSTONE_GENERATE;
+	} else {
+		process.env.FIELDSTONE_GENERATE = previousGenerateEnv;
+	}
 }

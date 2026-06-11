@@ -196,7 +196,7 @@ export function fieldstone(options: FieldstonePluginOptions): Plugin {
 		},
 
 		configureServer(server) {
-			if (process.env.VITEST) return;
+			if (process.env.VITEST || process.env.FIELDSTONE_GENERATE === 'true') return;
 
 			const collectionsDir = path.join(root, 'collections');
 			server.watcher.add(collectionsDir);
