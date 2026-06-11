@@ -7,6 +7,6 @@
   "scripts": {
     "dev": "pnpm run --dir demo dev",
     "build": "pnpm run --dir demo build",
-    "test": "pnpm run --dir demo test"
+    "test": "pnpm -r test"
   }
 }

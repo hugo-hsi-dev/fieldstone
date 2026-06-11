@@ -1,16 +1,21 @@
 import Database from 'better-sqlite3';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createStone } from './stone-factory';
+import { collection, getFieldstone, text } from '@fieldstone/plugin';
 
 describe('stone cms client', () => {
 	let sqlite: Database.Database;
-	let stone: ReturnType<typeof createStone>;
+	let stone: Awaited<ReturnType<typeof getFieldstone>>;
+	let tempDir: string;
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		vi.useRealTimers();
-		sqlite = new Database(':memory:');
+		tempDir = mkdtempSync(path.join(tmpdir(), 'fieldstone-'));
+		const dbPath = path.join(tempDir, 'test.db');
+		sqlite = new Database(dbPath);
 		sqlite.exec(`
 			create table posts (
 				id text primary key not null,
@@ -29,7 +34,37 @@ describe('stone cms client', () => {
 				updated_at integer not null
 			);
 		`);
-		stone = createStone(drizzle(sqlite));
+		sqlite.close();
+		stone = await getFieldstone({
+			config: {
+				db: { dialect: 'sqlite', url: dbPath },
+				collections: {
+					posts: {
+						...collection({
+							fields: [
+								text({ name: 'title', required: true }),
+								text({ name: 'description', multiline: true, required: true })
+							]
+						}),
+						slug: 'posts'
+					},
+					pages: {
+						...collection({
+							fields: [
+								text({ name: 'headline', required: true }),
+								text({ name: 'path', required: true }),
+								text({ name: 'summary' })
+							]
+						}),
+						slug: 'pages'
+					}
+				}
+			}
+		});
+	});
+
+	afterEach(() => {
+		rmSync(tempDir, { force: true, recursive: true });
 	});
 
 	it('creates and finds posts through generic collection methods', async () => {
@@ -119,7 +154,7 @@ describe('stone cms client', () => {
 	it('requires required fields', async () => {
 		await expect(
 			stone.create({ collection: 'posts', data: { title: '', description: 'Missing title' } })
-		).rejects.toThrow('Title is required');
+		).rejects.toThrow('title is required');
 	});
 
 	it('rejects unknown fields', async () => {
@@ -132,7 +167,6 @@ describe('stone cms client', () => {
 	});
 
 	it('requires collection for find calls', async () => {
-		// @ts-expect-error collection is required for collection routing
-		await expect(stone.find({})).rejects.toThrow('Unsupported collection');
+		await expect(stone.find({} as { collection: string })).rejects.toThrow('Unsupported collection');
 	});
 });

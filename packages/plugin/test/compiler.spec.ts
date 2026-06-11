@@ -1,0 +1,160 @@
+import { describe, expect, it } from 'vitest';
+
+import { collection, text } from '../src/index.ts';
+import {
+	compileFieldstoneConfig,
+	generateDrizzleSchemaSource,
+	generateTypes
+} from '../src/schema.ts';
+import type { FieldstoneConfig } from '../src/types.ts';
+
+describe('fieldstone compiler', () => {
+	it('builds sqlite tables with system fields from collection definitions', () => {
+		const config: FieldstoneConfig = {
+			db: { dialect: 'sqlite', url: ':memory:' },
+			collections: {
+				posts: {
+					...collection({
+						fields: [text({ name: 'title', required: true })]
+					}),
+					slug: 'posts'
+				}
+			}
+		};
+
+		const compiled = compileFieldstoneConfig(config);
+
+		expect(compiled.tables.posts.id).toBeDefined();
+		expect(compiled.tables.posts.title).toBeDefined();
+		expect(compiled.tables.posts.createdAt).toBeDefined();
+		expect(compiled.tables.posts.updatedAt).toBeDefined();
+	});
+
+	it('generates ambient config and collection types', () => {
+		const output = generateTypes({
+			db: { dialect: 'sqlite', url: ':memory:' },
+			collections: {
+				posts: {
+					fields: [text({ name: 'title', required: true })],
+					slug: 'posts'
+				}
+			}
+		});
+
+		expect(output).toContain('declare namespace Fieldstone');
+		expect(output).toContain('"posts"');
+		expect(output).toContain('"title": string');
+	});
+
+	it('rejects duplicate field names in one collection', () => {
+		expect(() =>
+			collection({
+				fields: [
+					text({ name: 'title', required: true }),
+					text({ name: 'title', required: true })
+				]
+			})
+		).toThrow('Duplicate field name: title');
+	});
+
+	it.each(['id', 'createdAt', 'updatedAt', 'created_at', 'updated_at'])(
+		'rejects reserved system field name %s',
+		(fieldName) => {
+			expect(() =>
+				collection({
+					fields: [text({ name: fieldName, required: true })]
+				})
+			).toThrow(`Reserved field name: ${fieldName}`);
+		}
+	);
+
+	it('rejects prototype-mutating field names', () => {
+		expect(() =>
+			collection({
+				fields: [text({ name: '__proto__', required: true })]
+			})
+		).toThrow('Reserved field name: __proto__');
+	});
+
+	it('rejects case-only duplicate field names', () => {
+		expect(() =>
+			collection({
+				fields: [
+					text({ name: 'title', required: true }),
+					text({ name: 'Title', required: true })
+				]
+			})
+		).toThrow('Duplicate field name: Title');
+	});
+
+	it('generates drizzle schema source for CLI migrations', () => {
+		const output = generateDrizzleSchemaSource({
+			db: { dialect: 'sqlite', url: ':memory:' },
+			collections: {
+				'blog-posts': {
+					fields: [text({ name: 'title', required: true })],
+					slug: 'blog-posts'
+				}
+			}
+		});
+
+		expect(output).toContain('export const collection_blog_posts = sqliteTable("blog-posts"');
+		expect(output).toContain('title: text("title").notNull()');
+	});
+
+	it('preserves fields whose generated identifiers collide', () => {
+		const output = generateDrizzleSchemaSource({
+			db: { dialect: 'sqlite', url: ':memory:' },
+			collections: {
+				posts: {
+					fields: [
+						text({ name: 'seo-title', required: true }),
+						text({ name: 'seo_title', required: false })
+					],
+					slug: 'posts'
+				}
+			}
+		});
+
+		expect(output).toContain('seo_title: text("seo-title").notNull()');
+		expect(output).toContain('seo_title_2: text("seo_title")');
+	});
+
+	it('generates valid export identifiers for reserved collection slugs', () => {
+		const output = generateDrizzleSchemaSource({
+			db: { dialect: 'sqlite', url: ':memory:' },
+			collections: {
+				class: {
+					fields: [text({ name: 'title', required: true })],
+					slug: 'class'
+				},
+				'class-name': {
+					fields: [text({ name: 'title', required: true })],
+					slug: 'class-name'
+				}
+			}
+		});
+
+		expect(output).toContain('export const collection_class = sqliteTable("class"');
+		expect(output).toContain('export const collection_class_name = sqliteTable("class-name"');
+		expect(output).not.toContain('export const class =');
+	});
+
+	it('rejects case-only duplicate collection slugs', () => {
+		expect(() =>
+			generateDrizzleSchemaSource({
+				db: { dialect: 'sqlite', url: ':memory:' },
+				collections: {
+					posts: {
+						fields: [text({ name: 'title', required: true })],
+						slug: 'posts'
+					},
+					Posts: {
+						fields: [text({ name: 'title', required: true })],
+						slug: 'Posts'
+					}
+				}
+			})
+		).toThrow('Duplicate collection slug: Posts');
+	});
+});
