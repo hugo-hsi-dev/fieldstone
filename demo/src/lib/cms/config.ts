@@ -3,6 +3,9 @@ export type TextFieldConfig = {
 	type: 'text';
 	label?: string;
 	required?: boolean;
+	admin?: {
+		input?: 'text' | 'textarea';
+	};
 };
 
 export type CollectionConfig = {
@@ -20,7 +23,13 @@ const collections = [
 		labels: { singular: 'Post', plural: 'Posts' },
 		fields: [
 			{ name: 'title', type: 'text', label: 'Title', required: true },
-			{ name: 'description', type: 'text', label: 'Description', required: true }
+			{
+				name: 'description',
+				type: 'text',
+				label: 'Description',
+				required: true,
+				admin: { input: 'textarea' }
+			}
 		]
 	},
 	{

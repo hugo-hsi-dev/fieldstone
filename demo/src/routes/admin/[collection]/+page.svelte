@@ -1,5 +1,8 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
+
 	import {
+		cmsConfig,
 		getCollectionLabel,
 		getFieldLabel,
 		type CollectionConfig,
@@ -34,6 +37,10 @@
 
 	function getFieldValue(document: Record<string, unknown>, fieldName: string) {
 		return String(document[fieldName] ?? '');
+	}
+
+	function shouldUseTextarea(field: CollectionConfig['fields'][number]) {
+		return field.admin?.input === 'textarea';
 	}
 
 	async function refreshDocuments() {
@@ -113,6 +120,21 @@
 				</h1>
 			</div>
 
+			<nav class="flex flex-wrap gap-2" aria-label="Collections">
+				{#each cmsConfig.collections as navCollection (navCollection.slug)}
+					<a
+						class="rounded-md border px-3 py-2 text-sm font-medium {navCollection.slug ===
+						collectionName
+							? 'border-zinc-950 bg-zinc-950 text-white'
+							: 'border-zinc-300 bg-white hover:bg-zinc-100'}"
+						aria-current={navCollection.slug === collectionName ? 'page' : undefined}
+						href={resolve(`/admin/${navCollection.slug}`)}
+					>
+						{getCollectionLabel(navCollection, 'plural')}
+					</a>
+				{/each}
+			</nav>
+
 			<form
 				class="space-y-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm"
 				onsubmit={handleCreate}
@@ -120,12 +142,21 @@
 				{#each collection.fields as field (field.name)}
 					<div class="space-y-1">
 						<label class="text-sm font-medium" for={field.name}>{getFieldLabel(field)}</label>
-						<input
-							class="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-900"
-							id={field.name}
-							name={field.name}
-							required={field.required}
-						/>
+						{#if shouldUseTextarea(field)}
+							<textarea
+								class="min-h-32 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-900"
+								id={field.name}
+								name={field.name}
+								required={field.required}
+							></textarea>
+						{:else}
+							<input
+								class="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-900"
+								id={field.name}
+								name={field.name}
+								required={field.required}
+							/>
+						{/if}
 					</div>
 				{/each}
 
@@ -153,12 +184,21 @@
 									<label class="text-sm font-medium" for={`${field.name}-${document.id}`}>
 										{getFieldLabel(field)}
 									</label>
-									<input
-										class="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-900"
-										id={`${field.name}-${document.id}`}
-										bind:value={editData[field.name]}
-										required={field.required}
-									/>
+									{#if shouldUseTextarea(field)}
+										<textarea
+											class="min-h-28 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-900"
+											id={`${field.name}-${document.id}`}
+											bind:value={editData[field.name]}
+											required={field.required}
+										></textarea>
+									{:else}
+										<input
+											class="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-900"
+											id={`${field.name}-${document.id}`}
+											bind:value={editData[field.name]}
+											required={field.required}
+										/>
+									{/if}
 								</div>
 							{/each}
 							<div class="flex gap-2">
