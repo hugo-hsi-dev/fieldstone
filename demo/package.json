@@ -55,6 +55,7 @@
 	},
 	"dependencies": {
 		"@fieldstone/plugin": "workspace:*",
-		"better-sqlite3": "^12.10.0"
+		"better-sqlite3": "^12.10.0",
+		"valibot": "^1.4.1"
 	}
 }
