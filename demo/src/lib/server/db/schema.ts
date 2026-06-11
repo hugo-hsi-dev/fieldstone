@@ -22,4 +22,19 @@ export const posts = sqliteTable('posts', {
 		.$defaultFn(() => new Date())
 });
 
+export const pages = sqliteTable('pages', {
+	id: text('id')
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	headline: text('headline').notNull(),
+	path: text('path').notNull(),
+	summary: text('summary').notNull(),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.$defaultFn(() => new Date()),
+	updatedAt: integer('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.$defaultFn(() => new Date())
+});
+
 export * from './auth.schema';
