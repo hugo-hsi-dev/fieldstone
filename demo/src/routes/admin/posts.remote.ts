@@ -1,6 +1,7 @@
-import { command, query } from '$app/server';
+import { command, getRequestEvent, query } from '$app/server';
 import { error } from '@sveltejs/kit';
 
+import { requireAdminUser } from '$lib/server/cms/admin-auth';
 import { stone, type CollectionName } from '$lib/server/cms/stone';
 
 type CollectionInput = {
@@ -45,6 +46,7 @@ export const getPost = query<FindByIdInput, Awaited<ReturnType<typeof stone.find
 export const createPost = command<PostMutationInput, Awaited<ReturnType<typeof stone.createPost>>>(
 	'unchecked',
 	async ({ collection, ...input }) => {
+		requireAdminUser(getRequestEvent());
 		requirePosts({ collection });
 		return stone.createPost(input);
 	}
@@ -53,6 +55,7 @@ export const createPost = command<PostMutationInput, Awaited<ReturnType<typeof s
 export const updatePost = command<UpdatePostInput, Awaited<ReturnType<typeof stone.updatePost>>>(
 	'unchecked',
 	async ({ collection, ...input }) => {
+		requireAdminUser(getRequestEvent());
 		requirePosts({ collection });
 		return stone.updatePost(input);
 	}
@@ -61,6 +64,7 @@ export const updatePost = command<UpdatePostInput, Awaited<ReturnType<typeof sto
 export const deletePost = command<DeletePostInput, Awaited<ReturnType<typeof stone.deletePost>>>(
 	'unchecked',
 	async ({ collection, id }) => {
+		requireAdminUser(getRequestEvent());
 		requirePosts({ collection });
 		return stone.deletePost({ id });
 	}
