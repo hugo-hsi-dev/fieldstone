@@ -3,11 +3,10 @@ import path from 'node:path';
 import { createInterface } from 'node:readline/promises';
 
 import { createClient } from '@libsql/client';
+import { compileFieldstoneConfig, createSchemaFingerprint, generateTypes } from '@fieldstone/core';
+import type { FieldstoneConfig, FieldstoneConfigInput } from '@fieldstone/core';
 import { drizzle } from 'drizzle-orm/libsql';
 import type { Plugin, ViteDevServer } from 'vite';
-
-import { compileFieldstoneConfig, createSchemaFingerprint, generateTypes } from './schema.ts';
-import type { FieldstoneConfig, FieldstoneConfigInput } from './types.ts';
 
 const CONFIG_ID = '$fieldstone-config';
 const RESOLVED_CONFIG_ID = '\0fieldstone-config';

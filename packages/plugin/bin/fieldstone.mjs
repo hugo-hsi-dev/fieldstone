@@ -73,7 +73,7 @@ try {
 		};
 	}
 
-	const schemaModulePath = fileURLToPath(new URL('../src/schema.ts', import.meta.url));
+	const schemaModulePath = fileURLToPath(new URL('../../core/src/schema.ts', import.meta.url));
 	const { generateDrizzleSchemaSource, generateTypes } =
 		await server.ssrLoadModule(schemaModulePath);
 	const config = {

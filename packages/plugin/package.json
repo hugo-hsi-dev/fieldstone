@@ -20,6 +20,7 @@
 		"test": "vitest --run"
 	},
 	"dependencies": {
+		"@fieldstone/core": "workspace:*",
 		"@libsql/client": "^0.15.15"
 	},
 	"peerDependencies": {
