@@ -2,7 +2,7 @@ import { command, query } from '$app/server';
 import { error } from '@sveltejs/kit';
 import * as v from 'valibot';
 
-import { stone, type DocumentData } from '$lib/server/cms/stone';
+import { fieldstoneAdmin, type DocumentData } from '$lib/server/admin/fieldstone-admin';
 
 type CollectionName = string;
 
@@ -43,30 +43,30 @@ const updateSchema = v.object({
 });
 
 function requireCollection(collection: CollectionName) {
-	if (!stone.getCollection(collection)) error(400, 'Unsupported collection');
+	if (!fieldstoneAdmin.getCollection(collection)) error(400, 'Unsupported collection');
 }
 
 export const listDocuments = query(collectionSchema, async (input) => {
 	requireCollection(input.collection);
-	return stone.find(input);
+	return fieldstoneAdmin.listDocuments(input);
 });
 
 export const getDocument = query(findByIdSchema, async (input) => {
 	requireCollection(input.collection);
-	return stone.findById(input);
+	return fieldstoneAdmin.getDocument(input);
 });
 
 export const createDocument = command(mutationSchema, async (input) => {
 	requireCollection(input.collection);
-	return stone.create(input);
+	return fieldstoneAdmin.createDocument(input);
 });
 
 export const updateDocument = command(updateSchema, async (input) => {
 	requireCollection(input.collection);
-	return stone.update(input);
+	return fieldstoneAdmin.updateDocument(input);
 });
 
 export const deleteDocument = command(findByIdSchema, async (input) => {
 	requireCollection(input.collection);
-	return stone.delete(input);
+	return fieldstoneAdmin.deleteDocument(input);
 });
