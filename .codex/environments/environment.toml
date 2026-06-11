@@ -11,5 +11,5 @@ cp "$CODEX_SOURCE_TREE_PATH/demo/.env" "$CODEX_WORKTREE_PATH/demo/.env"
 cd "$CODEX_WORKTREE_PATH"
 
 pnpm install --frozen-lockfile
-pnpm --dir demo db:push -- --force
+pnpm --dir demo db:push
 '''
