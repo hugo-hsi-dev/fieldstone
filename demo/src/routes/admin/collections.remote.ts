@@ -1,5 +1,7 @@
 import { query } from '$app/server';
 
-import { stone } from '$lib/server/cms/stone';
+import { fieldstoneAdmin } from '$lib/server/admin/fieldstone-admin';
 
-export const getCollection = query(() => stone.getCollection('posts') ?? stone.collections[0] ?? null);
+export const getCollection = query(
+	() => fieldstoneAdmin.getCollection('posts') ?? fieldstoneAdmin.collections[0] ?? null
+);
