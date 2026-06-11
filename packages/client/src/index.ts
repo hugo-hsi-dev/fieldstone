@@ -1,3 +1,5 @@
+/// <reference path="./fieldstone-config.d.ts" />
+
 import { compileFieldstoneConfig } from '@fieldstone/core';
 import type { CollectionRuntimeConfig, FieldstoneConfig } from '@fieldstone/core';
 
