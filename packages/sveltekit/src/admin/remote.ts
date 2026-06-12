@@ -11,6 +11,8 @@ import type {
 	FieldstoneConfig
 } from '@fieldstone/core';
 
+import { requireSupportedCollection } from './collections.ts';
+
 type AdminView =
 	| {
 			type: 'index';
@@ -66,9 +68,12 @@ function getErrorMessage(error: unknown) {
 export function createFieldstoneAdminRemotes({ config }: { config: FieldstoneConfig }) {
 	const admin = createFieldstoneAdmin({ config });
 
-	async function requireCollection(collection: string) {
+	async function getAdminCollection(collection: string) {
 		const fieldstoneAdmin = await admin;
-		if (!fieldstoneAdmin.getCollection(collection)) error(404, 'Collection not found');
+		return {
+			collection: requireSupportedCollection(fieldstoneAdmin.getCollection, collection),
+			fieldstoneAdmin
+		};
 	}
 
 	return {
@@ -107,12 +112,11 @@ export function createFieldstoneAdminRemotes({ config }: { config: FieldstoneCon
 		}),
 
 		listDocuments: query(collectionSchema, async (input) => {
-			await requireCollection(input.collection);
-			const fieldstoneAdmin = await admin;
+			const { collection, fieldstoneAdmin } = await getAdminCollection(input.collection);
 			try {
 				return {
 					documents: (await fieldstoneAdmin.listDocuments({
-						collection: input.collection as CollectionSlug
+						collection
 					})) as CollectionDocument<CollectionSlug>[],
 					error: null
 				} satisfies DocumentListResult;
@@ -125,38 +129,34 @@ export function createFieldstoneAdminRemotes({ config }: { config: FieldstoneCon
 		}),
 
 		getDocument: query(findByIdSchema, async (input) => {
-			await requireCollection(input.collection);
-			const fieldstoneAdmin = await admin;
+			const { collection, fieldstoneAdmin } = await getAdminCollection(input.collection);
 			return fieldstoneAdmin.getDocument({
-				collection: input.collection as CollectionSlug,
+				collection,
 				id: input.id
 			}) as Promise<CollectionDocument<CollectionSlug> | null>;
 		}),
 
 		createDocument: command(mutationSchema, async (input) => {
-			await requireCollection(input.collection);
-			const fieldstoneAdmin = await admin;
+			const { collection, fieldstoneAdmin } = await getAdminCollection(input.collection);
 			return fieldstoneAdmin.createDocument({
-				collection: input.collection as CollectionSlug,
+				collection,
 				data: input.data as CollectionData<CollectionSlug>
 			});
 		}),
 
 		updateDocument: command(updateSchema, async (input) => {
-			await requireCollection(input.collection);
-			const fieldstoneAdmin = await admin;
+			const { collection, fieldstoneAdmin } = await getAdminCollection(input.collection);
 			return fieldstoneAdmin.updateDocument({
-				collection: input.collection as CollectionSlug,
+				collection,
 				data: input.data as CollectionData<CollectionSlug>,
 				id: input.id
 			});
 		}),
 
 		deleteDocument: command(findByIdSchema, async (input) => {
-			await requireCollection(input.collection);
-			const fieldstoneAdmin = await admin;
+			const { collection, fieldstoneAdmin } = await getAdminCollection(input.collection);
 			return fieldstoneAdmin.deleteDocument({
-				collection: input.collection as CollectionSlug,
+				collection,
 				id: input.id
 			});
 		})
