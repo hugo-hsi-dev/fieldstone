@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { collection, text } from '../src/index.ts';
-import {
-	compileFieldstoneConfig,
-	generateDrizzleSchemaSource,
-	generateTypes
-} from '../src/schema.ts';
+import * as core from '../src/index.ts';
+import * as schema from '../src/schema.ts';
+import { compileFieldstoneConfig } from '../src/schema.ts';
 import { compileCollectionModel } from '../src/compiler/collection-model.ts';
 import type { FieldstoneConfig } from '../src/types.ts';
 
@@ -81,7 +79,7 @@ describe('fieldstone compiler', () => {
 			}
 		};
 
-		const compiled = compileFieldstoneConfig(config);
+		const compiled = compileFieldstoneConfig(config).runtimeSchema();
 
 		expect(compiled.tables.posts.id).toBeDefined();
 		expect(compiled.tables.posts.title).toBeDefined();
@@ -90,7 +88,7 @@ describe('fieldstone compiler', () => {
 	});
 
 	it('generates ambient config and collection types', () => {
-		const output = generateTypes({
+		const output = compileFieldstoneConfig({
 			db: { dialect: 'sqlite', url: ':memory:' },
 			collections: {
 				posts: {
@@ -101,7 +99,7 @@ describe('fieldstone compiler', () => {
 					slug: 'posts'
 				}
 			}
-		});
+		}).typesDeclaration();
 
 		expect(output).toContain("declare module '@fieldstone/core'");
 		expect(output).toContain('"posts"');
@@ -145,7 +143,7 @@ describe('fieldstone compiler', () => {
 	});
 
 	it('generates drizzle schema source for CLI migrations', () => {
-		const output = generateDrizzleSchemaSource({
+		const output = compileFieldstoneConfig({
 			db: { dialect: 'sqlite', url: ':memory:' },
 			collections: {
 				'blog-posts': {
@@ -153,7 +151,7 @@ describe('fieldstone compiler', () => {
 					slug: 'blog-posts'
 				}
 			}
-		});
+		}).drizzleSchemaSource();
 
 		expect(output).toContain('export const collection_blog_posts = sqliteTable("blog-posts"');
 		expect(output).toContain("import crypto from 'node:crypto'");
@@ -161,7 +159,7 @@ describe('fieldstone compiler', () => {
 	});
 
 	it('preserves fields whose generated identifiers collide', () => {
-		const output = generateDrizzleSchemaSource({
+		const output = compileFieldstoneConfig({
 			db: { dialect: 'sqlite', url: ':memory:' },
 			collections: {
 				posts: {
@@ -172,14 +170,14 @@ describe('fieldstone compiler', () => {
 					slug: 'posts'
 				}
 			}
-		});
+		}).drizzleSchemaSource();
 
 		expect(output).toContain('seo_title: text("seo-title").notNull()');
 		expect(output).toContain('seo_title_2: text("seo_title")');
 	});
 
 	it('generates valid export identifiers for reserved collection slugs', () => {
-		const output = generateDrizzleSchemaSource({
+		const output = compileFieldstoneConfig({
 			db: { dialect: 'sqlite', url: ':memory:' },
 			collections: {
 				class: {
@@ -191,7 +189,7 @@ describe('fieldstone compiler', () => {
 					slug: 'class-name'
 				}
 			}
-		});
+		}).drizzleSchemaSource();
 
 		expect(output).toContain('export const collection_class = sqliteTable("class"');
 		expect(output).toContain('export const collection_class_name = sqliteTable("class-name"');
@@ -200,7 +198,7 @@ describe('fieldstone compiler', () => {
 
 	it('rejects case-only duplicate collection slugs', () => {
 		expect(() =>
-			generateDrizzleSchemaSource({
+			compileFieldstoneConfig({
 				db: { dialect: 'sqlite', url: ':memory:' },
 				collections: {
 					posts: {
@@ -212,7 +210,7 @@ describe('fieldstone compiler', () => {
 						slug: 'Posts'
 					}
 				}
-			})
+			}).drizzleSchemaSource()
 		).toThrow('Duplicate collection slug: Posts');
 	});
 
@@ -244,6 +242,53 @@ describe('fieldstone compiler', () => {
 			}
 		};
 
-		expect(() => generateDrizzleSchemaSource(config)).toThrow('Duplicate field name: Title');
+		expect(() => compileFieldstoneConfig(config).drizzleSchemaSource()).toThrow(
+			'Duplicate field name: Title'
+		);
+	});
+
+	it('exposes schema artifacts through one compiled config result', () => {
+		const compiled = compileFieldstoneConfig({
+			db: { dialect: 'sqlite', url: ':memory:' },
+			collections: {
+				posts: {
+					fields: [text({ name: 'title', required: true })],
+					slug: 'posts'
+				}
+			}
+		});
+
+		expect(compiled.runtimeSchema().tables.posts.title).toBeDefined();
+		expect(compiled.drizzleSchemaSource()).toContain('title: text("title").notNull()');
+		expect(compiled.typesDeclaration()).toContain('"title": string');
+		expect(compiled.fingerprint()).toContain('"slug":"posts"');
+	});
+
+	it('caches lazy schema artifacts against later config mutation', () => {
+		const config: FieldstoneConfig = {
+			db: { dialect: 'sqlite', url: ':memory:' },
+			collections: {
+				posts: {
+					fields: [text({ name: 'title', required: true })],
+					slug: 'posts'
+				}
+			}
+		};
+
+		const compiled = compileFieldstoneConfig(config);
+		const firstSource = compiled.drizzleSchemaSource();
+		config.collections.posts?.fields.push(text({ name: 'body' }));
+
+		expect(compiled.drizzleSchemaSource()).toBe(firstSource);
+		expect(compiled.fingerprint()).not.toContain('"name":"body"');
+	});
+
+	it('does not expose legacy compiler artifact functions', () => {
+		expect(core).not.toHaveProperty('generateDrizzleSchemaSource');
+		expect(core).not.toHaveProperty('generateTypes');
+		expect(core).not.toHaveProperty('createSchemaFingerprint');
+		expect(schema).not.toHaveProperty('generateDrizzleSchemaSource');
+		expect(schema).not.toHaveProperty('generateTypes');
+		expect(schema).not.toHaveProperty('createSchemaFingerprint');
 	});
 });

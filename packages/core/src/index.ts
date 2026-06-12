@@ -16,9 +16,7 @@ export type {
 
 export {
 	compileFieldstoneConfig,
-	createSchemaFingerprint,
-	generateDrizzleSchemaSource,
-	generateTypes
+	type FieldstoneCompiledConfig
 } from './schema.ts';
 
 export function text(config: Omit<TextFieldDefinition, 'type'>): TextFieldDefinition {

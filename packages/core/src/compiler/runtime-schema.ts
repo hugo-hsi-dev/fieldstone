@@ -2,9 +2,12 @@ import crypto from 'node:crypto';
 
 import { integer, sqliteTable, text as sqliteText } from 'drizzle-orm/sqlite-core';
 
-import type { FieldstoneConfig } from '../types.ts';
-import type { CompiledSystemField } from './collection-model.ts';
-import { compileCollectionModel } from './collection-model.ts';
+import type { CollectionModel, CompiledSystemField } from './collection-model.ts';
+
+export type RuntimeSchema = {
+	schema: Record<string, any>;
+	tables: Record<string, any>;
+};
 
 function createSystemColumn(field: CompiledSystemField) {
 	if (field.identifier === 'id') {
@@ -18,8 +21,7 @@ function createSystemColumn(field: CompiledSystemField) {
 		.$defaultFn(() => new Date());
 }
 
-export function compileFieldstoneConfig(config: FieldstoneConfig) {
-	const model = compileCollectionModel(config);
+export function createRuntimeSchema(model: CollectionModel): RuntimeSchema {
 	const tables: Record<string, any> = {};
 
 	for (const collection of model.collections) {

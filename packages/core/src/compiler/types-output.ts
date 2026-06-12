@@ -1,14 +1,14 @@
-import type { FieldstoneConfig } from '../types.ts';
-import { compileCollectionModel } from './collection-model.ts';
+import type { CollectionModel } from './collection-model.ts';
 
-export function generateTypes(config: FieldstoneConfig) {
-	const collections = compileCollectionModel(config)
-		.collections.map((collection) => {
+export function createTypesDeclaration(model: CollectionModel) {
+	const collections = model.collections
+		.map((collection) => {
 			const fields = collection.fields
 				.map((field) => `    ${JSON.stringify(field.name)}${field.required ? '' : '?'}: string;`)
 				.join('\n');
+			const [id, createdAt, updatedAt] = collection.systemFields;
 
-			return `  ${JSON.stringify(collection.slug)}: {\n    id: string;\n${fields}\n    createdAt: Date;\n    updatedAt: Date;\n  };`;
+			return `  ${JSON.stringify(collection.slug)}: {\n    ${id.identifier}: string;\n${fields}\n    ${createdAt.identifier}: Date;\n    ${updatedAt.identifier}: Date;\n  };`;
 		})
 		.join('\n');
 

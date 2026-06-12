@@ -1,6 +1,4 @@
-import type { FieldstoneConfig } from '../types.ts';
-import type { CompiledSystemField } from './collection-model.ts';
-import { compileCollectionModel } from './collection-model.ts';
+import type { CollectionModel, CompiledSystemField } from './collection-model.ts';
 
 function renderSystemColumn(field: CompiledSystemField) {
 	if (field.identifier === 'id') {
@@ -14,8 +12,7 @@ function renderSystemColumn(field: CompiledSystemField) {
 \t\t.$defaultFn(() => new Date())${field.identifier === 'createdAt' ? ',' : ''}`;
 }
 
-export function generateDrizzleSchemaSource(config: FieldstoneConfig) {
-	const model = compileCollectionModel(config);
+export function createDrizzleSchemaSource(model: CollectionModel) {
 	const tableDeclarations = model.collections
 		.map((collection) => {
 			const fields = collection.fields

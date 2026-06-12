@@ -33,7 +33,7 @@ async function confirmWarnings(warnings: string[], hasDataLoss: boolean) {
 
 export async function pushSchema(config: FieldstoneConfig) {
 	const { pushSQLiteSchema } = await import('drizzle-kit/api');
-	const compiled = compileFieldstoneConfig(config);
+	const compiled = compileFieldstoneConfig(config).runtimeSchema();
 	const client = createClient({ url: normalizeSqliteUrl(config.db.url) });
 	const database = drizzle(client, { schema: compiled.schema });
 	const { apply, hasDataLoss, warnings } = await pushSQLiteSchema(compiled.schema, database);

@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import type { FieldstoneConfig } from '@fieldstone/core';
+import type { FieldstoneCompiledConfig, FieldstoneConfig } from '@fieldstone/core';
 import { discoverCollections } from './collections.ts';
 
 type LoadModule = <T = Record<string, unknown>>(id: string) => Promise<T>;
@@ -34,20 +34,16 @@ export async function loadFieldstoneConfig({
 }
 
 export async function writeGeneratedFiles({
-	config,
-	generateDrizzleSchemaSource,
-	generateTypes,
+	compiled,
 	root
 }: {
-	config: FieldstoneConfig;
-	generateDrizzleSchemaSource: (config: FieldstoneConfig) => string;
-	generateTypes: (config: FieldstoneConfig) => string;
+	compiled: FieldstoneCompiledConfig;
 	root: string;
 }) {
 	const outputDir = path.join(root, '.fieldstone');
 	await mkdir(outputDir, { recursive: true });
 	await Promise.all([
-		writeFile(path.join(outputDir, 'schema.ts'), generateDrizzleSchemaSource(config)),
-		writeFile(path.join(outputDir, 'types.d.ts'), generateTypes(config))
+		writeFile(path.join(outputDir, 'schema.ts'), compiled.drizzleSchemaSource()),
+		writeFile(path.join(outputDir, 'types.d.ts'), compiled.typesDeclaration())
 	]);
 }
