@@ -1,16 +1,13 @@
-import type { FieldstoneConfig } from '../types.ts';
-import { validateFieldstoneConfig } from './validation.ts';
+import type { SchemaPlan } from './schema-plan.ts';
 
-export function createSchemaFingerprint(config: FieldstoneConfig) {
-	validateFieldstoneConfig(config);
-
+export function createSchemaFingerprint(plan: SchemaPlan) {
 	return JSON.stringify(
-		Object.values(config.collections)
+		plan.collections
 			.map((collection) => ({
 				fields: collection.fields.map((field) => ({
 					name: field.name,
-					multiline: Boolean(field.multiline),
-					required: Boolean(field.required),
+					multiline: field.multiline,
+					required: field.required,
 					type: field.type
 				})),
 				slug: collection.slug

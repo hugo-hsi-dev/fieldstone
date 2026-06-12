@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { createSchemaFingerprint, generateTypes } from '@fieldstone/core';
+import { compileFieldstoneConfig } from '@fieldstone/core';
 import type { FieldstoneConfig, FieldstoneConfigInput } from '@fieldstone/core';
 import type { Plugin, ViteDevServer } from 'vite';
 
@@ -12,10 +12,10 @@ import { loadVirtualConfig } from './virtual-config.ts';
 
 type FieldstonePluginOptions = FieldstoneConfigInput;
 
-async function writeTypes(root: string, config: FieldstoneConfig) {
+async function writeTypes(root: string, compiled: ReturnType<typeof compileFieldstoneConfig>) {
 	const outputFile = path.join(root, '.fieldstone', 'types.d.ts');
 	await mkdir(path.dirname(outputFile), { recursive: true });
-	await writeFile(outputFile, generateTypes(config));
+	await writeFile(outputFile, compiled.typesDeclaration());
 }
 
 function invalidateImporters(server: ViteDevServer, id: string, seen = new Set<string>()) {
@@ -41,8 +41,9 @@ export function fieldstone(options: FieldstonePluginOptions): Plugin {
 		invalidateImporters(server, RESOLVED_CONFIG_ID);
 
 		const config = (await server.ssrLoadModule(CONFIG_ID)).default as FieldstoneConfig;
-		const fingerprint = createSchemaFingerprint(config);
-		await writeTypes(root, config);
+		const compiled = compileFieldstoneConfig(config);
+		const fingerprint = compiled.fingerprint();
+		await writeTypes(root, compiled);
 
 		if (fingerprint !== previousFingerprint) {
 			const didPush = await pushSchema(config);

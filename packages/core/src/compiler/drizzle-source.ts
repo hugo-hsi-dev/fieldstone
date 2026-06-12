@@ -1,36 +1,29 @@
-import type { FieldstoneConfig } from '../types.ts';
-import { toUniqueIdentifier } from './identifiers.ts';
-import { validateFieldstoneConfig } from './validation.ts';
+import type { SchemaPlan } from './schema-plan.ts';
 
-export function generateDrizzleSchemaSource(config: FieldstoneConfig) {
-	validateFieldstoneConfig(config);
+function sourceString(value: string) {
+	return `'${value.replace(/'/g, "\\'")}'`;
+}
 
-	const collectionIdentifiers = new Set<string>();
-	const tableDeclarations = Object.values(config.collections)
+export function createDrizzleSchemaSource(plan: SchemaPlan) {
+	const { createdAt, id, updatedAt } = plan.systemFields;
+	const tableDeclarations = plan.collections
 		.map((collection) => {
-			const fieldIdentifiers = new Set<string>();
 			const fields = collection.fields
 				.map((field) => {
-					const identifier = toUniqueIdentifier(field.name, fieldIdentifiers);
 					const column = `text(${JSON.stringify(field.name)})${field.required ? '.notNull()' : ''}`;
-					return `\t${identifier}: ${column},`;
+					return `\t${field.sourceIdentifier}: ${column},`;
 				})
 				.join('\n');
-			const collectionIdentifier = toUniqueIdentifier(
-				collection.slug,
-				collectionIdentifiers,
-				'collection_'
-			);
 
-			return `export const ${collectionIdentifier} = sqliteTable(${JSON.stringify(collection.slug)}, {
-\tid: text('id')
+			return `export const ${collection.sourceIdentifier} = sqliteTable(${JSON.stringify(collection.slug)}, {
+\t${id.name}: text(${sourceString(id.columnName)})
 \t\t.primaryKey()
 \t\t.$defaultFn(() => crypto.randomUUID()),
 ${fields}
-\tcreatedAt: integer('created_at', { mode: 'timestamp' })
+\t${createdAt.name}: integer(${sourceString(createdAt.columnName)}, { mode: 'timestamp' })
 \t\t.notNull()
 \t\t.$defaultFn(() => new Date()),
-\tupdatedAt: integer('updated_at', { mode: 'timestamp' })
+\t${updatedAt.name}: integer(${sourceString(updatedAt.columnName)}, { mode: 'timestamp' })
 \t\t.notNull()
 \t\t.$defaultFn(() => new Date())
 });`;

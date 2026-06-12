@@ -1,16 +1,14 @@
-import type { FieldstoneConfig } from '../types.ts';
-import { validateFieldstoneConfig } from './validation.ts';
+import type { SchemaPlan } from './schema-plan.ts';
 
-export function generateTypes(config: FieldstoneConfig) {
-	validateFieldstoneConfig(config);
-
-	const collections = Object.values(config.collections)
+export function createTypesDeclaration(plan: SchemaPlan) {
+	const { createdAt, id, updatedAt } = plan.systemFields;
+	const collections = plan.collections
 		.map((collection) => {
 			const fields = collection.fields
 				.map((field) => `    ${JSON.stringify(field.name)}${field.required ? '' : '?'}: string;`)
 				.join('\n');
 
-			return `  ${JSON.stringify(collection.slug)}: {\n    id: string;\n${fields}\n    createdAt: Date;\n    updatedAt: Date;\n  };`;
+			return `  ${JSON.stringify(collection.slug)}: {\n    ${id.name}: string;\n${fields}\n    ${createdAt.name}: Date;\n    ${updatedAt.name}: Date;\n  };`;
 		})
 		.join('\n');
 
