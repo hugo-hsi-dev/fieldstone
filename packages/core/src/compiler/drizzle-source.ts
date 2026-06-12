@@ -1,31 +1,32 @@
-import type { SchemaPlan } from './schema-plan.ts';
+import type { CollectionModel, CompiledSystemField } from './collection-model.ts';
 
-function sourceString(value: string) {
-	return `'${value.replace(/'/g, "\\'")}'`;
+function renderSystemColumn(field: CompiledSystemField) {
+	if (field.identifier === 'id') {
+		return `\t${field.identifier}: text(${JSON.stringify(field.columnName)})
+\t\t.primaryKey()
+\t\t.$defaultFn(() => crypto.randomUUID()),`;
+	}
+
+	return `\t${field.identifier}: integer(${JSON.stringify(field.columnName)}, { mode: 'timestamp' })
+\t\t.notNull()
+\t\t.$defaultFn(() => new Date())${field.identifier === 'createdAt' ? ',' : ''}`;
 }
 
-export function createDrizzleSchemaSource(plan: SchemaPlan) {
-	const { createdAt, id, updatedAt } = plan.systemFields;
-	const tableDeclarations = plan.collections
+export function createDrizzleSchemaSource(model: CollectionModel) {
+	const tableDeclarations = model.collections
 		.map((collection) => {
 			const fields = collection.fields
 				.map((field) => {
 					const column = `text(${JSON.stringify(field.name)})${field.required ? '.notNull()' : ''}`;
-					return `\t${field.sourceIdentifier}: ${column},`;
+					return `\t${field.identifier}: ${column},`;
 				})
 				.join('\n');
+			const [idColumn, ...timestampColumns] = collection.systemFields.map(renderSystemColumn);
 
-			return `export const ${collection.sourceIdentifier} = sqliteTable(${JSON.stringify(collection.slug)}, {
-\t${id.name}: text(${sourceString(id.columnName)})
-\t\t.primaryKey()
-\t\t.$defaultFn(() => crypto.randomUUID()),
+			return `export const ${collection.tableIdentifier} = sqliteTable(${JSON.stringify(collection.slug)}, {
+${idColumn}
 ${fields}
-\t${createdAt.name}: integer(${sourceString(createdAt.columnName)}, { mode: 'timestamp' })
-\t\t.notNull()
-\t\t.$defaultFn(() => new Date()),
-\t${updatedAt.name}: integer(${sourceString(updatedAt.columnName)}, { mode: 'timestamp' })
-\t\t.notNull()
-\t\t.$defaultFn(() => new Date())
+${timestampColumns.join('\n')}
 });`;
 		})
 		.join('\n\n');

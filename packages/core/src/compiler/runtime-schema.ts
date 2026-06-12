@@ -2,18 +2,29 @@ import crypto from 'node:crypto';
 
 import { integer, sqliteTable, text as sqliteText } from 'drizzle-orm/sqlite-core';
 
-import type { SchemaPlan } from './schema-plan.ts';
+import type { CollectionModel, CompiledSystemField } from './collection-model.ts';
 
 export type RuntimeSchema = {
 	schema: Record<string, any>;
 	tables: Record<string, any>;
 };
 
-export function createRuntimeSchema(plan: SchemaPlan): RuntimeSchema {
-	const tables: Record<string, any> = {};
-	const { createdAt, id, updatedAt } = plan.systemFields;
+function createSystemColumn(field: CompiledSystemField) {
+	if (field.identifier === 'id') {
+		return sqliteText(field.columnName)
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID());
+	}
 
-	for (const collection of plan.collections) {
+	return integer(field.columnName, { mode: 'timestamp' })
+		.notNull()
+		.$defaultFn(() => new Date());
+}
+
+export function createRuntimeSchema(model: CollectionModel): RuntimeSchema {
+	const tables: Record<string, any> = {};
+
+	for (const collection of model.collections) {
 		const columns: Record<string, any> = {};
 
 		for (const field of collection.fields) {
@@ -22,17 +33,13 @@ export function createRuntimeSchema(plan: SchemaPlan): RuntimeSchema {
 				: sqliteText(field.name);
 		}
 
+		const [idField, createdAtField, updatedAtField] = collection.systemFields;
+
 		tables[collection.slug] = sqliteTable(collection.slug, {
-			[id.name]: sqliteText(id.columnName)
-				.primaryKey()
-				.$defaultFn(() => crypto.randomUUID()),
+			[idField.identifier]: createSystemColumn(idField),
 			...columns,
-			[createdAt.name]: integer(createdAt.columnName, { mode: 'timestamp' })
-				.notNull()
-				.$defaultFn(() => new Date()),
-			[updatedAt.name]: integer(updatedAt.columnName, { mode: 'timestamp' })
-				.notNull()
-				.$defaultFn(() => new Date())
+			[createdAtField.identifier]: createSystemColumn(createdAtField),
+			[updatedAtField.identifier]: createSystemColumn(updatedAtField)
 		});
 	}
 

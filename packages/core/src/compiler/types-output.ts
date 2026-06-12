@@ -1,14 +1,14 @@
-import type { SchemaPlan } from './schema-plan.ts';
+import type { CollectionModel } from './collection-model.ts';
 
-export function createTypesDeclaration(plan: SchemaPlan) {
-	const { createdAt, id, updatedAt } = plan.systemFields;
-	const collections = plan.collections
+export function createTypesDeclaration(model: CollectionModel) {
+	const collections = model.collections
 		.map((collection) => {
 			const fields = collection.fields
 				.map((field) => `    ${JSON.stringify(field.name)}${field.required ? '' : '?'}: string;`)
 				.join('\n');
+			const [id, createdAt, updatedAt] = collection.systemFields;
 
-			return `  ${JSON.stringify(collection.slug)}: {\n    ${id.name}: string;\n${fields}\n    ${createdAt.name}: Date;\n    ${updatedAt.name}: Date;\n  };`;
+			return `  ${JSON.stringify(collection.slug)}: {\n    ${id.identifier}: string;\n${fields}\n    ${createdAt.identifier}: Date;\n    ${updatedAt.identifier}: Date;\n  };`;
 		})
 		.join('\n');
 

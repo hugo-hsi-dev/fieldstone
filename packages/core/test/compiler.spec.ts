@@ -4,9 +4,68 @@ import { collection, text } from '../src/index.ts';
 import * as core from '../src/index.ts';
 import * as schema from '../src/schema.ts';
 import { compileFieldstoneConfig } from '../src/schema.ts';
+import { compileCollectionModel } from '../src/compiler/collection-model.ts';
 import type { FieldstoneConfig } from '../src/types.ts';
 
 describe('fieldstone compiler', () => {
+	it('compiles deterministic collection facts once for compiler outputs', () => {
+		const model = compileCollectionModel({
+			db: { dialect: 'sqlite', url: ':memory:' },
+			collections: {
+				pages: {
+					fields: [text({ name: 'headline', required: true })],
+					slug: 'pages'
+				},
+				'blog-posts': {
+					fields: [
+						text({ name: 'seo-title', required: true }),
+						text({ name: 'seo_title', required: false })
+					],
+					slug: 'blog-posts'
+				},
+				blog_posts: {
+					fields: [text({ name: 'title', required: true })],
+					slug: 'blog_posts'
+				}
+			}
+		});
+
+		expect(model.collections.map((compiled) => compiled.slug)).toEqual([
+			'blog-posts',
+			'blog_posts',
+			'pages'
+		]);
+		expect(model.collections[1]?.tableIdentifier).toBe('collection_blog_posts_2');
+		expect(model.collections[0]).toMatchObject({
+			slug: 'blog-posts',
+			tableIdentifier: 'collection_blog_posts',
+			fields: [
+				{ identifier: 'seo_title', name: 'seo-title', required: true },
+				{ identifier: 'seo_title_2', name: 'seo_title', required: false }
+			],
+			systemFields: [
+				{ columnName: 'id', identifier: 'id', name: 'id' },
+				{
+					columnName: 'created_at',
+					identifier: 'createdAt',
+					name: 'createdAt'
+				},
+				{
+					columnName: 'updated_at',
+					identifier: 'updatedAt',
+					name: 'updatedAt'
+				}
+			]
+		});
+		expect(model.fingerprintPayload[0]).toEqual({
+			fields: [
+				{ multiline: false, name: 'seo-title', required: true, type: 'text' },
+				{ multiline: false, name: 'seo_title', required: false, type: 'text' }
+			],
+			slug: 'blog-posts'
+		});
+	});
+
 	it('builds sqlite tables with system fields from collection definitions', () => {
 		const config: FieldstoneConfig = {
 			db: { dialect: 'sqlite', url: ':memory:' },
