@@ -1,4 +1,4 @@
-import { ORIGIN, BETTER_AUTH_SECRET } from '$app/env/private';
+import { ORIGIN, BETTER_AUTH_SECRET } from '$env/static/private';
 import { betterAuth } from 'better-auth/minimal';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { sveltekitCookies } from 'better-auth/svelte-kit';

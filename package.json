@@ -5,8 +5,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm run --dir demo dev",
-    "build": "pnpm run --dir demo build",
-    "test": "pnpm -r test"
+    "dev": "pnpm --dir test/simple dev",
+    "build": "pnpm --dir test/simple build",
+    "test": "pnpm -r --filter './packages/*' test && pnpm test:e2e",
+    "test:e2e": "pnpm --dir test/simple test:e2e"
   }
 }

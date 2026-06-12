@@ -34,14 +34,13 @@ export default defineConfig(({ mode }) => {
 
 				experimental: {
 					remoteFunctions: true,
-					explicitEnvironmentVariables: true,
 					handleRenderingErrors: true,
 					forkPreloads: true
 				},
 				typescript: {
 					config: (config) => ({
 						...config,
-						include: [...config.include, '../drizzle.config.ts', '../.fieldstone/types.d.ts']
+						include: [...config.include, './drizzle.config.ts', './.fieldstone/types.d.ts']
 					})
 				}
 			})

@@ -1,6 +1,6 @@
 packages:
   - packages/*
-  - demo/
+  - test/*
 allowBuilds:
   '@prisma/client': true
   "@tailwindcss/oxide": true

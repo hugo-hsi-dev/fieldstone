@@ -1,5 +1,5 @@
 {
-	"name": "demo",
+	"name": "simple",
 	"private": true,
 	"version": "0.0.1",
 	"type": "module",
@@ -15,7 +15,7 @@
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run && npm run test:e2e",
 		"test:e2e": "playwright install && playwright test",
-		"fieldstone:generate": "node ../packages/plugin/bin/fieldstone.mjs generate",
+		"fieldstone:generate": "node ../../packages/plugin/bin/fieldstone.mjs generate",
 		"db:push": "npm run fieldstone:generate && drizzle-kit push --force",
 		"db:generate": "npm run fieldstone:generate && drizzle-kit generate",
 		"db:migrate": "npm run fieldstone:generate && drizzle-kit migrate",
