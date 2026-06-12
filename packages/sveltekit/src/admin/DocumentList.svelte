@@ -9,6 +9,7 @@
 		collectionName,
 		documents,
 		editingId,
+		editingDocument,
 		ondelete,
 		onedit,
 		onupdate,
@@ -18,6 +19,7 @@
 		collectionName: string;
 		documents: CollectionDocument<CollectionSlug>[];
 		editingId: string | null;
+		editingDocument: CollectionDocument<CollectionSlug> | null;
 		ondelete: (collection: string, id: string) => void | Promise<void>;
 		onedit: (collection: string, id: string) => void | Promise<void>;
 		onupdate: (event: SubmitEvent, collection: string) => void | Promise<void>;
@@ -31,6 +33,7 @@
 		{collectionName}
 		{document}
 		editing={editingId === document.id}
+		{editingDocument}
 		{oncancel}
 		{ondelete}
 		{onedit}

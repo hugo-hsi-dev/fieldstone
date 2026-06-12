@@ -9,6 +9,7 @@
 		collectionName,
 		document,
 		editing,
+		editingDocument,
 		oncancel,
 		ondelete,
 		onedit,
@@ -18,6 +19,7 @@
 		collectionName: string;
 		document: CollectionDocument<CollectionSlug>;
 		editing: boolean;
+		editingDocument: CollectionDocument<CollectionSlug> | null;
 		oncancel: () => void;
 		ondelete: (collection: string, id: string) => void | Promise<void>;
 		onedit: (collection: string, id: string) => void | Promise<void>;
@@ -30,7 +32,7 @@
 		<DocumentEditForm
 			{collection}
 			{collectionName}
-			{document}
+			document={editingDocument ?? document}
 			{oncancel}
 			{onupdate}
 		/>

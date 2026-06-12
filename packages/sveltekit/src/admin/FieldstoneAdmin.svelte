@@ -2,7 +2,7 @@
 	import { afterNavigate, goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import type { CollectionRuntimeConfig } from '@fieldstone/core';
+	import type { CollectionDocument, CollectionRuntimeConfig, CollectionSlug } from '@fieldstone/core';
 	import { fromAction } from 'svelte/attachments';
 
 	import CollectionNav from './CollectionNav.svelte';
@@ -32,6 +32,7 @@
 	}
 
 	let editingId = $state<string | null>(null);
+	let editingDocument = $state<CollectionDocument<CollectionSlug> | null>(null);
 	let errorMessage = $state('');
 
 	const viewQuery = $derived(remotes.getAdminView({ segments: routeSegments }));
@@ -70,6 +71,7 @@
 		const document = await remotes.getDocument({ collection, id });
 		if (!document) return;
 		editingId = document.id;
+		editingDocument = document;
 	}
 
 	async function handleUpdate(event: SubmitEvent, collection: string) {
@@ -88,6 +90,7 @@
 				data: formDataToDocumentData(form, view.collection)
 			});
 			editingId = null;
+			editingDocument = null;
 			await refreshDocuments();
 		} catch (error) {
 			errorMessage = error instanceof Error ? error.message : 'Could not update document';
@@ -99,7 +102,10 @@
 
 		try {
 			await remotes.deleteDocument({ collection, id });
-			if (editingId === id) editingId = null;
+			if (editingId === id) {
+				editingId = null;
+				editingDocument = null;
+			}
 			await refreshDocuments();
 		} catch (error) {
 			errorMessage = error instanceof Error ? error.message : 'Could not delete document';
@@ -163,7 +169,11 @@
 									{collectionName}
 									documents={documentList.documents}
 									{editingId}
-									oncancel={() => (editingId = null)}
+									{editingDocument}
+									oncancel={() => {
+										editingId = null;
+										editingDocument = null;
+									}}
 									ondelete={handleDelete}
 									onedit={startEdit}
 									onupdate={handleUpdate}

@@ -54,6 +54,27 @@ test('updates collection view state after client navigation', async ({ page }) =
 	);
 });
 
+test('uses latest document data when editing a stale list row', async ({ page }) => {
+	await page.goto('/admin/collections/posts');
+
+	await page.getByLabel('Title').fill('Stale source');
+	await page.getByLabel('Description').fill('Old body');
+	await page.getByRole('button', { name: 'Create post' }).click();
+	await expect(page.getByRole('heading', { name: 'Stale source' })).toBeVisible();
+
+	const db = new Database('e2e.db');
+	db.prepare("update posts set title = 'Fresh source', description = 'Fresh body' where title = 'Stale source'").run();
+	db.close();
+
+	const staleRow = page
+		.getByRole('article')
+		.filter({ has: page.getByRole('heading', { name: 'Stale source' }) });
+	await staleRow.getByRole('button', { name: 'Edit' }).click();
+
+	await expect(page.locator('article input[name="title"]')).toHaveValue('Fresh source');
+	await expect(page.locator('article textarea[name="description"]')).toHaveValue('Fresh body');
+});
+
 test('keeps navigation state current when document loading fails', async ({ page }) => {
 	const db = new Database('e2e.db');
 	db.exec('drop table pages');
