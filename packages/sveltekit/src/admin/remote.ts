@@ -24,6 +24,11 @@ type AdminView =
 			collections: CollectionRuntimeConfig[];
 	  };
 
+type DocumentListResult = {
+	documents: CollectionDocument<CollectionSlug>[];
+	error: string | null;
+};
+
 const routeSchema = v.object({
 	segments: v.array(v.string())
 });
@@ -52,6 +57,10 @@ function parseCollectionRoute(segments: string[]) {
 	if (segments.length === 0) return null;
 	if (segments.length === 2 && segments[0] === 'collections') return segments[1] ?? null;
 	return undefined;
+}
+
+function getErrorMessage(error: unknown) {
+	return error instanceof Error ? error.message : 'Could not load documents';
 }
 
 export function createAdminRemotes({ config }: { config: FieldstoneConfig }) {
@@ -100,9 +109,19 @@ export function createAdminRemotes({ config }: { config: FieldstoneConfig }) {
 		listDocuments: query(collectionSchema, async (input) => {
 			await requireCollection(input.collection);
 			const fieldstoneAdmin = await admin;
-			return fieldstoneAdmin.listDocuments({
-				collection: input.collection as CollectionSlug
-			}) as Promise<CollectionDocument<CollectionSlug>[]>;
+			try {
+				return {
+					documents: (await fieldstoneAdmin.listDocuments({
+						collection: input.collection as CollectionSlug
+					})) as CollectionDocument<CollectionSlug>[],
+					error: null
+				} satisfies DocumentListResult;
+			} catch (error) {
+				return {
+					documents: [],
+					error: getErrorMessage(error)
+				} satisfies DocumentListResult;
+			}
 		}),
 
 		getDocument: query(findByIdSchema, async (input) => {

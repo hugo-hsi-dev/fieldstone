@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { afterNavigate, goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import type { CollectionRuntimeConfig } from '@fieldstone/core';
+	import { fromAction } from 'svelte/attachments';
 
 	import type { AdminRemotes } from './remote';
 
@@ -23,8 +24,14 @@
 		return parts.slice(adminIndex + 1).map((part) => decodeURIComponent(part));
 	}
 
-	const routePathname = $derived(page.url.pathname);
-	const routeSegments = $derived(getAdminSegments(routePathname));
+	let currentPathname = $state<string>(page.url.pathname);
+
+	afterNavigate(({ to }) => {
+		currentPathname = to?.url.pathname ?? page.url.pathname;
+	});
+
+	const routeSegments = $derived(getAdminSegments(currentPathname));
+	const routeKey = $derived(routeSegments.join('/'));
 
 	function collectionHref(slug: string) {
 		return resolve(`/admin/collections/${slug}`);
@@ -82,13 +89,13 @@
 	let errorMessage = $state('');
 
 	const viewQuery = $derived(remotes.getAdminView({ segments: routeSegments }));
-	const collectionRouteName = $derived(
+	const selectedCollectionSlug = $derived(
 		routeSegments.length === 2 && routeSegments[0] === 'collections'
 			? (routeSegments[1] ?? null)
 			: null
 	);
 	const documentsQuery = $derived(
-		collectionRouteName ? remotes.listDocuments({ collection: collectionRouteName }) : null
+		selectedCollectionSlug ? remotes.listDocuments({ collection: selectedCollectionSlug }) : null
 	);
 
 	async function refreshDocuments() {
@@ -157,7 +164,7 @@
 	}
 </script>
 
-{#key routePathname}
+{#key routeKey}
 	{#await viewQuery then view}
 		{#if view.type === 'index'}
 			<main class="fs-admin">
@@ -165,7 +172,7 @@
 					<a
 						class="fs-admin__link"
 						href={collectionHref(view.defaultCollection.slug)}
-						use:redirectToDefaultCollection={view.defaultCollection.slug}
+						{@attach fromAction(redirectToDefaultCollection, () => view.defaultCollection.slug)}
 					>
 						Open {view.defaultCollection.slug}
 					</a>
@@ -174,7 +181,7 @@
 				{/if}
 			</main>
 		{:else}
-			{@const collectionName = collectionRouteName ?? view.collectionName}
+			{@const collectionName = selectedCollectionSlug ?? view.collectionName}
 			{@const collection = getSelectedCollection(view.collections, collectionName, view.collection)}
 			{@const documents = documentsQuery}
 
@@ -193,9 +200,9 @@
 								<a
 									class={[
 										'fs-admin__nav-link',
-										navCollection.slug === collectionName && 'fs-admin__nav-link--active'
+										navCollection.slug === selectedCollectionSlug && 'fs-admin__nav-link--active'
 									]}
-									aria-current={navCollection.slug === collectionName ? 'page' : undefined}
+									aria-current={navCollection.slug === selectedCollectionSlug ? 'page' : undefined}
 									href={collectionHref(navCollection.slug)}
 								>
 									{getCollectionLabel(navCollection, 'plural')}
@@ -241,7 +248,11 @@
 					<section class="fs-admin__documents">
 						{#if documents}
 							{#await documents then documentList}
-								{#each documentList as document (document.id)}
+								{#if documentList.error}
+									<p class="fs-admin__error">{documentList.error}</p>
+								{/if}
+
+								{#each documentList.documents as document (document.id)}
 									<article class="fs-admin__panel">
 										{#if editingId === document.id}
 											<form

@@ -1,3 +1,4 @@
+import { validateCollectionFields } from './schema.ts';
 import type { CollectionDefinition, FieldstoneConfigInput, TextFieldDefinition } from './types.ts';
 
 export type {
@@ -27,21 +28,7 @@ export function text(config: Omit<TextFieldDefinition, 'type'>): TextFieldDefini
 export function collection(config: {
 	fields: readonly TextFieldDefinition[];
 }): CollectionDefinition {
-	const seen = new Set<string>();
-	const reserved = new Set([
-		'__proto__',
-		'id',
-		'createdAt',
-		'updatedAt',
-		'created_at',
-		'updated_at'
-	]);
-	for (const field of config.fields) {
-		if (reserved.has(field.name)) throw new Error(`Reserved field name: ${field.name}`);
-		const normalizedName = field.name.toLowerCase();
-		if (seen.has(normalizedName)) throw new Error(`Duplicate field name: ${field.name}`);
-		seen.add(normalizedName);
-	}
+	validateCollectionFields(config.fields);
 
 	return { fields: [...config.fields] };
 }

@@ -4,6 +4,15 @@ import { integer, sqliteTable, text as sqliteText } from 'drizzle-orm/sqlite-cor
 
 import type { FieldstoneConfig } from './types.ts';
 
+const reservedFieldNames = new Set([
+	'__proto__',
+	'id',
+	'createdAt',
+	'updatedAt',
+	'created_at',
+	'updated_at'
+]);
+
 function toIdentifier(value: string) {
 	const identifier = value
 		.replace(/[^a-zA-Z0-9_$]+/g, '_')
@@ -42,8 +51,28 @@ function validateCollectionSlugs(config: FieldstoneConfig) {
 	}
 }
 
-export function compileFieldstoneConfig(config: FieldstoneConfig) {
+export function validateCollectionFields(
+	collectionFields: readonly FieldstoneConfig['collections'][string]['fields'][number][]
+) {
+	const seen = new Set<string>();
+
+	for (const field of collectionFields) {
+		if (reservedFieldNames.has(field.name)) throw new Error(`Reserved field name: ${field.name}`);
+		const normalizedName = field.name.toLowerCase();
+		if (seen.has(normalizedName)) throw new Error(`Duplicate field name: ${field.name}`);
+		seen.add(normalizedName);
+	}
+}
+
+function validateFieldstoneConfig(config: FieldstoneConfig) {
 	validateCollectionSlugs(config);
+	for (const collection of Object.values(config.collections)) {
+		validateCollectionFields(collection.fields);
+	}
+}
+
+export function compileFieldstoneConfig(config: FieldstoneConfig) {
+	validateFieldstoneConfig(config);
 	const tables: Record<string, any> = {};
 
 	for (const collection of Object.values(config.collections)) {
@@ -76,7 +105,7 @@ export function compileFieldstoneConfig(config: FieldstoneConfig) {
 }
 
 export function createSchemaFingerprint(config: FieldstoneConfig) {
-	validateCollectionSlugs(config);
+	validateFieldstoneConfig(config);
 
 	return JSON.stringify(
 		Object.values(config.collections)
@@ -94,7 +123,7 @@ export function createSchemaFingerprint(config: FieldstoneConfig) {
 }
 
 export function generateTypes(config: FieldstoneConfig) {
-	validateCollectionSlugs(config);
+	validateFieldstoneConfig(config);
 
 	const collections = Object.values(config.collections)
 		.map((collection) => {
@@ -110,7 +139,7 @@ export function generateTypes(config: FieldstoneConfig) {
 }
 
 export function generateDrizzleSchemaSource(config: FieldstoneConfig) {
-	validateCollectionSlugs(config);
+	validateFieldstoneConfig(config);
 
 	const collectionIdentifiers = new Set<string>();
 	const tableDeclarations = Object.values(config.collections)
