@@ -1,6 +1,11 @@
+import { createClient } from '@libsql/client';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import ts from 'typescript';
 
+import { collection, text, type FieldstoneConfig } from '@fieldstone/core';
 import { getFieldstone } from '../src/index.ts';
 
 describe('fieldstone runtime', () => {
@@ -108,7 +113,119 @@ describe('fieldstone runtime', () => {
 
 		expect(diagnostics).toEqual([]);
 	});
+
+	it('handles Document reads, mutations, validation, timestamps, and missing rows', async () => {
+		const { cleanup, config } = await createRuntimeFixture();
+
+		try {
+			const stone = await getFieldstone({ config });
+			const createdAt = new Date('2026-01-01T00:00:00.000Z');
+			const updatedAt = new Date('2026-01-02T00:00:00.000Z');
+
+			await expect(
+				stone.create({ collection: 'posts', data: { description: 'Missing title' } })
+			).rejects.toThrow('title is required');
+			await expect(
+				stone.create({
+					collection: 'posts',
+					data: { title: 'Hello', description: 'Body', extra: 'Nope' }
+				})
+			).rejects.toThrow('Unknown field: extra');
+
+			const created = await stone.create({
+				collection: 'posts',
+				createdAt,
+				data: { title: ' Hello ', description: ' Body ' },
+				updatedAt
+			});
+
+			expect(created).toMatchObject({
+				title: 'Hello',
+				description: 'Body',
+				createdAt,
+				updatedAt
+			});
+
+			const listed = await stone.find({ collection: 'posts' });
+			expect(listed).toHaveLength(1);
+			expect(await stone.findById({ collection: 'posts', id: created.id })).toMatchObject({
+				id: created.id,
+				title: 'Hello'
+			});
+			expect(await stone.findById({ collection: 'posts', id: 'missing' })).toBeNull();
+
+			const defaulted = await stone.create({
+				collection: 'posts',
+				data: { title: 'Default timestamps', description: 'Generated' }
+			});
+			expect(defaulted.createdAt).toBeInstanceOf(Date);
+			expect(defaulted.updatedAt).toBeInstanceOf(Date);
+
+			const updateTime = new Date('2026-01-03T00:00:00.000Z');
+			const updated = await stone.update({
+				collection: 'posts',
+				data: { title: ' Updated ', description: ' Again ' },
+				id: created.id,
+				updatedAt: updateTime
+			});
+			expect(updated).toMatchObject({
+				id: created.id,
+				title: 'Updated',
+				description: 'Again',
+				updatedAt: updateTime
+			});
+
+			await expect(
+				stone.update({
+					collection: 'posts',
+					data: { title: 'Missing', description: 'Missing' },
+					id: 'missing'
+				})
+			).rejects.toThrow('Document not found');
+			await expect(stone.delete({ collection: 'posts', id: 'missing' })).rejects.toThrow(
+				'Document not found'
+			);
+		} finally {
+			await cleanup();
+		}
+	});
 });
+
+async function createRuntimeFixture() {
+	const tempDir = await mkdtemp(path.join(tmpdir(), 'fieldstone-runtime-'));
+	const dbPath = path.join(tempDir, 'test.db');
+	const client = createClient({ url: `file:${dbPath}` });
+	await client.executeMultiple(`
+		create table posts (
+			id text primary key not null,
+			title text not null,
+			description text not null,
+			created_at integer not null,
+			updated_at integer not null
+		);
+	`);
+	client.close();
+
+	const config: FieldstoneConfig = {
+		db: { dialect: 'sqlite', url: dbPath },
+		collections: {
+			posts: {
+				...collection({
+					fields: [
+						text({ name: 'title', required: true }),
+						text({ name: 'description', required: true })
+					]
+				}),
+				slug: 'posts'
+			}
+		}
+	};
+
+	return {
+		cleanup: () => rm(tempDir, { force: true, recursive: true }),
+		config
+	};
+}
 
 function getDiagnostics(source: string) {
 	const rootDir = process.cwd().replace(/\/packages\/client$/, '');
