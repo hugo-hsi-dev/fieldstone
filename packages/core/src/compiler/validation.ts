@@ -1,7 +1,6 @@
 import type { FieldstoneConfig } from '../types.ts';
-import { buildSchemaPlan, validateCollectionFields } from './collection-model.ts';
-
-export { validateCollectionFields };
+export { validateCollectionFields } from '../field-validation.ts';
+import { buildSchemaPlan } from './collection-model.ts';
 
 export function validateFieldstoneConfig(config: FieldstoneConfig) {
 	buildSchemaPlan(config);

@@ -1,4 +1,4 @@
-import { validateCollectionFields } from './schema.ts';
+import { validateCollectionFields } from './field-validation.ts';
 import type { CollectionDefinition, FieldstoneConfigInput, TextFieldDefinition } from './types.ts';
 
 export type {
