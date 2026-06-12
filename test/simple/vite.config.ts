@@ -40,7 +40,7 @@ export default defineConfig(({ mode }) => {
 				typescript: {
 					config: (config) => ({
 						...config,
-						include: [...config.include, './drizzle.config.ts', './.fieldstone/types.d.ts']
+						include: [...config.include, '../drizzle.config.ts', '../.fieldstone/types.d.ts']
 					})
 				}
 			})
