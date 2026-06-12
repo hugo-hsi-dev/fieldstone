@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import type { CollectionDocument, CollectionRuntimeConfig, CollectionSlug } from '@fieldstone/core';
 
 	import FieldInput from './FieldInput.svelte';
@@ -42,7 +43,7 @@
 		<button class="fs-admin__button fs-admin__button--primary" disabled={Boolean(form.pending)}>
 			Save {getCollectionLabel(collection, 'singular').toLowerCase()}
 		</button>
-		<a class="fs-admin__button" href={adminDocumentPath(collection.slug, document.id)}>Cancel</a>
+		<a class="fs-admin__button" href={adminDocumentPath(collection.slug, document.id, base)}>Cancel</a>
 	</div>
 </form>
 

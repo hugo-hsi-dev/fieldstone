@@ -39,6 +39,12 @@ describe('admin route helpers', () => {
 		expect(adminDocumentPath('blog posts', 'doc/1')).toBe('/admin/collections/blog%20posts/doc%2F1');
 	});
 
+	it('preserves configured base path in generated admin URLs', () => {
+		expect(adminDocumentPath('blog posts', 'doc/1', '/cms')).toBe(
+			'/cms/admin/collections/blog%20posts/doc%2F1'
+		);
+	});
+
 	it('maps unsupported admin collections to a 404', () => {
 		expect(() => requireSupportedCollection(() => null, 'missing')).toThrow(
 			expect.objectContaining({ status: 404 })

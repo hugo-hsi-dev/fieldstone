@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import type { CollectionDocument, CollectionRuntimeConfig, CollectionSlug } from '@fieldstone/core';
 
 	import { getFieldValue } from './labels';
@@ -18,7 +19,7 @@
 <article class="fs-admin__panel">
 	<div class="fs-admin__document">
 		<div class="fs-admin__document-body">
-			<a class="fs-admin__document-title" href={adminDocumentPath(collection.slug, document.id)}>
+			<a class="fs-admin__document-title" href={adminDocumentPath(collection.slug, document.id, base)}>
 				{getFieldValue(document, titleField)}
 			</a>
 			{#each collection.fields.slice(1, 3) as field (field.name)}
@@ -28,8 +29,8 @@
 			{/each}
 		</div>
 		<div class="fs-admin__actions">
-			<a class="fs-admin__button" href={adminDocumentPath(collection.slug, document.id)}>View</a>
-			<a class="fs-admin__button" href={adminEditDocumentPath(collection.slug, document.id)}>Edit</a>
+			<a class="fs-admin__button" href={adminDocumentPath(collection.slug, document.id, base)}>View</a>
+			<a class="fs-admin__button" href={adminEditDocumentPath(collection.slug, document.id, base)}>Edit</a>
 		</div>
 	</div>
 </article>

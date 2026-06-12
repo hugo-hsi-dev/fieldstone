@@ -53,6 +53,15 @@ test('stores blank optional text fields as null', async ({ page }) => {
 	expect(row.summary).toBeNull();
 });
 
+test('creates a document for a zero-field collection', async ({ page }) => {
+	await page.goto('/admin/collections/empty/new');
+
+	await page.getByRole('button', { name: 'Create empty' }).click();
+
+	await expect(page).toHaveURL(/\/admin\/collections\/empty\/[^/]+$/);
+	await expect(page.getByRole('link', { name: 'Back to list' })).toBeVisible();
+});
+
 test('keeps navigation state current across collection routes', async ({ page }) => {
 	await page.goto('/admin/collections/pages');
 

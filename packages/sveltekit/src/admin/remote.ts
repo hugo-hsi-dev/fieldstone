@@ -1,4 +1,5 @@
 import { form, query } from '$app/server';
+import { base } from '$app/paths';
 import { error, invalid, redirect } from '@sveltejs/kit';
 import * as v from 'valibot';
 
@@ -58,12 +59,21 @@ function createCollectionDataSchema(collection: CollectionRuntimeConfig) {
 	);
 }
 
-function createDocumentMutationSchema(collections: CollectionRuntimeConfig[], includeId: boolean) {
+function createFormDataSchema(collection: CollectionRuntimeConfig) {
+	const data = createCollectionDataSchema(collection);
+	return collection.fields.length === 0 ? v.optional(data, {}) : data;
+}
+
+function createDocumentMutationSchema(
+	collections: CollectionRuntimeConfig[],
+	id: 'none' | 'optional' | 'required'
+) {
 	const variants = collections.map((collection) => {
 		const entries = {
-			...(includeId ? { id: v.string() } : {}),
+			...(id === 'required' ? { id: v.string() } : {}),
+			...(id === 'optional' ? { id: v.optional(v.string()) } : {}),
 			collection: v.literal(collection.slug),
-			data: createCollectionDataSchema(collection)
+			data: createFormDataSchema(collection)
 		};
 
 		return v.strictObject(entries);
@@ -71,9 +81,10 @@ function createDocumentMutationSchema(collections: CollectionRuntimeConfig[], in
 
 	if (variants.length === 0) {
 		return v.strictObject({
-			...(includeId ? { id: v.never() } : {}),
+			...(id === 'required' ? { id: v.never() } : {}),
+			...(id === 'optional' ? { id: v.optional(v.never()) } : {}),
 			collection: v.never(),
-			data: v.strictObject({})
+			data: v.optional(v.strictObject({}), {})
 		});
 	}
 
@@ -87,8 +98,8 @@ function isDocumentNotFound(error: unknown) {
 export function createFieldstoneAdminRemotes({ config }: { config: FieldstoneConfig }) {
 	const compiled = compileFieldstoneConfig(config);
 	const collections = compiled.createCollectionRuntimeConfigs();
-	const createSchema = createDocumentMutationSchema(collections, false);
-	const updateSchema = createDocumentMutationSchema(collections, true);
+	const createSchema = createDocumentMutationSchema(collections, 'optional');
+	const updateSchema = createDocumentMutationSchema(collections, 'required');
 	const deleteSchema = v.strictObject({
 		collection: v.string(),
 		id: v.string()
@@ -146,14 +157,14 @@ export function createFieldstoneAdminRemotes({ config }: { config: FieldstoneCon
 
 		createDocument: form(
 			createSchema as any,
-			async (input: { collection: string; data: NormalizedDocumentData }) => {
+			async (input: { collection: string; data: NormalizedDocumentData; id?: string }) => {
 				const { collection, fieldstoneAdmin } = await getAdminCollection(input.collection);
 				const document = await fieldstoneAdmin.createDocument({
 					collection: collection.slug as CollectionSlug,
 					data: input.data as CollectionData<CollectionSlug>
 				});
 
-				redirect(303, adminDocumentPath(collection.slug, document.id));
+				redirect(303, adminDocumentPath(collection.slug, document.id, base));
 			}
 		),
 
@@ -169,7 +180,7 @@ export function createFieldstoneAdminRemotes({ config }: { config: FieldstoneCon
 						id: input.id
 					});
 
-					redirect(303, adminDocumentPath(collection.slug, document.id));
+					redirect(303, adminDocumentPath(collection.slug, document.id, base));
 				} catch (caught) {
 					if (isDocumentNotFound(caught)) invalid('Could not find requested document');
 					throw caught;
@@ -186,7 +197,7 @@ export function createFieldstoneAdminRemotes({ config }: { config: FieldstoneCon
 					id: input.id
 				});
 
-				redirect(303, adminCollectionPath(collection.slug));
+				redirect(303, adminCollectionPath(collection.slug, base));
 			} catch (caught) {
 				if (isDocumentNotFound(caught)) invalid('Could not find requested document');
 				throw caught;

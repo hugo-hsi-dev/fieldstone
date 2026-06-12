@@ -31,18 +31,26 @@ export function parseAdminRoute(segments: string[]): AdminRoute {
 	return { type: 'notFound' };
 }
 
-export function adminCollectionPath(collection: string) {
-	return `/admin/collections/${encodeURIComponent(collection)}`;
+function withBase(path: string, basePath = '') {
+	return `${basePath}${path}`;
 }
 
-export function adminNewDocumentPath(collection: string) {
-	return `${adminCollectionPath(collection)}/new`;
+export function adminIndexPath(basePath = '') {
+	return withBase('/admin', basePath);
 }
 
-export function adminDocumentPath(collection: string, id: string) {
-	return `${adminCollectionPath(collection)}/${encodeURIComponent(id)}`;
+export function adminCollectionPath(collection: string, basePath = '') {
+	return withBase(`/admin/collections/${encodeURIComponent(collection)}`, basePath);
 }
 
-export function adminEditDocumentPath(collection: string, id: string) {
-	return `${adminDocumentPath(collection, id)}/edit`;
+export function adminNewDocumentPath(collection: string, basePath = '') {
+	return `${adminCollectionPath(collection, basePath)}/new`;
+}
+
+export function adminDocumentPath(collection: string, id: string, basePath = '') {
+	return `${adminCollectionPath(collection, basePath)}/${encodeURIComponent(id)}`;
+}
+
+export function adminEditDocumentPath(collection: string, id: string, basePath = '') {
+	return `${adminDocumentPath(collection, id, basePath)}/edit`;
 }

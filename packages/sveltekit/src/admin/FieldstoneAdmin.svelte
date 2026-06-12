@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { afterNavigate } from '$app/navigation';
+	import { base } from '$app/paths';
 	import { page } from '$app/state';
 
 	import CollectionNav from './CollectionNav.svelte';
@@ -12,6 +13,7 @@
 		adminCollectionPath,
 		adminDocumentPath,
 		adminEditDocumentPath,
+		adminIndexPath,
 		adminNewDocumentPath,
 		getAdminSegments,
 		parseAdminRoute,
@@ -42,6 +44,21 @@
 		return error instanceof Error ? error.message : 'Could not load admin data';
 	}
 
+	function collectionHref(collection: string) {
+		return adminCollectionPath(collection, base);
+	}
+
+	function newDocumentHref(collection: string) {
+		return adminNewDocumentPath(collection, base);
+	}
+
+	function documentHref(collection: string, id: string) {
+		return adminDocumentPath(collection, id, base);
+	}
+
+	function editDocumentHref(collection: string, id: string) {
+		return adminEditDocumentPath(collection, id, base);
+	}
 </script>
 
 {#key routeKey}
@@ -62,7 +79,7 @@
 					{#if collections.length}
 						<CollectionNav
 							{collections}
-							collectionHref={adminCollectionPath}
+							{collectionHref}
 							selectedCollectionSlug={null}
 						/>
 					{:else}
@@ -72,7 +89,7 @@
 			{:else if route.type === 'notFound'}
 				<section class="fs-admin__index">
 					<h1 class="fs-admin__title">Admin route not found</h1>
-					<a class="fs-admin__button" href="/admin">Back to admin</a>
+					<a class="fs-admin__button" href={adminIndexPath(base)}>Back to admin</a>
 				</section>
 			{:else}
 				<div class="fs-admin__grid">
@@ -88,12 +105,12 @@
 
 						<CollectionNav
 							{collections}
-							collectionHref={adminCollectionPath}
+							{collectionHref}
 							{selectedCollectionSlug}
 						/>
 
 						{#if selectedCollectionSlug}
-							<a class="fs-admin__button fs-admin__button--primary" href={adminNewDocumentPath(selectedCollectionSlug)}>
+							<a class="fs-admin__button fs-admin__button--primary" href={newDocumentHref(selectedCollectionSlug)}>
 								New {selectedCollection ? getCollectionLabel(selectedCollection, 'singular').toLowerCase() : 'document'}
 							</a>
 						{/if}
@@ -108,7 +125,7 @@
 									<h2 class="fs-admin__section-title">
 										{getCollectionLabel(collection, 'plural')}
 									</h2>
-									<a class="fs-admin__button" href={adminNewDocumentPath(collection.slug)}>New</a>
+									<a class="fs-admin__button" href={newDocumentHref(collection.slug)}>New</a>
 								</div>
 
 								<svelte:boundary>
@@ -148,10 +165,10 @@
 									<h2 class="fs-admin__section-title">
 										New {getCollectionLabel(collection, 'singular').toLowerCase()}
 									</h2>
-									<a class="fs-admin__button" href={adminCollectionPath(collection.slug)}>Back to list</a>
+									<a class="fs-admin__button" href={collectionHref(collection.slug)}>Back to list</a>
 								</div>
 
-								<CreateDocumentForm collection={collection} form={remotes.createDocument} />
+								<CreateDocumentForm collection={collection} form={remotes.createDocument.for(collection.slug)} />
 
 								{#snippet pending()}
 									<p class="fs-admin__muted">Loading collection...</p>
@@ -181,8 +198,8 @@
 												{getFieldValue(document, collection.fields[0]?.name ?? 'id')}
 											</h2>
 											<div class="fs-admin__actions">
-												<a class="fs-admin__button" href={adminEditDocumentPath(collection.slug, document.id)}>Edit</a>
-												<a class="fs-admin__button" href={adminCollectionPath(collection.slug)}>Back to list</a>
+												<a class="fs-admin__button" href={editDocumentHref(collection.slug, document.id)}>Edit</a>
+												<a class="fs-admin__button" href={collectionHref(collection.slug)}>Back to list</a>
 											</div>
 										</div>
 
@@ -249,7 +266,7 @@
 										<h2 class="fs-admin__section-title">
 											Edit {getCollectionLabel(collection, 'singular').toLowerCase()}
 										</h2>
-										<a class="fs-admin__button" href={adminDocumentPath(collection.slug, document.id)}>Back to detail</a>
+										<a class="fs-admin__button" href={documentHref(collection.slug, document.id)}>Back to detail</a>
 									</div>
 
 									<DocumentEditForm {collection} {document} form={updateForm} />
