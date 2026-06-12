@@ -1,4 +1,4 @@
-import { validateCollectionFields } from './schema.ts';
+import { validateCollectionFields } from './field-validation.ts';
 import type { CollectionDefinition, FieldstoneConfigInput, TextFieldDefinition } from './types.ts';
 
 export type {
@@ -13,11 +13,6 @@ export type {
 	SystemFieldName,
 	TextFieldDefinition
 } from './types.ts';
-
-export {
-	compileFieldstoneConfig,
-	type FieldstoneCompiledConfig
-} from './schema.ts';
 
 export function text(config: Omit<TextFieldDefinition, 'type'>): TextFieldDefinition {
 	return { ...config, type: 'text' };

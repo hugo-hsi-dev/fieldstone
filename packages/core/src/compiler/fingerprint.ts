@@ -1,5 +1,5 @@
-import type { CollectionModel } from './collection-model.ts';
+import type { SchemaPlan } from './collection-model.ts';
 
-export function createSchemaFingerprint(model: CollectionModel) {
-	return JSON.stringify(model.fingerprintPayload);
+export function createSchemaFingerprint(schemaPlan: SchemaPlan) {
+	return JSON.stringify(schemaPlan.fingerprintPayload);
 }

@@ -1,8 +1,8 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { compileFieldstoneConfig } from '@fieldstone/core';
 import type { FieldstoneConfig, FieldstoneConfigInput } from '@fieldstone/core';
+import { compileFieldstoneConfig } from '@fieldstone/core/schema';
 import type { Plugin, ViteDevServer } from 'vite';
 
 import { isWatchedCollectionFile, scaffoldCollectionFile } from './collections.ts';
@@ -15,7 +15,7 @@ type FieldstonePluginOptions = FieldstoneConfigInput;
 async function writeTypes(root: string, compiled: ReturnType<typeof compileFieldstoneConfig>) {
 	const outputFile = path.join(root, '.fieldstone', 'types.d.ts');
 	await mkdir(path.dirname(outputFile), { recursive: true });
-	await writeFile(outputFile, compiled.typesDeclaration());
+	await writeFile(outputFile, compiled.renderTypesDeclaration());
 }
 
 function invalidateImporters(server: ViteDevServer, id: string, seen = new Set<string>()) {
@@ -42,7 +42,7 @@ export function fieldstone(options: FieldstonePluginOptions): Plugin {
 
 		const config = (await server.ssrLoadModule(CONFIG_ID)).default as FieldstoneConfig;
 		const compiled = compileFieldstoneConfig(config);
-		const fingerprint = compiled.fingerprint();
+		const fingerprint = compiled.schemaFingerprint();
 		await writeTypes(root, compiled);
 
 		if (fingerprint !== previousFingerprint) {

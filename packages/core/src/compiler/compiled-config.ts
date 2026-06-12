@@ -1,41 +1,43 @@
 import type { FieldstoneConfig } from '../types.ts';
-import { compileCollectionModel } from './collection-model.ts';
-import type { CollectionModel } from './collection-model.ts';
+import { buildSchemaPlan } from './collection-model.ts';
+import type { SchemaPlan } from './collection-model.ts';
 import { createDrizzleSchemaSource } from './drizzle-source.ts';
 import { createSchemaFingerprint } from './fingerprint.ts';
 import { createRuntimeSchema, type RuntimeSchema } from './runtime-schema.ts';
 import { createTypesDeclaration } from './types-output.ts';
 
 export type FieldstoneCompiledConfig = {
-	drizzleSchemaSource(): string;
-	fingerprint(): string;
-	runtimeSchema(): RuntimeSchema;
-	typesDeclaration(): string;
+	readonly schemaPlan: SchemaPlan;
+	renderRuntimeSchema(): RuntimeSchema;
+	renderSchemaSource(): string;
+	renderTypesDeclaration(): string;
+	schemaFingerprint(): string;
 };
 
 export function compileFieldstoneConfig(config: FieldstoneConfig): FieldstoneCompiledConfig {
-	const model: CollectionModel = compileCollectionModel(config);
+	const schemaPlan = buildSchemaPlan(config);
 	let runtimeSchema: RuntimeSchema | undefined;
 	let drizzleSchemaSource: string | undefined;
 	let typesDeclaration: string | undefined;
 	let fingerprint: string | undefined;
 
 	return {
-		drizzleSchemaSource() {
-			drizzleSchemaSource ??= createDrizzleSchemaSource(model);
-			return drizzleSchemaSource;
-		},
-		fingerprint() {
-			fingerprint ??= createSchemaFingerprint(model);
-			return fingerprint;
-		},
-		runtimeSchema() {
-			runtimeSchema ??= createRuntimeSchema(model);
+		schemaPlan,
+		renderRuntimeSchema() {
+			runtimeSchema ??= createRuntimeSchema(schemaPlan);
 			return runtimeSchema;
 		},
-		typesDeclaration() {
-			typesDeclaration ??= createTypesDeclaration(model);
+		renderSchemaSource() {
+			drizzleSchemaSource ??= createDrizzleSchemaSource(schemaPlan);
+			return drizzleSchemaSource;
+		},
+		renderTypesDeclaration() {
+			typesDeclaration ??= createTypesDeclaration(schemaPlan);
 			return typesDeclaration;
+		},
+		schemaFingerprint() {
+			fingerprint ??= createSchemaFingerprint(schemaPlan);
+			return fingerprint;
 		}
 	};
 }

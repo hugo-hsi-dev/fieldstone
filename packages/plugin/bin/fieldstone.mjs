@@ -25,7 +25,7 @@ const server = await createServer({
 
 try {
 	const generatorModulePath = path.join(packageRoot, 'src', 'generate.ts');
-	const coreModulePath = require.resolve('@fieldstone/core');
+	const coreModulePath = require.resolve('@fieldstone/core/schema');
 	const [{ loadFieldstoneConfig, writeGeneratedFiles }, { compileFieldstoneConfig }] =
 		await Promise.all([
 			server.ssrLoadModule(generatorModulePath),

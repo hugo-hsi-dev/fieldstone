@@ -4,12 +4,11 @@ import { collection, text } from '../src/index.ts';
 import * as core from '../src/index.ts';
 import * as schema from '../src/schema.ts';
 import { compileFieldstoneConfig } from '../src/schema.ts';
-import { compileCollectionModel } from '../src/compiler/collection-model.ts';
 import type { FieldstoneConfig } from '../src/types.ts';
 
 describe('fieldstone compiler', () => {
 	it('compiles deterministic collection facts once for compiler outputs', () => {
-		const model = compileCollectionModel({
+		const { schemaPlan } = compileFieldstoneConfig({
 			db: { dialect: 'sqlite', url: ':memory:' },
 			collections: {
 				pages: {
@@ -30,13 +29,13 @@ describe('fieldstone compiler', () => {
 			}
 		});
 
-		expect(model.collections.map((compiled) => compiled.slug)).toEqual([
+		expect(schemaPlan.collections.map((compiled) => compiled.slug)).toEqual([
 			'blog-posts',
 			'blog_posts',
 			'pages'
 		]);
-		expect(model.collections[1]?.tableIdentifier).toBe('collection_blog_posts_2');
-		expect(model.collections[0]).toMatchObject({
+		expect(schemaPlan.collections[1]?.tableIdentifier).toBe('collection_blog_posts_2');
+		expect(schemaPlan.collections[0]).toMatchObject({
 			slug: 'blog-posts',
 			tableIdentifier: 'collection_blog_posts',
 			fields: [
@@ -57,7 +56,7 @@ describe('fieldstone compiler', () => {
 				}
 			]
 		});
-		expect(model.fingerprintPayload[0]).toEqual({
+		expect(schemaPlan.fingerprintPayload[0]).toEqual({
 			fields: [
 				{ multiline: false, name: 'seo-title', required: true, type: 'text' },
 				{ multiline: false, name: 'seo_title', required: false, type: 'text' }
@@ -79,7 +78,7 @@ describe('fieldstone compiler', () => {
 			}
 		};
 
-		const compiled = compileFieldstoneConfig(config).runtimeSchema();
+		const compiled = compileFieldstoneConfig(config).renderRuntimeSchema();
 
 		expect(compiled.tables.posts.id).toBeDefined();
 		expect(compiled.tables.posts.title).toBeDefined();
@@ -99,7 +98,7 @@ describe('fieldstone compiler', () => {
 					slug: 'posts'
 				}
 			}
-		}).typesDeclaration();
+		}).renderTypesDeclaration();
 
 		expect(output).toContain("declare module '@fieldstone/core'");
 		expect(output).toContain('"posts"');
@@ -151,7 +150,7 @@ describe('fieldstone compiler', () => {
 					slug: 'blog-posts'
 				}
 			}
-		}).drizzleSchemaSource();
+		}).renderSchemaSource();
 
 		expect(output).toContain('export const collection_blog_posts = sqliteTable("blog-posts"');
 		expect(output).toContain("import crypto from 'node:crypto'");
@@ -170,7 +169,7 @@ describe('fieldstone compiler', () => {
 					slug: 'posts'
 				}
 			}
-		}).drizzleSchemaSource();
+		}).renderSchemaSource();
 
 		expect(output).toContain('seo_title: text("seo-title").notNull()');
 		expect(output).toContain('seo_title_2: text("seo_title")');
@@ -189,7 +188,7 @@ describe('fieldstone compiler', () => {
 					slug: 'class-name'
 				}
 			}
-		}).drizzleSchemaSource();
+		}).renderSchemaSource();
 
 		expect(output).toContain('export const collection_class = sqliteTable("class"');
 		expect(output).toContain('export const collection_class_name = sqliteTable("class-name"');
@@ -210,7 +209,7 @@ describe('fieldstone compiler', () => {
 						slug: 'Posts'
 					}
 				}
-			}).drizzleSchemaSource()
+			}).renderSchemaSource()
 		).toThrow('Duplicate collection slug: Posts');
 	});
 
@@ -242,7 +241,7 @@ describe('fieldstone compiler', () => {
 			}
 		};
 
-		expect(() => compileFieldstoneConfig(config).drizzleSchemaSource()).toThrow(
+		expect(() => compileFieldstoneConfig(config).renderSchemaSource()).toThrow(
 			'Duplicate field name: Title'
 		);
 	});
@@ -258,10 +257,10 @@ describe('fieldstone compiler', () => {
 			}
 		});
 
-		expect(compiled.runtimeSchema().tables.posts.title).toBeDefined();
-		expect(compiled.drizzleSchemaSource()).toContain('title: text("title").notNull()');
-		expect(compiled.typesDeclaration()).toContain('"title": string');
-		expect(compiled.fingerprint()).toContain('"slug":"posts"');
+		expect(compiled.renderRuntimeSchema().tables.posts.title).toBeDefined();
+		expect(compiled.renderSchemaSource()).toContain('title: text("title").notNull()');
+		expect(compiled.renderTypesDeclaration()).toContain('"title": string');
+		expect(compiled.schemaFingerprint()).toContain('"slug":"posts"');
 	});
 
 	it('caches lazy schema artifacts against later config mutation', () => {
@@ -276,19 +275,30 @@ describe('fieldstone compiler', () => {
 		};
 
 		const compiled = compileFieldstoneConfig(config);
-		const firstSource = compiled.drizzleSchemaSource();
+		const firstSource = compiled.renderSchemaSource();
 		config.collections.posts?.fields.push(text({ name: 'body' }));
 
-		expect(compiled.drizzleSchemaSource()).toBe(firstSource);
-		expect(compiled.fingerprint()).not.toContain('"name":"body"');
+		expect(compiled.renderSchemaSource()).toBe(firstSource);
+		expect(compiled.schemaFingerprint()).not.toContain('"name":"body"');
 	});
 
-	it('does not expose legacy compiler artifact functions', () => {
+	it('does not expose legacy compiler artifact functions or compiled method names', () => {
+		const compiled = compileFieldstoneConfig({
+			db: { dialect: 'sqlite', url: ':memory:' },
+			collections: {}
+		});
+
 		expect(core).not.toHaveProperty('generateDrizzleSchemaSource');
 		expect(core).not.toHaveProperty('generateTypes');
 		expect(core).not.toHaveProperty('createSchemaFingerprint');
+		expect(core).not.toHaveProperty('compileFieldstoneConfig');
 		expect(schema).not.toHaveProperty('generateDrizzleSchemaSource');
 		expect(schema).not.toHaveProperty('generateTypes');
 		expect(schema).not.toHaveProperty('createSchemaFingerprint');
+		expect(schema).toHaveProperty('compileFieldstoneConfig');
+		expect(compiled).not.toHaveProperty('runtimeSchema');
+		expect(compiled).not.toHaveProperty('drizzleSchemaSource');
+		expect(compiled).not.toHaveProperty('typesDeclaration');
+		expect(compiled).not.toHaveProperty('fingerprint');
 	});
 });

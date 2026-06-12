@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 
 import { integer, sqliteTable, text as sqliteText } from 'drizzle-orm/sqlite-core';
 
-import type { CollectionModel, CompiledSystemField } from './collection-model.ts';
+import type { CompiledSystemField, SchemaPlan } from './collection-model.ts';
 
 export type RuntimeSchema = {
 	schema: Record<string, any>;
@@ -21,10 +21,10 @@ function createSystemColumn(field: CompiledSystemField) {
 		.$defaultFn(() => new Date());
 }
 
-export function createRuntimeSchema(model: CollectionModel): RuntimeSchema {
+export function createRuntimeSchema(schemaPlan: SchemaPlan): RuntimeSchema {
 	const tables: Record<string, any> = {};
 
-	for (const collection of model.collections) {
+	for (const collection of schemaPlan.collections) {
 		const columns: Record<string, any> = {};
 
 		for (const field of collection.fields) {
