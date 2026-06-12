@@ -7,6 +7,10 @@
 		".": {
 			"types": "./src/index.ts",
 			"default": "./src/index.ts"
+		},
+		"./admin": {
+			"types": "./src/admin.ts",
+			"default": "./src/admin.ts"
 		}
 	},
 	"scripts": {

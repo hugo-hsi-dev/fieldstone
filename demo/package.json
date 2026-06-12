@@ -56,6 +56,7 @@
 	"dependencies": {
 		"@fieldstone/client": "workspace:*",
 		"@fieldstone/plugin": "workspace:*",
+		"@fieldstone/sveltekit": "workspace:*",
 		"better-sqlite3": "^12.10.0",
 		"valibot": "^1.4.1"
 	}

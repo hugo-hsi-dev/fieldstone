@@ -35,24 +35,25 @@ describe('fieldstone compiler', () => {
 			db: { dialect: 'sqlite', url: ':memory:' },
 			collections: {
 				posts: {
-					fields: [text({ name: 'title', required: true })],
+					fields: [
+						text({ name: 'title', required: true }),
+						text({ name: 'description', required: false })
+					],
 					slug: 'posts'
 				}
 			}
 		});
 
-		expect(output).toContain('declare namespace Fieldstone');
+		expect(output).toContain("declare module '@fieldstone/core'");
 		expect(output).toContain('"posts"');
 		expect(output).toContain('"title": string');
+		expect(output).toContain('"description"?: string');
 	});
 
 	it('rejects duplicate field names in one collection', () => {
 		expect(() =>
 			collection({
-				fields: [
-					text({ name: 'title', required: true }),
-					text({ name: 'title', required: true })
-				]
+				fields: [text({ name: 'title', required: true }), text({ name: 'title', required: true })]
 			})
 		).toThrow('Duplicate field name: title');
 	});
@@ -79,10 +80,7 @@ describe('fieldstone compiler', () => {
 	it('rejects case-only duplicate field names', () => {
 		expect(() =>
 			collection({
-				fields: [
-					text({ name: 'title', required: true }),
-					text({ name: 'Title', required: true })
-				]
+				fields: [text({ name: 'title', required: true }), text({ name: 'Title', required: true })]
 			})
 		).toThrow('Duplicate field name: Title');
 	});
@@ -99,6 +97,7 @@ describe('fieldstone compiler', () => {
 		});
 
 		expect(output).toContain('export const collection_blog_posts = sqliteTable("blog-posts"');
+		expect(output).toContain("import crypto from 'node:crypto'");
 		expect(output).toContain('title: text("title").notNull()');
 	});
 
@@ -156,5 +155,36 @@ describe('fieldstone compiler', () => {
 				}
 			})
 		).toThrow('Duplicate collection slug: Posts');
+	});
+
+	it('rejects reserved field names in direct config input', () => {
+		const config: FieldstoneConfig = {
+			db: { dialect: 'sqlite', url: ':memory:' },
+			collections: {
+				posts: {
+					fields: [text({ name: 'id', required: true })],
+					slug: 'posts'
+				}
+			}
+		};
+
+		expect(() => compileFieldstoneConfig(config)).toThrow('Reserved field name: id');
+	});
+
+	it('rejects duplicate field names in direct config input', () => {
+		const config: FieldstoneConfig = {
+			db: { dialect: 'sqlite', url: ':memory:' },
+			collections: {
+				posts: {
+					fields: [
+						text({ name: 'title', required: true }),
+						text({ name: 'Title', required: true })
+					],
+					slug: 'posts'
+				}
+			}
+		};
+
+		expect(() => generateDrizzleSchemaSource(config)).toThrow('Duplicate field name: Title');
 	});
 });
