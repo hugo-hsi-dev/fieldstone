@@ -34,6 +34,29 @@ test('creates, edits, and deletes a post through route-driven admin', async ({ p
 	await expect(page.getByRole('link', { name: 'Edited POC post' })).not.toBeVisible();
 });
 
+test('validates create forms through remote form issues', async ({ page }) => {
+	await page.goto('/admin/collections/posts/new');
+
+	await expect(page.getByLabel('Title')).not.toHaveAttribute('required', '');
+	await expect(page.getByLabel('Description')).not.toHaveAttribute('required', '');
+	await page.getByRole('button', { name: 'Create post' }).click();
+
+	await expect(page).toHaveURL(/\/admin\/collections\/posts\/new$/);
+	await expect(page.getByText('title is required')).toBeVisible();
+	await expect(page.getByText('description is required')).toBeVisible();
+});
+
+test('validates edit forms through remote form issues', async ({ page }) => {
+	await createPost(page, 'Remote validation edit');
+
+	await page.getByRole('link', { name: 'Edit' }).click();
+	await page.getByLabel('Title').fill('');
+	await page.getByRole('button', { name: 'Save post' }).click();
+
+	await expect(page).toHaveURL(/\/admin\/collections\/posts\/[^/]+\/edit$/);
+	await expect(page.getByText('title is required')).toBeVisible();
+});
+
 test('stores blank optional text fields as null', async ({ page }) => {
 	await page.goto('/admin/collections/pages/new');
 

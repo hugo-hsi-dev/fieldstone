@@ -88,7 +88,7 @@ function createDocumentMutationSchema(
 		});
 	}
 
-	return variants.length === 1 ? variants[0] : v.union(variants as any);
+	return variants.length === 1 ? variants[0] : v.variant('collection', variants as any);
 }
 
 function isDocumentNotFound(error: unknown) {

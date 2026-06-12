@@ -20,14 +20,22 @@
 		document: CollectionDocument<CollectionSlug>;
 		form: RemoteForm;
 	} = $props();
+
+	function hasFieldIssues() {
+		return collection.fields.some((field) => {
+			return (form.fields.data[field.identifier]?.issues() ?? []).length > 0;
+		});
+	}
 </script>
 
 <form class="fs-admin__panel fs-admin__form" {...form}>
 	<input {...form.fields.collection.as('hidden', collection.slug)} />
 
-	{#each form.fields.allIssues() ?? [] as issue, index (`${issue.message}-${index}`)}
-		<p class="fs-admin__error">{issue.message}</p>
-	{/each}
+	{#if !hasFieldIssues()}
+		{#each form.fields.allIssues() ?? [] as issue, index (`${issue.message}-${index}`)}
+			<p class="fs-admin__error">{issue.message}</p>
+		{/each}
+	{/if}
 
 	{#each collection.fields as field (field.name)}
 		<FieldInput

@@ -28,14 +28,12 @@
 			class={['fs-admin__textarea', compact && 'fs-admin__textarea--compact']}
 			{...formField.as('text', value ?? '')}
 			{id}
-			required={field.required}
 		></textarea>
 	{:else}
 		<input
 			class="fs-admin__input"
 			{...formField.as('text', value ?? '')}
 			{id}
-			required={field.required}
 		/>
 	{/if}
 	{#each formField.issues() ?? [] as issue, index (`${issue.message}-${index}`)}
