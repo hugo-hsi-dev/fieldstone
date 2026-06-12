@@ -6,10 +6,10 @@ name = "fieldstone"
 script = '''
 set -eu
 
-cp "$CODEX_SOURCE_TREE_PATH/demo/.env" "$CODEX_WORKTREE_PATH/demo/.env"
+cp "$CODEX_SOURCE_TREE_PATH/test/simple/.env" "$CODEX_WORKTREE_PATH/test/simple/.env"
 
 cd "$CODEX_WORKTREE_PATH"
 
 pnpm install --frozen-lockfile
-pnpm --dir demo db:push
+pnpm --dir test/simple db:push
 '''
