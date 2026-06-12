@@ -63,7 +63,7 @@ function getErrorMessage(error: unknown) {
 	return error instanceof Error ? error.message : 'Could not load documents';
 }
 
-export function createAdminRemotes({ config }: { config: FieldstoneConfig }) {
+export function createFieldstoneAdminRemotes({ config }: { config: FieldstoneConfig }) {
 	const admin = createFieldstoneAdmin({ config });
 
 	async function requireCollection(collection: string) {
@@ -163,4 +163,4 @@ export function createAdminRemotes({ config }: { config: FieldstoneConfig }) {
 	};
 }
 
-export type AdminRemotes = ReturnType<typeof createAdminRemotes>;
+export type FieldstoneAdminRemotes = ReturnType<typeof createFieldstoneAdminRemotes>;

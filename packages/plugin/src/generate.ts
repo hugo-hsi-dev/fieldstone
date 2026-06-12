@@ -1,0 +1,53 @@
+import { mkdir, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+
+import type { FieldstoneConfig } from '@fieldstone/core';
+import { discoverCollections } from './collections.ts';
+
+type LoadModule = <T = Record<string, unknown>>(id: string) => Promise<T>;
+
+export async function loadFieldstoneConfig({
+	loadModule,
+	root
+}: {
+	loadModule: LoadModule;
+	root: string;
+}): Promise<FieldstoneConfig> {
+	const collectionFiles = await discoverCollections(root);
+	const collections: FieldstoneConfig['collections'] = {};
+
+	for (const { file, slug } of collectionFiles) {
+		const module = await loadModule<{ default: FieldstoneConfig['collections'][string] }>(file);
+		collections[slug] = {
+			...module.default,
+			slug
+		};
+	}
+
+	return {
+		db: {
+			dialect: 'sqlite',
+			url: process.env.DATABASE_URL ?? 'local.db'
+		},
+		collections
+	};
+}
+
+export async function writeGeneratedFiles({
+	config,
+	generateDrizzleSchemaSource,
+	generateTypes,
+	root
+}: {
+	config: FieldstoneConfig;
+	generateDrizzleSchemaSource: (config: FieldstoneConfig) => string;
+	generateTypes: (config: FieldstoneConfig) => string;
+	root: string;
+}) {
+	const outputDir = path.join(root, '.fieldstone');
+	await mkdir(outputDir, { recursive: true });
+	await Promise.all([
+		writeFile(path.join(outputDir, 'schema.ts'), generateDrizzleSchemaSource(config)),
+		writeFile(path.join(outputDir, 'types.d.ts'), generateTypes(config))
+	]);
+}

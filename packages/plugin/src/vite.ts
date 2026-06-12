@@ -1,126 +1,16 @@
-import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { createInterface } from 'node:readline/promises';
 
-import { createClient } from '@libsql/client';
-import { compileFieldstoneConfig, createSchemaFingerprint, generateTypes } from '@fieldstone/core';
+import { createSchemaFingerprint, generateTypes } from '@fieldstone/core';
 import type { FieldstoneConfig, FieldstoneConfigInput } from '@fieldstone/core';
-import { drizzle } from 'drizzle-orm/libsql';
 import type { Plugin, ViteDevServer } from 'vite';
 
-const CONFIG_ID = '$fieldstone-config';
-const RESOLVED_CONFIG_ID = '\0fieldstone-config';
+import { isWatchedCollectionFile, scaffoldCollectionFile } from './collections.ts';
+import { CONFIG_ID, RESOLVED_CONFIG_ID } from './constants.ts';
+import { pushSchema } from './schema-push.ts';
+import { loadVirtualConfig } from './virtual-config.ts';
 
 type FieldstonePluginOptions = FieldstoneConfigInput;
-
-function normalizePath(file: string) {
-	return file.split(path.sep).join('/');
-}
-
-function normalizeSqliteUrl(url: string) {
-	if (/^[a-z]+:/i.test(url)) return url;
-	return `file:${url}`;
-}
-
-function isCollectionFile(collectionsDir: string, file: string) {
-	const basename = path.basename(file);
-	return (
-		file.startsWith(collectionsDir) &&
-		file.endsWith('.ts') &&
-		!file.endsWith('.d.ts') &&
-		!file.includes('.test.') &&
-		!file.includes('.spec.') &&
-		(!basename.startsWith('_') || basename === '__proto__.ts')
-	);
-}
-
-function isCollectionEntry(entry: string) {
-	return (
-		entry.endsWith('.ts') &&
-		!entry.endsWith('.d.ts') &&
-		!entry.includes('.test.') &&
-		!entry.includes('.spec.') &&
-		!entry.startsWith('_')
-	);
-}
-
-function validateCollectionEntries(entries: string[]) {
-	const slugs = new Set<string>();
-
-	for (const entry of entries) {
-		if (
-			!entry.endsWith('.ts') ||
-			entry.endsWith('.d.ts') ||
-			entry.includes('.test.') ||
-			entry.includes('.spec.')
-		) {
-			continue;
-		}
-
-		const slug = path.basename(entry, '.ts');
-		if (slug === '__proto__') throw new Error('Reserved collection slug: __proto__');
-		if (entry.startsWith('_')) continue;
-
-		const normalizedSlug = slug.toLowerCase();
-		if (slugs.has(normalizedSlug)) throw new Error(`Duplicate collection slug: ${slug}`);
-		slugs.add(normalizedSlug);
-	}
-}
-
-function createCollectionScaffold(slug: string) {
-	return `import { collection, text } from '@fieldstone/plugin';
-
-export default collection({
-\tfields: [
-\t\ttext({ name: 'title', required: true })
-\t]
-});
-`;
-}
-
-async function scaffoldCollectionFile(file: string) {
-	const source = await readFile(file, 'utf-8');
-	if (source.trim()) return false;
-
-	await writeFile(file, createCollectionScaffold(path.basename(file, '.ts')));
-	return true;
-}
-
-async function discoverCollections(root: string) {
-	const collectionsDir = path.join(root, 'collections');
-	let entries: string[] = [];
-
-	try {
-		entries = await readdir(collectionsDir);
-	} catch {
-		return [];
-	}
-
-	validateCollectionEntries(entries);
-
-	return entries
-		.filter(isCollectionEntry)
-		.sort()
-		.map((entry) => ({
-			file: path.join(collectionsDir, entry),
-			slug: path.basename(entry, '.ts')
-		}));
-}
-
-async function loadVirtualConfig(root: string, options: FieldstonePluginOptions) {
-	const collections = await discoverCollections(root);
-	const imports = collections
-		.map(({ file, slug }, index) => {
-			const importPath = `/${normalizePath(path.relative(root, file))}`;
-			return `import collection${index} from ${JSON.stringify(importPath)};\nconst runtimeCollection${index} = { ...collection${index}, slug: ${JSON.stringify(slug)} };`;
-		})
-		.join('\n');
-	const collectionEntries = collections
-		.map(({ slug }, index) => `${JSON.stringify(slug)}: runtimeCollection${index}`)
-		.join(',\n');
-
-	return `${imports}\n\nconst databaseURL = process.env.DATABASE_URL ?? ${JSON.stringify(options.db.url)};\n\nexport default {\n  db: {\n    dialect: ${JSON.stringify(options.db.dialect)},\n    url: databaseURL\n  },\n  collections: {\n${collectionEntries}\n  }\n};\n`;
-}
 
 async function writeTypes(root: string, config: FieldstoneConfig) {
 	const outputFile = path.join(root, '.fieldstone', 'types.d.ts');
@@ -139,39 +29,6 @@ function invalidateImporters(server: ViteDevServer, id: string, seen = new Set<s
 	for (const importer of module.importers) {
 		if (importer.id) invalidateImporters(server, importer.id, seen);
 	}
-}
-
-async function confirmWarnings(warnings: string[], hasDataLoss: boolean) {
-	if (!warnings.length) return true;
-
-	const rl = createInterface({ input: process.stdin, output: process.stdout });
-	const message = [
-		'Fieldstone schema push warnings:',
-		'',
-		...warnings,
-		hasDataLoss ? '\nDATA LOSS WARNING: possible data loss detected.' : '',
-		'',
-		'Accept warnings and push schema? (y/N) '
-	].join('\n');
-
-	try {
-		const answer = await rl.question(message);
-		return answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
-	} finally {
-		rl.close();
-	}
-}
-
-async function pushSchema(config: FieldstoneConfig) {
-	const { pushSQLiteSchema } = await import('drizzle-kit/api');
-	const compiled = compileFieldstoneConfig(config);
-	const client = createClient({ url: normalizeSqliteUrl(config.db.url) });
-	const database = drizzle(client, { schema: compiled.schema });
-	const { apply, hasDataLoss, warnings } = await pushSQLiteSchema(compiled.schema, database);
-
-	if (!(await confirmWarnings(warnings, hasDataLoss))) return false;
-	await apply();
-	return true;
 }
 
 export function fieldstone(options: FieldstonePluginOptions): Plugin {
@@ -234,7 +91,7 @@ export function fieldstone(options: FieldstonePluginOptions): Plugin {
 			server.watcher.add(collectionsDir);
 			server.watcher.add(path.join(collectionsDir, '*.ts'));
 			server.watcher.on('add', (file) => {
-				if (!isCollectionFile(collectionsDir, file)) return;
+				if (!isWatchedCollectionFile(collectionsDir, file)) return;
 				void scaffoldCollectionFile(file)
 					.catch((error) => {
 						server.config.logger.error(
@@ -244,10 +101,10 @@ export function fieldstone(options: FieldstonePluginOptions): Plugin {
 					.finally(() => scheduleRebuild(server));
 			});
 			server.watcher.on('change', (file) => {
-				if (isCollectionFile(collectionsDir, file)) scheduleRebuild(server);
+				if (isWatchedCollectionFile(collectionsDir, file)) scheduleRebuild(server);
 			});
 			server.watcher.on('unlink', (file) => {
-				if (isCollectionFile(collectionsDir, file)) scheduleRebuild(server);
+				if (isWatchedCollectionFile(collectionsDir, file)) scheduleRebuild(server);
 			});
 
 			if (process.env.FIELDSTONE_PUSH_ON_CONFIGURE === 'true') {
@@ -258,7 +115,3 @@ export function fieldstone(options: FieldstonePluginOptions): Plugin {
 		}
 	};
 }
-
-export const fieldstoneConfigModuleID = CONFIG_ID;
-export const resolvedFieldstoneConfigModuleID = RESOLVED_CONFIG_ID;
-export const fieldstoneCollectionScaffold = createCollectionScaffold;

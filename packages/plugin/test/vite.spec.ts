@@ -4,11 +4,9 @@ import { tmpdir } from 'node:os';
 
 import { describe, expect, it } from 'vitest';
 
-import {
-	fieldstone,
-	fieldstoneCollectionScaffold,
-	resolvedFieldstoneConfigModuleID
-} from '../src/vite.ts';
+import { createCollectionScaffold } from '../src/collections.ts';
+import { RESOLVED_CONFIG_ID } from '../src/constants.ts';
+import { fieldstone } from '../src/vite.ts';
 
 describe('fieldstone vite plugin', () => {
 	it('rejects client imports of $fieldstone-config', () => {
@@ -20,7 +18,7 @@ describe('fieldstone vite plugin', () => {
 	});
 
 	it('scaffolds a new collection file from the filename', () => {
-		expect(fieldstoneCollectionScaffold('blog-posts')).toBe(`import { collection, text } from '@fieldstone/plugin';
+		expect(createCollectionScaffold('blog-posts')).toBe(`import { collection, text } from '@fieldstone/plugin';
 
 export default collection({
 \tfields: [
@@ -37,7 +35,7 @@ export default collection({
 		try {
 			const plugin = fieldstone({ db: { dialect: 'sqlite', url: 'fallback.db' } });
 			plugin.configResolved?.call({} as never, { root } as never);
-			const source = await plugin.load?.call({} as never, resolvedFieldstoneConfigModuleID);
+			const source = await plugin.load?.call({} as never, RESOLVED_CONFIG_ID);
 
 			expect(source).toContain('process.env.DATABASE_URL ?? "fallback.db"');
 			expect(source).toContain('dialect: "sqlite"');
@@ -56,9 +54,9 @@ export default collection({
 			const plugin = fieldstone({ db: { dialect: 'sqlite', url: ':memory:' } });
 			plugin.configResolved?.call({} as never, { root } as never);
 
-			await expect(
-				plugin.load?.call({} as never, resolvedFieldstoneConfigModuleID)
-			).rejects.toThrow('Reserved collection slug: __proto__');
+			await expect(plugin.load?.call({} as never, RESOLVED_CONFIG_ID)).rejects.toThrow(
+				'Reserved collection slug: __proto__'
+			);
 		} finally {
 			await rm(root, { recursive: true, force: true });
 		}
