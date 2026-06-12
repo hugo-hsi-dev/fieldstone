@@ -1,10 +1,18 @@
 import { validateCollectionFields } from './field-validation.ts';
 import type { CollectionDefinition, FieldstoneConfigInput, TextFieldDefinition } from './types.ts';
 
+export {
+	normalizeCollectionData,
+	normalizeTextFieldValue,
+	type DocumentDataValue,
+	type NormalizedDocumentData
+} from './document-data.ts';
 export type {
+	CollectionConfig,
 	CollectionDefinition,
 	CollectionData,
 	CollectionDocument,
+	CollectionRuntimeField,
 	CollectionRuntimeConfig,
 	CollectionSlug,
 	FieldstoneConfig,

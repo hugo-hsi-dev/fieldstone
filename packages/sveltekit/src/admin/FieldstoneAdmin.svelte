@@ -1,16 +1,22 @@
 <script lang="ts">
-	import { afterNavigate, goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
+	import { afterNavigate } from '$app/navigation';
 	import { page } from '$app/state';
-	import type { CollectionDocument, CollectionRuntimeConfig, CollectionSlug } from '@fieldstone/core';
-	import { fromAction } from 'svelte/attachments';
 
 	import CollectionNav from './CollectionNav.svelte';
 	import CreateDocumentForm from './CreateDocumentForm.svelte';
+	import DocumentEditForm from './DocumentEditForm.svelte';
 	import DocumentList from './DocumentList.svelte';
-	import { formDataToDocumentData, getCollectionLabel, getSelectedCollection } from './labels';
+	import { getCollectionLabel, getFieldLabel, getFieldValue } from './labels';
 	import type { FieldstoneAdminRemotes } from './remote';
-	import { getAdminSegments } from './route';
+	import {
+		adminCollectionPath,
+		adminDocumentPath,
+		adminEditDocumentPath,
+		adminNewDocumentPath,
+		getAdminSegments,
+		parseAdminRoute,
+		type AdminRoute
+	} from './route';
 
 	let { remotes }: { remotes: FieldstoneAdminRemotes } = $props();
 
@@ -20,171 +26,274 @@
 		currentPathname = to?.url.pathname ?? page.url.pathname;
 	});
 
-	const routeSegments = $derived(getAdminSegments(currentPathname));
-	const routeKey = $derived(routeSegments.join('/'));
+	const route = $derived(parseAdminRoute(getAdminSegments(currentPathname)));
+	const routeKey = $derived(currentPathname);
 
-	function collectionHref(slug: string) {
-		return resolve(`/admin/collections/${slug}`);
+	$effect(() => {
+		if (route.type !== 'documentEdit') return;
+		void remotes.getDocument({ collection: route.collection, id: route.id }).refresh();
+	});
+
+	function routeCollection(route: AdminRoute) {
+		return 'collection' in route ? route.collection : null;
 	}
 
-	function redirectToDefaultCollection(node: HTMLAnchorElement, slug: string) {
-		goto(collectionHref(slug), { replaceState: true });
+	function getBoundaryErrorMessage(error: unknown) {
+		return error instanceof Error ? error.message : 'Could not load admin data';
 	}
 
-	let editingId = $state<string | null>(null);
-	let editingDocument = $state<CollectionDocument<CollectionSlug> | null>(null);
-	let errorMessage = $state('');
-
-	const viewQuery = $derived(remotes.getAdminView({ segments: routeSegments }));
-	const selectedCollectionSlug = $derived(
-		routeSegments.length === 2 && routeSegments[0] === 'collections'
-			? (routeSegments[1] ?? null)
-			: null
-	);
-	const documentsQuery = $derived(
-		selectedCollectionSlug ? remotes.listDocuments({ collection: selectedCollectionSlug }) : null
-	);
-
-	async function refreshDocuments() {
-		await documentsQuery?.refresh();
-	}
-
-	async function handleCreate(event: SubmitEvent, collection: CollectionRuntimeConfig) {
-		event.preventDefault();
-		errorMessage = '';
-
-		const form = event.currentTarget as HTMLFormElement;
-
-		try {
-			await remotes.createDocument({
-				collection: collection.slug,
-				data: formDataToDocumentData(form, collection)
-			});
-			form.reset();
-			await refreshDocuments();
-		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : 'Could not create document';
-		}
-	}
-
-	async function startEdit(collection: string, id: string) {
-		const document = await remotes.getDocument({ collection, id });
-		if (!document) return;
-		editingId = document.id;
-		editingDocument = document;
-	}
-
-	async function handleUpdate(event: SubmitEvent, collection: string) {
-		event.preventDefault();
-		if (!editingId) return;
-		errorMessage = '';
-
-		const form = event.currentTarget as HTMLFormElement;
-		const view = await viewQuery;
-		if (view.type !== 'collection') return;
-
-		try {
-			await remotes.updateDocument({
-				collection,
-				id: editingId,
-				data: formDataToDocumentData(form, view.collection)
-			});
-			editingId = null;
-			editingDocument = null;
-			await refreshDocuments();
-		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : 'Could not update document';
-		}
-	}
-
-	async function handleDelete(collection: string, id: string) {
-		errorMessage = '';
-
-		try {
-			await remotes.deleteDocument({ collection, id });
-			if (editingId === id) {
-				editingId = null;
-				editingDocument = null;
-			}
-			await refreshDocuments();
-		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : 'Could not delete document';
-		}
-	}
 </script>
 
 {#key routeKey}
-	{#await viewQuery then view}
-		{#if view.type === 'index'}
-			<main class="fs-admin">
-				{#if view.defaultCollection}
-					<a
-						class="fs-admin__link"
-						href={collectionHref(view.defaultCollection.slug)}
-						{@attach fromAction(redirectToDefaultCollection, () => view.defaultCollection.slug)}
-					>
-						Open {view.defaultCollection.slug}
-					</a>
-				{:else}
-					<p class="fs-admin__muted">No collections found.</p>
-				{/if}
-			</main>
-		{:else}
-			{@const collectionName = selectedCollectionSlug ?? view.collectionName}
-			{@const collection = getSelectedCollection(view.collections, collectionName, view.collection)}
-			{@const documents = documentsQuery}
+	<main class="fs-admin">
+		<svelte:boundary>
+			{@const collections = await remotes.listCollections()}
+			{@const selectedCollectionSlug = routeCollection(route)}
+			{@const selectedCollection =
+				collections.find((collection) => collection.slug === selectedCollectionSlug) ?? null}
 
-			<main class="fs-admin">
+			{#if route.type === 'index'}
+				<section class="fs-admin__index">
+					<div>
+						<p class="fs-admin__eyebrow">CMS</p>
+						<h1 class="fs-admin__title">Collections</h1>
+					</div>
+
+					{#if collections.length}
+						<CollectionNav
+							{collections}
+							collectionHref={adminCollectionPath}
+							selectedCollectionSlug={null}
+						/>
+					{:else}
+						<p class="fs-admin__muted">No collections found.</p>
+					{/if}
+				</section>
+			{:else if route.type === 'notFound'}
+				<section class="fs-admin__index">
+					<h1 class="fs-admin__title">Admin route not found</h1>
+					<a class="fs-admin__button" href="/admin">Back to admin</a>
+				</section>
+			{:else}
 				<div class="fs-admin__grid">
 					<section class="fs-admin__sidebar">
 						<div>
 							<p class="fs-admin__eyebrow">CMS</p>
 							<h1 class="fs-admin__title">
-								{getCollectionLabel(collection, 'plural')}
+								{selectedCollection
+									? getCollectionLabel(selectedCollection, 'plural')
+									: selectedCollectionSlug}
 							</h1>
 						</div>
 
 						<CollectionNav
-							collections={view.collections}
-							{collectionHref}
+							{collections}
+							collectionHref={adminCollectionPath}
 							{selectedCollectionSlug}
 						/>
 
-						<CreateDocumentForm {collection} oncreate={handleCreate} />
-
-						{#if errorMessage}
-							<p class="fs-admin__error">{errorMessage}</p>
+						{#if selectedCollectionSlug}
+							<a class="fs-admin__button fs-admin__button--primary" href={adminNewDocumentPath(selectedCollectionSlug)}>
+								New {selectedCollection ? getCollectionLabel(selectedCollection, 'singular').toLowerCase() : 'document'}
+							</a>
 						{/if}
 					</section>
 
 					<section class="fs-admin__documents">
-						{#if documents}
-							{#await documents then documentList}
-								{#if documentList.error}
-									<p class="fs-admin__error">{documentList.error}</p>
-								{/if}
+						{#if route.type === 'collectionList'}
+							<svelte:boundary>
+								{@const collection = await remotes.getCollection({ collection: route.collection })}
 
-								<DocumentList
-									{collection}
-									{collectionName}
-									documents={documentList.documents}
-									{editingId}
-									{editingDocument}
-									oncancel={() => {
-										editingId = null;
-										editingDocument = null;
-									}}
-									ondelete={handleDelete}
-									onedit={startEdit}
-									onupdate={handleUpdate}
-								/>
-							{/await}
+								<div class="fs-admin__section-header">
+									<h2 class="fs-admin__section-title">
+										{getCollectionLabel(collection, 'plural')}
+									</h2>
+									<a class="fs-admin__button" href={adminNewDocumentPath(collection.slug)}>New</a>
+								</div>
+
+								<svelte:boundary>
+									<DocumentList
+										{collection}
+										documents={await remotes.listDocuments({ collection: collection.slug })}
+									/>
+
+									{#snippet pending()}
+										<p class="fs-admin__muted">Loading documents...</p>
+									{/snippet}
+
+									{#snippet failed(error, reset)}
+										<div class="fs-admin__error">
+											<p>{getBoundaryErrorMessage(error)}</p>
+											<button class="fs-admin__button" type="button" onclick={reset}>Retry</button>
+										</div>
+									{/snippet}
+								</svelte:boundary>
+
+								{#snippet pending()}
+									<p class="fs-admin__muted">Loading collection...</p>
+								{/snippet}
+
+								{#snippet failed(error, reset)}
+									<div class="fs-admin__error">
+										<p>{getBoundaryErrorMessage(error)}</p>
+										<button class="fs-admin__button" type="button" onclick={reset}>Retry</button>
+									</div>
+								{/snippet}
+							</svelte:boundary>
+						{:else if route.type === 'collectionNew'}
+							<svelte:boundary>
+								{@const collection = await remotes.getCollection({ collection: route.collection })}
+
+								<div class="fs-admin__section-header">
+									<h2 class="fs-admin__section-title">
+										New {getCollectionLabel(collection, 'singular').toLowerCase()}
+									</h2>
+									<a class="fs-admin__button" href={adminCollectionPath(collection.slug)}>Back to list</a>
+								</div>
+
+								<CreateDocumentForm collection={collection} form={remotes.createDocument} />
+
+								{#snippet pending()}
+									<p class="fs-admin__muted">Loading collection...</p>
+								{/snippet}
+
+								{#snippet failed(error, reset)}
+									<div class="fs-admin__error">
+										<p>{getBoundaryErrorMessage(error)}</p>
+										<button class="fs-admin__button" type="button" onclick={reset}>Retry</button>
+									</div>
+								{/snippet}
+							</svelte:boundary>
+						{:else if route.type === 'documentDetail'}
+							<svelte:boundary>
+								{@const collection = await remotes.getCollection({ collection: route.collection })}
+
+								<svelte:boundary>
+									{@const document = await remotes.getDocument({
+										collection: collection.slug,
+										id: route.id
+									})}
+									{@const deleteForm = remotes.deleteDocument.for(document.id)}
+
+									<article class="fs-admin__panel fs-admin__detail">
+										<div class="fs-admin__section-header">
+											<h2 class="fs-admin__section-title">
+												{getFieldValue(document, collection.fields[0]?.name ?? 'id')}
+											</h2>
+											<div class="fs-admin__actions">
+												<a class="fs-admin__button" href={adminEditDocumentPath(collection.slug, document.id)}>Edit</a>
+												<a class="fs-admin__button" href={adminCollectionPath(collection.slug)}>Back to list</a>
+											</div>
+										</div>
+
+										<dl class="fs-admin__fields">
+											{#each collection.fields as field (field.name)}
+												<div class="fs-admin__field-row">
+													<dt>{getFieldLabel(field)}</dt>
+													<dd>{getFieldValue(document, field.name) || 'Empty'}</dd>
+												</div>
+											{/each}
+										</dl>
+
+										<form class="fs-admin__delete-form" {...deleteForm}>
+											<input {...deleteForm.fields.collection.as('hidden', collection.slug)} />
+
+											{#each deleteForm.fields.allIssues() ?? [] as issue, index (`${issue.message}-${index}`)}
+												<p class="fs-admin__error">{issue.message}</p>
+											{/each}
+
+											<button
+												class="fs-admin__button fs-admin__button--danger"
+												disabled={Boolean(deleteForm.pending)}
+											>
+												Delete {getCollectionLabel(collection, 'singular').toLowerCase()}
+											</button>
+										</form>
+									</article>
+
+									{#snippet pending()}
+										<p class="fs-admin__muted">Loading document...</p>
+									{/snippet}
+
+									{#snippet failed(error, reset)}
+										<div class="fs-admin__error">
+											<p>{getBoundaryErrorMessage(error)}</p>
+											<button class="fs-admin__button" type="button" onclick={reset}>Retry</button>
+										</div>
+									{/snippet}
+								</svelte:boundary>
+
+								{#snippet pending()}
+									<p class="fs-admin__muted">Loading collection...</p>
+								{/snippet}
+
+								{#snippet failed(error, reset)}
+									<div class="fs-admin__error">
+										<p>{getBoundaryErrorMessage(error)}</p>
+										<button class="fs-admin__button" type="button" onclick={reset}>Retry</button>
+									</div>
+								{/snippet}
+							</svelte:boundary>
+						{:else if route.type === 'documentEdit'}
+							<svelte:boundary>
+								{@const collection = await remotes.getCollection({ collection: route.collection })}
+
+								<svelte:boundary>
+									{@const document = await remotes.getDocument({
+										collection: collection.slug,
+										id: route.id
+									})}
+									{@const updateForm = remotes.updateDocument.for(document.id)}
+
+									<div class="fs-admin__section-header">
+										<h2 class="fs-admin__section-title">
+											Edit {getCollectionLabel(collection, 'singular').toLowerCase()}
+										</h2>
+										<a class="fs-admin__button" href={adminDocumentPath(collection.slug, document.id)}>Back to detail</a>
+									</div>
+
+									<DocumentEditForm {collection} {document} form={updateForm} />
+
+									{#snippet pending()}
+										<p class="fs-admin__muted">Loading document...</p>
+									{/snippet}
+
+									{#snippet failed(error, reset)}
+										<div class="fs-admin__error">
+											<p>{getBoundaryErrorMessage(error)}</p>
+											<button class="fs-admin__button" type="button" onclick={reset}>Retry</button>
+										</div>
+									{/snippet}
+								</svelte:boundary>
+
+								{#snippet pending()}
+									<p class="fs-admin__muted">Loading collection...</p>
+								{/snippet}
+
+								{#snippet failed(error, reset)}
+									<div class="fs-admin__error">
+										<p>{getBoundaryErrorMessage(error)}</p>
+										<button class="fs-admin__button" type="button" onclick={reset}>Retry</button>
+									</div>
+								{/snippet}
+							</svelte:boundary>
 						{/if}
 					</section>
 				</div>
-			</main>
-		{/if}
-	{/await}
+			{/if}
+
+			{#snippet pending()}
+				<p class="fs-admin__muted">Loading collections...</p>
+			{/snippet}
+
+			{#snippet failed(error, reset)}
+				<div class="fs-admin__error">
+					<p>{getBoundaryErrorMessage(error)}</p>
+					<button class="fs-admin__button" type="button" onclick={reset}>Retry</button>
+				</div>
+			{/snippet}
+		</svelte:boundary>
+	</main>
 {/key}
 
 <style>
@@ -195,10 +304,16 @@
 		margin: 0 auto;
 	}
 
+	.fs-admin__index,
 	.fs-admin__sidebar,
 	.fs-admin__documents {
 		display: grid;
 		gap: 1rem;
+	}
+
+	.fs-admin__index {
+		max-width: 48rem;
+		margin: 0 auto;
 	}
 
 	.fs-admin__documents {
@@ -219,6 +334,65 @@
 		font-weight: 600;
 	}
 
+	.fs-admin__section-header {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+	}
+
+	.fs-admin__section-title {
+		margin: 0;
+		overflow-wrap: anywhere;
+		font-size: 1.25rem;
+		line-height: 1.75rem;
+		font-weight: 600;
+	}
+
+	.fs-admin__panel {
+		border: 1px solid var(--fs-admin-border);
+		border-radius: 0.5rem;
+		background: var(--fs-admin-panel);
+		padding: 1rem;
+	}
+
+	.fs-admin__detail {
+		display: grid;
+		gap: 1.25rem;
+	}
+
+	.fs-admin__fields {
+		display: grid;
+		gap: 0.75rem;
+		margin: 0;
+	}
+
+	.fs-admin__field-row {
+		display: grid;
+		gap: 0.25rem;
+	}
+
+	.fs-admin__field-row dt {
+		color: var(--fs-admin-muted);
+		font-size: 0.8125rem;
+		font-weight: 500;
+	}
+
+	.fs-admin__field-row dd {
+		margin: 0;
+		overflow-wrap: anywhere;
+		font-size: 0.9375rem;
+		line-height: 1.5rem;
+	}
+
+	.fs-admin__actions,
+	.fs-admin__delete-form {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+
 	.fs-admin__error {
 		border: 1px solid var(--fs-admin-danger-border);
 		border-radius: 0.5rem;
@@ -228,16 +402,57 @@
 		font-size: 0.875rem;
 	}
 
+	.fs-admin__error p {
+		margin: 0 0 0.5rem;
+	}
+
+	.fs-admin__error p:last-child {
+		margin-bottom: 0;
+	}
+
 	.fs-admin__muted {
 		color: var(--fs-admin-muted);
 	}
 
-	.fs-admin__link {
+	.fs-admin__button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		border: 1px solid var(--fs-admin-border-strong);
 		border-radius: 0.375rem;
-		color: var(--fs-admin-muted);
+		background: var(--fs-admin-panel);
+		color: var(--fs-admin-text);
+		padding: 0.5rem 0.75rem;
 		font-size: 0.875rem;
 		font-weight: 500;
-		text-underline-offset: 0.25rem;
+		text-decoration: none;
+	}
+
+	.fs-admin__button:hover {
+		background: #f4f4f5;
+	}
+
+	.fs-admin__button--primary {
+		border-color: var(--fs-admin-primary);
+		background: var(--fs-admin-primary);
+		color: white;
+	}
+
+	.fs-admin__button--primary:hover {
+		background: var(--fs-admin-primary-hover);
+	}
+
+	.fs-admin__button--danger {
+		border-color: var(--fs-admin-danger-border);
+		color: var(--fs-admin-danger);
+	}
+
+	.fs-admin__button--danger:hover {
+		background: var(--fs-admin-danger-bg);
+	}
+
+	.fs-admin__button:disabled {
+		opacity: 0.55;
 	}
 
 	@media (min-width: 1024px) {

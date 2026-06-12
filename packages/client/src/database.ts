@@ -12,9 +12,10 @@ export async function createDatabase(config: FieldstoneConfig) {
 		import('drizzle-orm'),
 		import('drizzle-orm/libsql')
 	]);
-	const compiled = compileFieldstoneConfig(config).renderRuntimeSchema();
+	const compiledConfig = compileFieldstoneConfig(config);
+	const compiled = compiledConfig.renderRuntimeSchema();
 	const client = createClient({ url: normalizeSqliteUrl(config.db.url) });
 	const database = drizzle(client, { schema: compiled.schema });
 
-	return { compiled, database, desc, eq };
+	return { collections: compiledConfig.createCollectionRuntimeConfigs(), compiled, database, desc, eq };
 }

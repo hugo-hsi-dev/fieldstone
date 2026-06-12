@@ -74,7 +74,7 @@ describe('fieldstone runtime', () => {
 					"posts": {
 						id: string;
 						title: string;
-						description?: string;
+						description: string | null;
 						createdAt: Date;
 						updatedAt: Date;
 					};
@@ -90,6 +90,7 @@ describe('fieldstone runtime', () => {
 				const stone = await getFieldstone({ config });
 				const posts = await stone.find({ collection: 'posts' });
 				const title: string = posts[0].title;
+				const description: string | null = posts[0].description;
 				const createdAt: Date = posts[0].createdAt;
 
 				await stone.create({
@@ -146,8 +147,20 @@ describe('fieldstone runtime', () => {
 				updatedAt
 			});
 
+			const emptyOptional = await stone.create({
+				collection: 'posts',
+				data: { title: 'Empty optional', description: '' }
+			});
+			expect(emptyOptional.description).toBeNull();
+
+			const omittedOptional = await stone.create({
+				collection: 'posts',
+				data: { title: 'Omitted optional' }
+			});
+			expect(omittedOptional.description).toBeNull();
+
 			const listed = await stone.find({ collection: 'posts' });
-			expect(listed).toHaveLength(1);
+			expect(listed).toHaveLength(3);
 			expect(await stone.findById({ collection: 'posts', id: created.id })).toMatchObject({
 				id: created.id,
 				title: 'Hello'
@@ -175,6 +188,13 @@ describe('fieldstone runtime', () => {
 				updatedAt: updateTime
 			});
 
+			const cleared = await stone.update({
+				collection: 'posts',
+				data: { title: 'Cleared optional' },
+				id: created.id
+			});
+			expect(cleared.description).toBeNull();
+
 			await expect(
 				stone.update({
 					collection: 'posts',
@@ -196,12 +216,12 @@ async function createRuntimeFixture() {
 	const dbPath = path.join(tempDir, 'test.db');
 	const client = createClient({ url: `file:${dbPath}` });
 	await client.executeMultiple(`
-		create table posts (
-			id text primary key not null,
-			title text not null,
-			description text not null,
-			created_at integer not null,
-			updated_at integer not null
+			create table posts (
+				id text primary key not null,
+				title text not null,
+				description text,
+				created_at integer not null,
+				updated_at integer not null
 		);
 	`);
 	client.close();
@@ -211,10 +231,10 @@ async function createRuntimeFixture() {
 		collections: {
 			posts: {
 				...collection({
-					fields: [
-						text({ name: 'title', required: true }),
-						text({ name: 'description', required: true })
-					]
+						fields: [
+							text({ name: 'title', required: true }),
+							text({ name: 'description' })
+						]
 				}),
 				slug: 'posts'
 			}

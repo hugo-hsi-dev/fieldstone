@@ -110,6 +110,41 @@ describe('fieldstone compiler', () => {
 			],
 			slug: 'blog-posts'
 		});
+
+		expect(
+			compileFieldstoneConfig({
+				db: { dialect: 'sqlite', url: ':memory:' },
+				collections: {
+					posts: {
+						fields: [
+							text({ name: 'seo-title', required: true }),
+							text({ name: 'seo_title' })
+						],
+						slug: 'posts'
+					}
+				}
+			}).createCollectionRuntimeConfigs()
+		).toEqual([
+			{
+				fields: [
+					{
+						identifier: 'seo_title',
+						multiline: undefined,
+						name: 'seo-title',
+						required: true,
+						type: 'text'
+					},
+					{
+						identifier: 'seo_title_2',
+						multiline: undefined,
+						name: 'seo_title',
+						required: false,
+						type: 'text'
+					}
+				],
+				slug: 'posts'
+			}
+		]);
 	});
 
 	it('builds sqlite tables with system fields from collection definitions', () => {
@@ -151,7 +186,7 @@ describe('fieldstone compiler', () => {
 		expect(output).toContain('"posts"');
 		expect(output).toContain('    id: string;');
 		expect(output).toContain('"title": string');
-		expect(output).toContain('"description"?: string');
+		expect(output).toContain('"description": string | null');
 		expect(output).toContain('    createdAt: Date;');
 		expect(output).toContain('    updatedAt: Date;');
 	});

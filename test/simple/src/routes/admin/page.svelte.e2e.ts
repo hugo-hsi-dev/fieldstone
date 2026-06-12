@@ -1,78 +1,105 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import Database from 'better-sqlite3';
 
 test.describe.configure({ mode: 'serial' });
 
-test('creates a post from admin', async ({ page }) => {
-	await page.goto('/admin/collections/posts');
-
-	await expect(page).toHaveURL(/\/admin\/collections\/posts$/);
-	await expect(page.getByRole('link', { name: 'Pages' })).toHaveAttribute(
-		'href',
-		'/admin/collections/pages'
-	);
-	await page.getByLabel('Title').fill('POC post');
+async function createPost(page: Page, title: string) {
+	await page.goto('/admin/collections/posts/new');
+	await page.getByLabel('Title').fill(title);
 	await page.getByLabel('Description').fill('Created from admin\nWith another line');
 	await page.getByRole('button', { name: 'Create post' }).click();
+	await expect(page).toHaveURL(/\/admin\/collections\/posts\/[^/]+$/);
+}
+
+test('creates, edits, and deletes a post through route-driven admin', async ({ page }) => {
+	await createPost(page, 'POC post');
 
 	await expect(page.getByRole('heading', { name: 'POC post' })).toBeVisible();
 	await expect(page.getByText('Created from admin')).toBeVisible();
 	await expect(page.getByText('With another line')).toBeVisible();
+
+	await page.getByRole('link', { name: 'Edit' }).click();
+	await expect(page).toHaveURL(/\/admin\/collections\/posts\/[^/]+\/edit$/);
+	await expect(page.getByLabel('Title')).toHaveValue('POC post');
+	await page.getByLabel('Title').fill('Edited POC post');
+	await page.getByLabel('Description').fill('Updated body');
+	await page.getByRole('button', { name: 'Save post' }).click();
+
+	await expect(page).toHaveURL(/\/admin\/collections\/posts\/[^/]+$/);
+	await expect(page.getByRole('heading', { name: 'Edited POC post' })).toBeVisible();
+	await expect(page.getByText('Updated body')).toBeVisible();
+
+	await page.getByRole('button', { name: 'Delete post' }).click();
+	await expect(page).toHaveURL(/\/admin\/collections\/posts$/);
+	await expect(page.getByRole('link', { name: 'Edited POC post' })).not.toBeVisible();
 });
 
-test('updates collection view state after client navigation', async ({ page }) => {
+test('stores blank optional text fields as null', async ({ page }) => {
+	await page.goto('/admin/collections/pages/new');
+
+	await page.getByLabel('Headline').fill('Optional summary page');
+	await page.getByLabel('Path').fill('/optional-summary');
+	await page.getByRole('button', { name: 'Create page' }).click();
+
+	await expect(page).toHaveURL(/\/admin\/collections\/pages\/[^/]+$/);
+	await expect(page.getByText('Empty')).toBeVisible();
+
+	const db = new Database('e2e.db');
+	const row = db.prepare("select summary from pages where headline = 'Optional summary page'").get() as {
+		summary: string | null;
+	};
+	db.close();
+
+	expect(row.summary).toBeNull();
+});
+
+test('keeps navigation state current across collection routes', async ({ page }) => {
 	await page.goto('/admin/collections/pages');
 
 	await page.getByRole('link', { name: 'Posts' }).click();
 
 	await expect(page).toHaveURL(/\/admin\/collections\/posts$/);
-	await expect(page.getByRole('heading', { name: 'Posts' })).toBeVisible();
-	await expect(page.getByRole('button', { name: 'Create post' })).toBeVisible();
+	await expect(page.getByRole('heading', { level: 1, name: 'Posts' })).toBeVisible();
+	await expect(page.getByRole('link', { name: 'New post' })).toBeVisible();
 	await expect(page.getByRole('link', { name: 'Posts' })).toHaveAttribute('aria-current', 'page');
 	await expect(page.getByRole('link', { name: 'Posts' })).toHaveClass(/fs-admin__nav-link--active/);
 	await expect(page.getByRole('link', { name: 'Pages' })).not.toHaveAttribute(
 		'aria-current',
 		'page'
 	);
-	await expect(page.getByRole('link', { name: 'Pages' })).not.toHaveClass(
-		/fs-admin__nav-link--active/
-	);
 
 	await page.getByRole('link', { name: 'Pages' }).click();
 
 	await expect(page).toHaveURL(/\/admin\/collections\/pages$/);
-	await expect(page.getByRole('heading', { name: 'Pages' })).toBeVisible();
-	await expect(page.getByRole('button', { name: 'Create page' })).toBeVisible();
+	await expect(page.getByRole('heading', { level: 1, name: 'Pages' })).toBeVisible();
+	await expect(page.getByRole('link', { name: 'New page' })).toBeVisible();
 	await expect(page.getByRole('link', { name: 'Pages' })).toHaveAttribute('aria-current', 'page');
 	await expect(page.getByRole('link', { name: 'Pages' })).toHaveClass(/fs-admin__nav-link--active/);
 	await expect(page.getByRole('link', { name: 'Posts' })).not.toHaveAttribute(
 		'aria-current',
 		'page'
 	);
-	await expect(page.getByRole('link', { name: 'Posts' })).not.toHaveClass(
-		/fs-admin__nav-link--active/
-	);
 });
 
-test('uses latest document data when editing a stale list row', async ({ page }) => {
-	await page.goto('/admin/collections/posts');
-
-	await page.getByLabel('Title').fill('Stale source');
-	await page.getByLabel('Description').fill('Old body');
-	await page.getByRole('button', { name: 'Create post' }).click();
-	await expect(page.getByRole('heading', { name: 'Stale source' })).toBeVisible();
+test('loads fresh document data on edit route', async ({ page }) => {
+	await createPost(page, 'Stale source');
+	await page.getByRole('link', { name: 'Back to list' }).click();
+	await expect(page).toHaveURL(/\/admin\/collections\/posts$/);
+	await expect(page.getByRole('link', { name: 'Stale source' })).toBeVisible();
 
 	const db = new Database('e2e.db');
 	db.prepare("update posts set title = 'Fresh source', description = 'Fresh body' where title = 'Stale source'").run();
 	db.close();
 
-	const staleRow = page
+	await page
 		.getByRole('article')
-		.filter({ has: page.getByRole('heading', { name: 'Stale source' }) });
-	await staleRow.getByRole('button', { name: 'Edit' }).click();
+		.filter({ has: page.getByRole('link', { name: 'Stale source' }) })
+		.getByRole('link', { name: 'Edit' })
+		.click();
 
-	await expect(page.locator('article input[name="title"]')).toHaveValue('Fresh source');
-	await expect(page.locator('article textarea[name="description"]')).toHaveValue('Fresh body');
+	await expect(page).toHaveURL(/\/admin\/collections\/posts\/[^/]+\/edit$/);
+	await expect(page.getByLabel('Title')).toHaveValue('Fresh source');
+	await expect(page.getByLabel('Description')).toHaveValue('Fresh body');
 });
 
 test('keeps navigation state current when document loading fails', async ({ page }) => {
@@ -85,12 +112,12 @@ test('keeps navigation state current when document loading fails', async ({ page
 	await page.getByRole('link', { name: 'Pages' }).click();
 
 	await expect(page).toHaveURL(/\/admin\/collections\/pages$/);
-	await expect(page.getByRole('heading', { name: 'Pages' })).toBeVisible();
+	await expect(page.getByRole('heading', { level: 1, name: 'Pages' })).toBeVisible();
 	await expect(page.getByRole('link', { name: 'Pages' })).toHaveAttribute('aria-current', 'page');
 	await expect(page.getByRole('link', { name: 'Pages' })).toHaveClass(/fs-admin__nav-link--active/);
 	await expect(page.getByRole('link', { name: 'Posts' })).not.toHaveAttribute(
 		'aria-current',
 		'page'
 	);
-	await expect(page.getByText('Failed query: select')).toBeVisible();
+	await expect(page.getByText('Could not load admin data')).toBeVisible();
 });

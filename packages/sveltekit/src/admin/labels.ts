@@ -31,13 +31,6 @@ export function shouldUseTextarea(field: CollectionRuntimeConfig['fields'][numbe
 	return Boolean(field.multiline);
 }
 
-export function formDataToDocumentData(form: HTMLFormElement, collection: CollectionRuntimeConfig) {
-	const formData = new FormData(form);
-	return Object.fromEntries(
-		collection.fields.map((field) => [field.name, String(formData.get(field.name) ?? '')])
-	);
-}
-
 export function getSelectedCollection(
 	collections: CollectionRuntimeConfig[],
 	collectionName: string,

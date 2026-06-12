@@ -2,7 +2,11 @@ import type { SchemaPlan } from './collection-model.ts';
 
 function renderTypeColumn(column: SchemaPlan['collections'][number]['columns'][number]) {
 	const name = column.origin === 'system' ? column.identifier : JSON.stringify(column.name);
-	return `    ${name}${column.required ? '' : '?'}: ${column.typeScriptType};`;
+	const type =
+		column.origin === 'field' && !column.required
+			? `${column.typeScriptType} | null`
+			: column.typeScriptType;
+	return `    ${name}: ${type};`;
 }
 
 export function createTypesDeclaration(schemaPlan: SchemaPlan) {

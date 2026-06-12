@@ -4,7 +4,7 @@ import type {
 	CollectionSlug
 } from '@fieldstone/core';
 
-export type DocumentData = Record<string, string>;
+export type DocumentData = Record<string, string | null>;
 export type FieldstoneCollectionSlug = CollectionSlug;
 export type FieldstoneDocument<TCollection extends CollectionSlug> =
 	CollectionDocument<TCollection>;

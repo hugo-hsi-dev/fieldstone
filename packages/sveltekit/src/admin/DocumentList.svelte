@@ -6,39 +6,15 @@
 
 	let {
 		collection,
-		collectionName,
-		documents,
-		editingId,
-		editingDocument,
-		ondelete,
-		onedit,
-		onupdate,
-		oncancel
+		documents
 	}: {
 		collection: CollectionRuntimeConfig;
-		collectionName: string;
 		documents: CollectionDocument<CollectionSlug>[];
-		editingId: string | null;
-		editingDocument: CollectionDocument<CollectionSlug> | null;
-		ondelete: (collection: string, id: string) => void | Promise<void>;
-		onedit: (collection: string, id: string) => void | Promise<void>;
-		onupdate: (event: SubmitEvent, collection: string) => void | Promise<void>;
-		oncancel: () => void;
 	} = $props();
 </script>
 
 {#each documents as document (document.id)}
-	<DocumentCard
-		{collection}
-		{collectionName}
-		{document}
-		editing={editingId === document.id}
-		{editingDocument}
-		{oncancel}
-		{ondelete}
-		{onedit}
-		{onupdate}
-	/>
+	<DocumentCard {collection} {document} />
 {:else}
 	<div class="fs-admin__empty">No {getCollectionLabel(collection, 'plural').toLowerCase()} yet.</div>
 {/each}

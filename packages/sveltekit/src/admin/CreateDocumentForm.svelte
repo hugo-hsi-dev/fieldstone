@@ -4,21 +4,36 @@
 	import FieldInput from './FieldInput.svelte';
 	import { getCollectionLabel } from './labels';
 
+	type RemoteForm = {
+		fields: Record<string, any>;
+		pending?: number;
+	};
+
 	let {
 		collection,
-		oncreate
+		form
 	}: {
 		collection: CollectionRuntimeConfig;
-		oncreate: (event: SubmitEvent, collection: CollectionRuntimeConfig) => void | Promise<void>;
+		form: RemoteForm;
 	} = $props();
 </script>
 
-<form class="fs-admin__panel fs-admin__form" onsubmit={(event) => oncreate(event, collection)}>
-	{#each collection.fields as field (field.name)}
-		<FieldInput {field} id={field.name} />
+<form class="fs-admin__panel fs-admin__form" {...form}>
+	<input {...form.fields.collection.as('hidden', collection.slug)} />
+
+	{#each form.fields.allIssues() ?? [] as issue, index (`${issue.message}-${index}`)}
+		<p class="fs-admin__error">{issue.message}</p>
 	{/each}
 
-	<button class="fs-admin__button fs-admin__button--primary">
+	{#each collection.fields as field (field.name)}
+		<FieldInput
+			{field}
+			formField={form.fields.data[field.identifier]}
+			id={`create-${collection.slug}-${field.identifier}`}
+		/>
+	{/each}
+
+	<button class="fs-admin__button fs-admin__button--primary" disabled={Boolean(form.pending)}>
 		Create {getCollectionLabel(collection, 'singular').toLowerCase()}
 	</button>
 </form>
@@ -58,5 +73,18 @@
 
 	.fs-admin__button--primary:hover {
 		background: var(--fs-admin-primary-hover);
+	}
+
+	.fs-admin__button:disabled {
+		opacity: 0.55;
+	}
+
+	.fs-admin__error {
+		border: 1px solid var(--fs-admin-danger-border);
+		border-radius: 0.5rem;
+		background: var(--fs-admin-danger-bg);
+		color: var(--fs-admin-danger);
+		padding: 0.5rem 0.75rem;
+		font-size: 0.875rem;
 	}
 </style>

@@ -1,4 +1,8 @@
-import type { FieldstoneConfig, TextFieldDefinition } from '../types.ts';
+import type {
+	CollectionRuntimeConfig,
+	FieldstoneConfig,
+	TextFieldDefinition
+} from '../types.ts';
 import { validateCollectionFields } from '../field-validation.ts';
 import { toUniqueIdentifier } from './identifiers.ts';
 
@@ -139,4 +143,19 @@ export function buildSchemaPlan(config: FieldstoneConfig): SchemaPlan {
 		collections,
 		fingerprintPayload: collections.map((compiled) => compiled.fingerprint)
 	};
+}
+
+export function createCollectionRuntimeConfigs(
+	schemaPlan: SchemaPlan
+): CollectionRuntimeConfig[] {
+	return schemaPlan.collections.map((collection) => ({
+		fields: collection.fields.map((field) => ({
+			identifier: field.identifier,
+			multiline: field.multiline,
+			name: field.name,
+			required: field.required,
+			type: field.type
+		})),
+		slug: collection.slug
+	}));
 }

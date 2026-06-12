@@ -1,6 +1,11 @@
-import type { CollectionDocument, CollectionSlug, FieldstoneConfig } from '@fieldstone/core';
+import {
+	normalizeCollectionData,
+	type CollectionDocument,
+	type CollectionSlug,
+	type FieldstoneConfig
+} from '@fieldstone/core';
 
-import { getCollection, normalizeData } from './collections.ts';
+import { getCollection } from './collections.ts';
 import type { createDatabase } from './database.ts';
 import type { CollectionInput, CreateInput, DocumentInput, UpdateInput } from './types.ts';
 
@@ -39,7 +44,7 @@ export function createDocumentRuntime(config: FieldstoneConfig, context: Databas
 			data,
 			updatedAt
 		}: CreateInput<TCollection>) => {
-			const document = normalizeData(config, collectionSlug, data);
+			const document = normalizeCollectionData(getCollection(config, collectionSlug), data);
 			const table = compiled.tables[collectionSlug];
 			const now = new Date();
 			const createdRows = (await database
@@ -61,7 +66,7 @@ export function createDocumentRuntime(config: FieldstoneConfig, context: Databas
 			id,
 			updatedAt
 		}: UpdateInput<TCollection>) => {
-			const document = normalizeData(config, collectionSlug, data);
+			const document = normalizeCollectionData(getCollection(config, collectionSlug), data);
 			const table = compiled.tables[collectionSlug];
 			const updatedRows = (await database
 				.update(table)
