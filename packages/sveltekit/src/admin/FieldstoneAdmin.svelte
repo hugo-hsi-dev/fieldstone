@@ -328,6 +328,11 @@
 		gap: 1rem;
 	}
 
+	.fs-admin__sidebar {
+		align-content: start;
+		align-items: start;
+	}
+
 	.fs-admin__index {
 		max-width: 48rem;
 		margin: 0 auto;
@@ -435,6 +440,8 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
+		box-sizing: border-box;
+		min-height: 2.5rem;
 		border: 1px solid var(--fs-admin-border-strong);
 		border-radius: 0.375rem;
 		background: var(--fs-admin-panel);
