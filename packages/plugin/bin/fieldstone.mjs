@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-import { mkdir, readdir, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { createServer } from 'vite';
 
@@ -13,43 +13,8 @@ if (command !== 'generate') {
 }
 
 const root = process.cwd();
+const packageRoot = path.dirname(fileURLToPath(new URL('../package.json', import.meta.url)));
 const require = createRequire(import.meta.url);
-const collectionsDir = path.join(root, 'collections');
-const outputDir = path.join(root, '.fieldstone');
-
-function isCollectionFile(entry) {
-	return (
-		entry.endsWith('.ts') &&
-		!entry.endsWith('.d.ts') &&
-		!entry.includes('.test.') &&
-		!entry.includes('.spec.') &&
-		!entry.startsWith('_')
-	);
-}
-
-function validateCollectionEntries(entries) {
-	const slugs = new Set();
-
-	for (const entry of entries) {
-		if (
-			!entry.endsWith('.ts') ||
-			entry.endsWith('.d.ts') ||
-			entry.includes('.test.') ||
-			entry.includes('.spec.')
-		) {
-			continue;
-		}
-
-		const slug = path.basename(entry, '.ts');
-		if (slug === '__proto__') throw new Error('Reserved collection slug: __proto__');
-		if (entry.startsWith('_')) continue;
-
-		const normalizedSlug = slug.toLowerCase();
-		if (slugs.has(normalizedSlug)) throw new Error(`Duplicate collection slug: ${slug}`);
-		slugs.add(normalizedSlug);
-	}
-}
-
 const previousGenerateEnv = process.env.FIELDSTONE_GENERATE;
 process.env.FIELDSTONE_GENERATE = 'true';
 
@@ -59,37 +24,24 @@ const server = await createServer({
 });
 
 try {
-	const entries = await readdir(collectionsDir).catch(() => []);
-	validateCollectionEntries(entries);
-	const collections = {};
-
-	for (const entry of entries.filter(isCollectionFile).sort()) {
-		const slug = path.basename(entry, '.ts');
-		const file = path.join(collectionsDir, entry);
-		const module = await server.ssrLoadModule(file);
-
-		collections[slug] = {
-			...module.default,
-			slug
-		};
-	}
-
+	const generatorModulePath = path.join(packageRoot, 'src', 'generate.ts');
 	const coreModulePath = require.resolve('@fieldstone/core');
-	const { generateDrizzleSchemaSource, generateTypes } =
-		await server.ssrLoadModule(coreModulePath);
-	const config = {
-		db: {
-			dialect: 'sqlite',
-			url: process.env.DATABASE_URL ?? 'local.db'
-		},
-		collections
-	};
+	const [{ loadFieldstoneConfig, writeGeneratedFiles }, { generateDrizzleSchemaSource, generateTypes }] =
+		await Promise.all([
+			server.ssrLoadModule(generatorModulePath),
+			server.ssrLoadModule(coreModulePath)
+		]);
+	const config = await loadFieldstoneConfig({
+		loadModule: (id) => server.ssrLoadModule(id),
+		root
+	});
 
-	await mkdir(outputDir, { recursive: true });
-	await Promise.all([
-		writeFile(path.join(outputDir, 'schema.ts'), generateDrizzleSchemaSource(config)),
-		writeFile(path.join(outputDir, 'types.d.ts'), generateTypes(config))
-	]);
+	await writeGeneratedFiles({
+		config,
+		generateDrizzleSchemaSource,
+		generateTypes,
+		root
+	});
 } finally {
 	await server.close();
 	if (previousGenerateEnv === undefined) {

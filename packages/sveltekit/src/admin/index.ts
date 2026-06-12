@@ -1,2 +1,2 @@
-export { default as AdminDashboard } from './AdminDashboard.svelte';
-export type { AdminRemotes } from './remote.ts';
+export { default as FieldstoneAdmin } from './FieldstoneAdmin.svelte';
+export type { FieldstoneAdminRemotes } from './remote.ts';
