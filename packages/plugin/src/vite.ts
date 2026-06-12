@@ -46,7 +46,7 @@ export function fieldstone(options: FieldstonePluginOptions): Plugin {
 		await writeTypes(root, compiled);
 
 		if (fingerprint !== previousFingerprint) {
-			const didPush = await pushSchema(config);
+			const didPush = await pushSchema(config, compiled);
 			if (!didPush) return;
 			previousFingerprint = fingerprint;
 		}
