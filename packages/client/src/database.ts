@@ -17,5 +17,12 @@ export async function createDatabase(config: FieldstoneConfig) {
 	const client = createClient({ url: normalizeSqliteUrl(config.db.url) });
 	const database = drizzle(client, { schema: compiled.schema });
 
-	return { collections: compiledConfig.createCollectionRuntimeConfigs(), compiled, database, desc, eq };
+	return {
+		collections: compiledConfig.createCollectionRuntimeConfigs(),
+		compiled,
+		compiledConfig,
+		database,
+		desc,
+		eq
+	};
 }

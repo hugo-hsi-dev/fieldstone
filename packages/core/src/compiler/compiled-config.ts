@@ -1,7 +1,12 @@
+import type { NormalizedDocumentData } from '../document-data.ts';
 import type { CollectionRuntimeConfig, FieldstoneConfig } from '../types.ts';
-import { buildSchemaPlan } from './collection-model.ts';
+import {
+	buildSchemaPlan,
+	createCollectionRuntimeConfigs,
+	getCollectionConfig,
+	normalizeDocumentData
+} from './collection-model.ts';
 import type { SchemaPlan } from './collection-model.ts';
-import { createCollectionRuntimeConfigs } from './collection-model.ts';
 import { createDrizzleSchemaSource } from './drizzle-source.ts';
 import { createSchemaFingerprint } from './fingerprint.ts';
 import { createRuntimeSchema, type RuntimeSchema } from './runtime-schema.ts';
@@ -10,6 +15,8 @@ import { createTypesDeclaration } from './types-output.ts';
 export type FieldstoneCompiledConfig = {
 	createCollectionRuntimeConfigs(): CollectionRuntimeConfig[];
 	readonly schemaPlan: SchemaPlan;
+	getCollection(slug: string): ReturnType<typeof getCollectionConfig>;
+	normalizeDocumentData(slug: string, data: Record<string, unknown>): NormalizedDocumentData;
 	renderRuntimeSchema(): RuntimeSchema;
 	renderSchemaSource(): string;
 	renderTypesDeclaration(): string;
@@ -26,6 +33,12 @@ export function compileFieldstoneConfig(config: FieldstoneConfig): FieldstoneCom
 	return {
 		createCollectionRuntimeConfigs: () => createCollectionRuntimeConfigs(schemaPlan),
 		schemaPlan,
+		getCollection(slug) {
+			return getCollectionConfig(schemaPlan, slug);
+		},
+		normalizeDocumentData(slug, data) {
+			return normalizeDocumentData(schemaPlan, slug, data);
+		},
 		renderRuntimeSchema() {
 			runtimeSchema ??= createRuntimeSchema(schemaPlan);
 			return runtimeSchema;
