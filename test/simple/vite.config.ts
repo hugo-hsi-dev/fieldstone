@@ -34,7 +34,6 @@ export default defineConfig(({ mode }) => {
 
 				experimental: {
 					remoteFunctions: true,
-					explicitEnvironmentVariables: true,
 					handleRenderingErrors: true,
 					forkPreloads: true
 				},

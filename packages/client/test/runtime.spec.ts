@@ -127,7 +127,7 @@ function getDiagnostics(source: string) {
 		skipLibCheck: true,
 		strict: true,
 		target: ts.ScriptTarget.ESNext,
-		typeRoots: [`${rootDir}/demo/node_modules/@types`],
+		typeRoots: [`${rootDir}/test/simple/node_modules/@types`],
 		types: ['node']
 	} satisfies ts.CompilerOptions;
 	const host = ts.createCompilerHost(compilerOptions);
