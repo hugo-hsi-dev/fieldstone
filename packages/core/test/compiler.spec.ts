@@ -35,7 +35,10 @@ describe('fieldstone compiler', () => {
 			db: { dialect: 'sqlite', url: ':memory:' },
 			collections: {
 				posts: {
-					fields: [text({ name: 'title', required: true })],
+					fields: [
+						text({ name: 'title', required: true }),
+						text({ name: 'description', required: false })
+					],
 					slug: 'posts'
 				}
 			}
@@ -44,6 +47,7 @@ describe('fieldstone compiler', () => {
 		expect(output).toContain("declare module '@fieldstone/core'");
 		expect(output).toContain('"posts"');
 		expect(output).toContain('"title": string');
+		expect(output).toContain('"description"?: string');
 	});
 
 	it('rejects duplicate field names in one collection', () => {

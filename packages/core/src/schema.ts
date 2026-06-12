@@ -128,7 +128,7 @@ export function generateTypes(config: FieldstoneConfig) {
 	const collections = Object.values(config.collections)
 		.map((collection) => {
 			const fields = collection.fields
-				.map((field) => `    ${JSON.stringify(field.name)}: string;`)
+				.map((field) => `    ${JSON.stringify(field.name)}${field.required ? '' : '?'}: string;`)
 				.join('\n');
 
 			return `  ${JSON.stringify(collection.slug)}: {\n    id: string;\n${fields}\n    createdAt: Date;\n    updatedAt: Date;\n  };`;

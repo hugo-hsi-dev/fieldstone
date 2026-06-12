@@ -69,7 +69,7 @@ describe('fieldstone runtime', () => {
 					"posts": {
 						id: string;
 						title: string;
-						description: string;
+						description?: string;
 						createdAt: Date;
 						updatedAt: Date;
 					};
@@ -92,8 +92,13 @@ describe('fieldstone runtime', () => {
 					data: { title: 'Hello', description: 'Body' }
 				});
 
+				await stone.create({
+					collection: 'posts',
+					data: { title: 'Hello' }
+				});
+
 				// @ts-expect-error missing configured field
-				await stone.create({ collection: 'posts', data: { title: 'Hello' } });
+				await stone.create({ collection: 'posts', data: { description: 'Body' } });
 
 				// @ts-expect-error unknown collection
 				await stone.find({ collection: 'pages' });

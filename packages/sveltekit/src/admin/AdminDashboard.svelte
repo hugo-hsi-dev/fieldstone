@@ -6,23 +6,9 @@
 	import { fromAction } from 'svelte/attachments';
 
 	import type { AdminRemotes } from './remote';
+	import { getAdminSegments } from './route';
 
 	let { remotes }: { remotes: AdminRemotes } = $props();
-
-	function getAdminSegments(pathname: string) {
-		const parts = pathname.split('/').filter(Boolean);
-		const adminIndex = parts.findIndex(
-			(part, index) =>
-				part === 'admin' &&
-				(index === parts.length - 1 ||
-					parts[index + 1] === 'collections' ||
-					parts[index + 1] === 'globals' ||
-					parts[index + 1] === 'media')
-		);
-		if (adminIndex === -1) return [];
-
-		return parts.slice(adminIndex + 1).map((part) => decodeURIComponent(part));
-	}
 
 	let currentPathname = $state<string>(page.url.pathname);
 
