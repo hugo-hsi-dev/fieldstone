@@ -14,11 +14,6 @@ export type {
 	TextFieldDefinition
 } from './types.ts';
 
-export {
-	compileFieldstoneConfig,
-	type FieldstoneCompiledConfig
-} from './schema.ts';
-
 export function text(config: Omit<TextFieldDefinition, 'type'>): TextFieldDefinition {
 	return { ...config, type: 'text' };
 }

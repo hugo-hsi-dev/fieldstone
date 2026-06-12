@@ -10,10 +10,12 @@ const reservedFieldNames = new Set([
 	'updated_at'
 ]);
 
-export type CompiledCollectionField = TextFieldDefinition & {
-	identifier: string;
-	required: boolean;
-};
+export type CompiledCollectionField = Readonly<
+	TextFieldDefinition & {
+		identifier: string;
+		required: boolean;
+	}
+>;
 
 export const systemFields = [
 	{ columnName: 'id', identifier: 'id', name: 'id' },
@@ -23,28 +25,28 @@ export const systemFields = [
 
 export type CompiledSystemField = (typeof systemFields)[number];
 
-export type CollectionFingerprint = {
-	fields: {
+export type CollectionFingerprint = Readonly<{
+	fields: readonly Readonly<{
 		multiline: boolean;
 		name: string;
 		required: boolean;
 		type: TextFieldDefinition['type'];
-	}[];
+	}>[];
 	slug: string;
-};
+}>;
 
-export type CompiledCollection = {
-	fields: CompiledCollectionField[];
+export type CompiledCollection = Readonly<{
+	fields: readonly CompiledCollectionField[];
 	fingerprint: CollectionFingerprint;
 	slug: string;
 	systemFields: typeof systemFields;
 	tableIdentifier: string;
-};
+}>;
 
-export type CollectionModel = {
-	collections: CompiledCollection[];
-	fingerprintPayload: CollectionFingerprint[];
-};
+export type SchemaPlan = Readonly<{
+	collections: readonly CompiledCollection[];
+	fingerprintPayload: readonly CollectionFingerprint[];
+}>;
 
 function compareSlugs(left: string, right: string) {
 	if (left < right) return -1;
@@ -79,7 +81,7 @@ export function validateCollectionFields(
 	}
 }
 
-export function compileCollectionModel(config: FieldstoneConfig): CollectionModel {
+export function buildSchemaPlan(config: FieldstoneConfig): SchemaPlan {
 	validateCollectionSlugs(config);
 
 	const tableIdentifiers = new Set<string>();

@@ -1,4 +1,4 @@
-import type { CollectionModel, CompiledSystemField } from './collection-model.ts';
+import type { CompiledSystemField, SchemaPlan } from './collection-model.ts';
 
 function renderSystemColumn(field: CompiledSystemField) {
 	if (field.identifier === 'id') {
@@ -12,8 +12,8 @@ function renderSystemColumn(field: CompiledSystemField) {
 \t\t.$defaultFn(() => new Date())${field.identifier === 'createdAt' ? ',' : ''}`;
 }
 
-export function createDrizzleSchemaSource(model: CollectionModel) {
-	const tableDeclarations = model.collections
+export function createDrizzleSchemaSource(schemaPlan: SchemaPlan) {
+	const tableDeclarations = schemaPlan.collections
 		.map((collection) => {
 			const fields = collection.fields
 				.map((field) => {

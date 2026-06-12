@@ -1,8 +1,8 @@
 import { createInterface } from 'node:readline/promises';
 
 import { createClient } from '@libsql/client';
-import { compileFieldstoneConfig } from '@fieldstone/core';
 import type { FieldstoneConfig } from '@fieldstone/core';
+import { compileFieldstoneConfig } from '@fieldstone/core/schema';
 import { drizzle } from 'drizzle-orm/libsql';
 
 export function normalizeSqliteUrl(url: string) {
@@ -33,7 +33,7 @@ async function confirmWarnings(warnings: string[], hasDataLoss: boolean) {
 
 export async function pushSchema(config: FieldstoneConfig) {
 	const { pushSQLiteSchema } = await import('drizzle-kit/api');
-	const compiled = compileFieldstoneConfig(config).runtimeSchema();
+	const compiled = compileFieldstoneConfig(config).renderRuntimeSchema();
 	const client = createClient({ url: normalizeSqliteUrl(config.db.url) });
 	const database = drizzle(client, { schema: compiled.schema });
 	const { apply, hasDataLoss, warnings } = await pushSQLiteSchema(compiled.schema, database);

@@ -1,7 +1,7 @@
-import type { CollectionModel } from './collection-model.ts';
+import type { SchemaPlan } from './collection-model.ts';
 
-export function createTypesDeclaration(model: CollectionModel) {
-	const collections = model.collections
+export function createTypesDeclaration(schemaPlan: SchemaPlan) {
+	const collections = schemaPlan.collections
 		.map((collection) => {
 			const fields = collection.fields
 				.map((field) => `    ${JSON.stringify(field.name)}${field.required ? '' : '?'}: string;`)
