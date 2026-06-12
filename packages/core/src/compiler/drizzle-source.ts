@@ -1,32 +1,27 @@
-import type { CompiledSystemField, SchemaPlan } from './collection-model.ts';
+import type { CompiledColumn, SchemaPlan } from './collection-model.ts';
 
-function renderSystemColumn(field: CompiledSystemField) {
-	if (field.identifier === 'id') {
-		return `\t${field.identifier}: text(${JSON.stringify(field.columnName)})
+function renderColumn(column: CompiledColumn) {
+	if (column.origin === 'field') {
+		const renderedColumn = `text(${JSON.stringify(column.columnName)})${column.required ? '.notNull()' : ''}`;
+		return `\t${column.identifier}: ${renderedColumn},`;
+	}
+
+	if (column.identifier === 'id') {
+		return `\t${column.identifier}: text(${JSON.stringify(column.columnName)})
 \t\t.primaryKey()
 \t\t.$defaultFn(() => crypto.randomUUID()),`;
 	}
 
-	return `\t${field.identifier}: integer(${JSON.stringify(field.columnName)}, { mode: 'timestamp' })
+	return `\t${column.identifier}: integer(${JSON.stringify(column.columnName)}, { mode: 'timestamp' })
 \t\t.notNull()
-\t\t.$defaultFn(() => new Date())${field.identifier === 'createdAt' ? ',' : ''}`;
+\t\t.$defaultFn(() => new Date())${column.identifier === 'createdAt' ? ',' : ''}`;
 }
 
 export function createDrizzleSchemaSource(schemaPlan: SchemaPlan) {
 	const tableDeclarations = schemaPlan.collections
 		.map((collection) => {
-			const fields = collection.fields
-				.map((field) => {
-					const column = `text(${JSON.stringify(field.name)})${field.required ? '.notNull()' : ''}`;
-					return `\t${field.identifier}: ${column},`;
-				})
-				.join('\n');
-			const [idColumn, ...timestampColumns] = collection.systemFields.map(renderSystemColumn);
-
 			return `export const ${collection.tableIdentifier} = sqliteTable(${JSON.stringify(collection.slug)}, {
-${idColumn}
-${fields}
-${timestampColumns.join('\n')}
+${collection.columns.map(renderColumn).join('\n')}
 });`;
 		})
 		.join('\n\n');

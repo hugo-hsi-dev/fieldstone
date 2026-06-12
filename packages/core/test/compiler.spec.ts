@@ -38,6 +38,53 @@ describe('fieldstone compiler', () => {
 		expect(schemaPlan.collections[0]).toMatchObject({
 			slug: 'blog-posts',
 			tableIdentifier: 'collection_blog_posts',
+			columns: [
+				{
+					columnName: 'id',
+					identifier: 'id',
+					name: 'id',
+					origin: 'system',
+					required: true,
+					runtimeKey: 'id',
+					typeScriptType: 'string'
+				},
+				{
+					columnName: 'seo-title',
+					identifier: 'seo_title',
+					name: 'seo-title',
+					origin: 'field',
+					required: true,
+					runtimeKey: 'seo-title',
+					typeScriptType: 'string'
+				},
+				{
+					columnName: 'seo_title',
+					identifier: 'seo_title_2',
+					name: 'seo_title',
+					origin: 'field',
+					required: false,
+					runtimeKey: 'seo_title',
+					typeScriptType: 'string'
+				},
+				{
+					columnName: 'created_at',
+					identifier: 'createdAt',
+					name: 'createdAt',
+					origin: 'system',
+					required: true,
+					runtimeKey: 'createdAt',
+					typeScriptType: 'Date'
+				},
+				{
+					columnName: 'updated_at',
+					identifier: 'updatedAt',
+					name: 'updatedAt',
+					origin: 'system',
+					required: true,
+					runtimeKey: 'updatedAt',
+					typeScriptType: 'Date'
+				}
+			],
 			fields: [
 				{ identifier: 'seo_title', name: 'seo-title', required: true },
 				{ identifier: 'seo_title_2', name: 'seo_title', required: false }
@@ -102,8 +149,11 @@ describe('fieldstone compiler', () => {
 
 		expect(output).toContain("declare module '@fieldstone/core'");
 		expect(output).toContain('"posts"');
+		expect(output).toContain('    id: string;');
 		expect(output).toContain('"title": string');
 		expect(output).toContain('"description"?: string');
+		expect(output).toContain('    createdAt: Date;');
+		expect(output).toContain('    updatedAt: Date;');
 	});
 
 	it('rejects duplicate field names in one collection', () => {

@@ -17,6 +17,16 @@ export const systemFields = [
 
 export type CompiledSystemField = (typeof systemFields)[number];
 
+export type CompiledColumn = Readonly<{
+	columnName: string;
+	identifier: string;
+	name: string;
+	origin: 'field' | 'system';
+	required: boolean;
+	runtimeKey: string;
+	typeScriptType: 'Date' | 'string';
+}>;
+
 export type CollectionFingerprint = Readonly<{
 	fields: readonly Readonly<{
 		multiline: boolean;
@@ -28,6 +38,7 @@ export type CollectionFingerprint = Readonly<{
 }>;
 
 export type CompiledCollection = Readonly<{
+	columns: readonly CompiledColumn[];
 	fields: readonly CompiledCollectionField[];
 	fingerprint: CollectionFingerprint;
 	slug: string;
@@ -60,6 +71,30 @@ function validateCollectionSlugs(config: FieldstoneConfig) {
 	}
 }
 
+function createSystemColumn(field: CompiledSystemField): CompiledColumn {
+	return {
+		columnName: field.columnName,
+		identifier: field.identifier,
+		name: field.name,
+		origin: 'system',
+		required: true,
+		runtimeKey: field.identifier,
+		typeScriptType: field.identifier === 'id' ? 'string' : 'Date'
+	};
+}
+
+function createFieldColumn(field: CompiledCollectionField): CompiledColumn {
+	return {
+		columnName: field.name,
+		identifier: field.identifier,
+		name: field.name,
+		origin: 'field',
+		required: field.required,
+		runtimeKey: field.name,
+		typeScriptType: 'string'
+	};
+}
+
 export function buildSchemaPlan(config: FieldstoneConfig): SchemaPlan {
 	validateCollectionSlugs(config);
 
@@ -83,8 +118,15 @@ export function buildSchemaPlan(config: FieldstoneConfig): SchemaPlan {
 				})),
 				slug: collection.slug
 			};
+			const [idField, createdAtField, updatedAtField] = systemFields;
 
 			return {
+				columns: [
+					createSystemColumn(idField),
+					...fields.map(createFieldColumn),
+					createSystemColumn(createdAtField),
+					createSystemColumn(updatedAtField)
+				],
 				fields,
 				fingerprint,
 				slug: collection.slug,

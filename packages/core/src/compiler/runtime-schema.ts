@@ -2,21 +2,25 @@ import crypto from 'node:crypto';
 
 import { integer, sqliteTable, text as sqliteText } from 'drizzle-orm/sqlite-core';
 
-import type { CompiledSystemField, SchemaPlan } from './collection-model.ts';
+import type { CompiledColumn, SchemaPlan } from './collection-model.ts';
 
 export type RuntimeSchema = {
 	schema: Record<string, any>;
 	tables: Record<string, any>;
 };
 
-function createSystemColumn(field: CompiledSystemField) {
-	if (field.identifier === 'id') {
-		return sqliteText(field.columnName)
+function createRuntimeColumn(column: CompiledColumn) {
+	if (column.origin === 'field') {
+		return column.required ? sqliteText(column.columnName).notNull() : sqliteText(column.columnName);
+	}
+
+	if (column.identifier === 'id') {
+		return sqliteText(column.columnName)
 			.primaryKey()
 			.$defaultFn(() => crypto.randomUUID());
 	}
 
-	return integer(field.columnName, { mode: 'timestamp' })
+	return integer(column.columnName, { mode: 'timestamp' })
 		.notNull()
 		.$defaultFn(() => new Date());
 }
@@ -27,20 +31,11 @@ export function createRuntimeSchema(schemaPlan: SchemaPlan): RuntimeSchema {
 	for (const collection of schemaPlan.collections) {
 		const columns: Record<string, any> = {};
 
-		for (const field of collection.fields) {
-			columns[field.name] = field.required
-				? sqliteText(field.name).notNull()
-				: sqliteText(field.name);
+		for (const column of collection.columns) {
+			columns[column.runtimeKey] = createRuntimeColumn(column);
 		}
 
-		const [idField, createdAtField, updatedAtField] = collection.systemFields;
-
-		tables[collection.slug] = sqliteTable(collection.slug, {
-			[idField.identifier]: createSystemColumn(idField),
-			...columns,
-			[createdAtField.identifier]: createSystemColumn(createdAtField),
-			[updatedAtField.identifier]: createSystemColumn(updatedAtField)
-		});
+		tables[collection.slug] = sqliteTable(collection.slug, columns);
 	}
 
 	return {

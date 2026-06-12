@@ -1,14 +1,16 @@
 import type { SchemaPlan } from './collection-model.ts';
 
+function renderTypeColumn(column: SchemaPlan['collections'][number]['columns'][number]) {
+	const name = column.origin === 'system' ? column.identifier : JSON.stringify(column.name);
+	return `    ${name}${column.required ? '' : '?'}: ${column.typeScriptType};`;
+}
+
 export function createTypesDeclaration(schemaPlan: SchemaPlan) {
 	const collections = schemaPlan.collections
 		.map((collection) => {
-			const fields = collection.fields
-				.map((field) => `    ${JSON.stringify(field.name)}${field.required ? '' : '?'}: string;`)
-				.join('\n');
-			const [id, createdAt, updatedAt] = collection.systemFields;
+			const fields = collection.columns.map(renderTypeColumn).join('\n');
 
-			return `  ${JSON.stringify(collection.slug)}: {\n    ${id.identifier}: string;\n${fields}\n    ${createdAt.identifier}: Date;\n    ${updatedAt.identifier}: Date;\n  };`;
+			return `  ${JSON.stringify(collection.slug)}: {\n${fields}\n  };`;
 		})
 		.join('\n');
 
