@@ -313,6 +313,39 @@ describe('fieldstone compiler', () => {
 		expect(compiled.schemaFingerprint()).toContain('"slug":"posts"');
 	});
 
+	it('exposes Collection lookup and Document normalization through the schema plan', () => {
+		const compiled = compileFieldstoneConfig({
+			db: { dialect: 'sqlite', url: ':memory:' },
+			collections: {
+				posts: {
+					fields: [
+						text({ name: 'title', required: true }),
+						text({ name: 'description', required: false })
+					],
+					slug: 'posts'
+				}
+			}
+		});
+
+		expect(compiled.getCollection('posts')).toMatchObject({ slug: 'posts' });
+		expect(compiled.getCollection('missing')).toBeNull();
+		expect(
+			compiled.normalizeDocumentData('posts', {
+				description: ' Body ',
+				title: ' Hello '
+			})
+		).toEqual({ description: 'Body', title: 'Hello' });
+		expect(() => compiled.normalizeDocumentData('posts', { description: 'Missing title' })).toThrow(
+			'title is required'
+		);
+		expect(() =>
+			compiled.normalizeDocumentData('posts', { title: 'Hello', extra: 'Nope' })
+		).toThrow('Unknown field: extra');
+		expect(() => compiled.normalizeDocumentData('missing', {})).toThrow(
+			'Unsupported collection: missing'
+		);
+	});
+
 	it('caches lazy schema artifacts against later config mutation', () => {
 		const config: FieldstoneConfig = {
 			db: { dialect: 'sqlite', url: ':memory:' },

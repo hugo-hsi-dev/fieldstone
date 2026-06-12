@@ -10,11 +10,11 @@ export type RuntimeSchema = {
 };
 
 function createRuntimeColumn(column: CompiledColumn) {
-	if (column.origin === 'field') {
+	if (column.sourceExpression === 'text') {
 		return column.required ? sqliteText(column.columnName).notNull() : sqliteText(column.columnName);
 	}
 
-	if (column.identifier === 'id') {
+	if (column.sourceExpression === 'uuidTextPrimaryKey') {
 		return sqliteText(column.columnName)
 			.primaryKey()
 			.$defaultFn(() => crypto.randomUUID());

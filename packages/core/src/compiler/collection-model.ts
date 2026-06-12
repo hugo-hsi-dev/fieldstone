@@ -1,4 +1,4 @@
-import type { FieldstoneConfig, TextFieldDefinition } from '../types.ts';
+import type { CollectionRuntimeConfig, FieldstoneConfig, TextFieldDefinition } from '../types.ts';
 import { validateCollectionFields } from '../field-validation.ts';
 import { toUniqueIdentifier } from './identifiers.ts';
 
@@ -19,11 +19,16 @@ export type CompiledSystemField = (typeof systemFields)[number];
 
 export type CompiledColumn = Readonly<{
 	columnName: string;
+	drizzleType: 'text' | 'timestamp';
+	fingerprint: boolean;
 	identifier: string;
 	name: string;
 	origin: 'field' | 'system';
 	required: boolean;
 	runtimeKey: string;
+	sourceExpression: 'text' | 'timestampNow' | 'uuidTextPrimaryKey';
+	typeScriptName: string;
+	typeScriptProperty: string;
 	typeScriptType: 'Date' | 'string';
 }>;
 
@@ -47,6 +52,7 @@ export type CompiledCollection = Readonly<{
 }>;
 
 export type SchemaPlan = Readonly<{
+	collectionBySlug: ReadonlyMap<string, CompiledCollection>;
 	collections: readonly CompiledCollection[];
 	fingerprintPayload: readonly CollectionFingerprint[];
 }>;
@@ -72,27 +78,84 @@ function validateCollectionSlugs(config: FieldstoneConfig) {
 }
 
 function createSystemColumn(field: CompiledSystemField): CompiledColumn {
+	const isId = field.identifier === 'id';
+
 	return {
 		columnName: field.columnName,
+		drizzleType: isId ? 'text' : 'timestamp',
+		fingerprint: false,
 		identifier: field.identifier,
 		name: field.name,
 		origin: 'system',
 		required: true,
 		runtimeKey: field.identifier,
-		typeScriptType: field.identifier === 'id' ? 'string' : 'Date'
+		sourceExpression: isId ? 'uuidTextPrimaryKey' : 'timestampNow',
+		typeScriptName: field.identifier,
+		typeScriptProperty: field.identifier,
+		typeScriptType: isId ? 'string' : 'Date'
 	};
 }
 
 function createFieldColumn(field: CompiledCollectionField): CompiledColumn {
 	return {
 		columnName: field.name,
+		drizzleType: 'text',
+		fingerprint: true,
 		identifier: field.identifier,
 		name: field.name,
 		origin: 'field',
 		required: field.required,
 		runtimeKey: field.name,
+		sourceExpression: 'text',
+		typeScriptName: field.name,
+		typeScriptProperty: JSON.stringify(field.name),
 		typeScriptType: 'string'
 	};
+}
+
+export function getSchemaPlanCollection(schemaPlan: SchemaPlan, slug: string) {
+	return schemaPlan.collectionBySlug.get(slug) ?? null;
+}
+
+export function getCollectionConfig(
+	schemaPlan: SchemaPlan,
+	slug: string
+): CollectionRuntimeConfig | null {
+	const collection = getSchemaPlanCollection(schemaPlan, slug);
+	if (!collection) return null;
+
+	return {
+		fields: collection.fields.map(({ identifier: _identifier, ...field }) => field),
+		slug: collection.slug
+	};
+}
+
+export function requireSchemaPlanCollection(schemaPlan: SchemaPlan, slug: string) {
+	const collection = getSchemaPlanCollection(schemaPlan, slug);
+	if (!collection) throw new Error(`Unsupported collection: ${slug}`);
+	return collection;
+}
+
+export function normalizeDocumentData(
+	schemaPlan: SchemaPlan,
+	slug: string,
+	data: Record<string, unknown>
+) {
+	const collection = requireSchemaPlanCollection(schemaPlan, slug);
+	const allowedFields = new Set(collection.fields.map((field) => field.name));
+	const normalized: Record<string, string> = {};
+
+	for (const field of collection.fields) {
+		const value = String(data[field.name] ?? '').trim();
+		if (field.required && !value) throw new Error(`${field.name} is required`);
+		normalized[field.name] = value;
+	}
+
+	for (const fieldName of Object.keys(data)) {
+		if (!allowedFields.has(fieldName)) throw new Error(`Unknown field: ${fieldName}`);
+	}
+
+	return normalized;
 }
 
 export function buildSchemaPlan(config: FieldstoneConfig): SchemaPlan {
@@ -136,6 +199,7 @@ export function buildSchemaPlan(config: FieldstoneConfig): SchemaPlan {
 		});
 
 	return {
+		collectionBySlug: new Map(collections.map((collection) => [collection.slug, collection])),
 		collections,
 		fingerprintPayload: collections.map((compiled) => compiled.fingerprint)
 	};

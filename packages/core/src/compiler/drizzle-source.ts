@@ -1,12 +1,12 @@
 import type { CompiledColumn, SchemaPlan } from './collection-model.ts';
 
 function renderColumn(column: CompiledColumn) {
-	if (column.origin === 'field') {
+	if (column.sourceExpression === 'text') {
 		const renderedColumn = `text(${JSON.stringify(column.columnName)})${column.required ? '.notNull()' : ''}`;
 		return `\t${column.identifier}: ${renderedColumn},`;
 	}
 
-	if (column.identifier === 'id') {
+	if (column.sourceExpression === 'uuidTextPrimaryKey') {
 		return `\t${column.identifier}: text(${JSON.stringify(column.columnName)})
 \t\t.primaryKey()
 \t\t.$defaultFn(() => crypto.randomUUID()),`;
