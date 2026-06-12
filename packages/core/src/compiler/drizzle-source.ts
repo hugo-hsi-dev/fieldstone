@@ -1,38 +1,35 @@
 import type { FieldstoneConfig } from '../types.ts';
-import { toUniqueIdentifier } from './identifiers.ts';
-import { validateFieldstoneConfig } from './validation.ts';
+import type { CompiledSystemField } from './collection-model.ts';
+import { compileCollectionModel } from './collection-model.ts';
+
+function renderSystemColumn(field: CompiledSystemField) {
+	if (field.identifier === 'id') {
+		return `\t${field.identifier}: text(${JSON.stringify(field.columnName)})
+\t\t.primaryKey()
+\t\t.$defaultFn(() => crypto.randomUUID()),`;
+	}
+
+	return `\t${field.identifier}: integer(${JSON.stringify(field.columnName)}, { mode: 'timestamp' })
+\t\t.notNull()
+\t\t.$defaultFn(() => new Date())${field.identifier === 'createdAt' ? ',' : ''}`;
+}
 
 export function generateDrizzleSchemaSource(config: FieldstoneConfig) {
-	validateFieldstoneConfig(config);
-
-	const collectionIdentifiers = new Set<string>();
-	const tableDeclarations = Object.values(config.collections)
+	const model = compileCollectionModel(config);
+	const tableDeclarations = model.collections
 		.map((collection) => {
-			const fieldIdentifiers = new Set<string>();
 			const fields = collection.fields
 				.map((field) => {
-					const identifier = toUniqueIdentifier(field.name, fieldIdentifiers);
 					const column = `text(${JSON.stringify(field.name)})${field.required ? '.notNull()' : ''}`;
-					return `\t${identifier}: ${column},`;
+					return `\t${field.identifier}: ${column},`;
 				})
 				.join('\n');
-			const collectionIdentifier = toUniqueIdentifier(
-				collection.slug,
-				collectionIdentifiers,
-				'collection_'
-			);
+			const [idColumn, ...timestampColumns] = collection.systemFields.map(renderSystemColumn);
 
-			return `export const ${collectionIdentifier} = sqliteTable(${JSON.stringify(collection.slug)}, {
-\tid: text('id')
-\t\t.primaryKey()
-\t\t.$defaultFn(() => crypto.randomUUID()),
+			return `export const ${collection.tableIdentifier} = sqliteTable(${JSON.stringify(collection.slug)}, {
+${idColumn}
 ${fields}
-\tcreatedAt: integer('created_at', { mode: 'timestamp' })
-\t\t.notNull()
-\t\t.$defaultFn(() => new Date()),
-\tupdatedAt: integer('updated_at', { mode: 'timestamp' })
-\t\t.notNull()
-\t\t.$defaultFn(() => new Date())
+${timestampColumns.join('\n')}
 });`;
 		})
 		.join('\n\n');

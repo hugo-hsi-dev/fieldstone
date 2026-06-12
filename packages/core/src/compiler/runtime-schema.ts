@@ -3,13 +3,26 @@ import crypto from 'node:crypto';
 import { integer, sqliteTable, text as sqliteText } from 'drizzle-orm/sqlite-core';
 
 import type { FieldstoneConfig } from '../types.ts';
-import { validateFieldstoneConfig } from './validation.ts';
+import type { CompiledSystemField } from './collection-model.ts';
+import { compileCollectionModel } from './collection-model.ts';
+
+function createSystemColumn(field: CompiledSystemField) {
+	if (field.identifier === 'id') {
+		return sqliteText(field.columnName)
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID());
+	}
+
+	return integer(field.columnName, { mode: 'timestamp' })
+		.notNull()
+		.$defaultFn(() => new Date());
+}
 
 export function compileFieldstoneConfig(config: FieldstoneConfig) {
-	validateFieldstoneConfig(config);
+	const model = compileCollectionModel(config);
 	const tables: Record<string, any> = {};
 
-	for (const collection of Object.values(config.collections)) {
+	for (const collection of model.collections) {
 		const columns: Record<string, any> = {};
 
 		for (const field of collection.fields) {
@@ -18,17 +31,13 @@ export function compileFieldstoneConfig(config: FieldstoneConfig) {
 				: sqliteText(field.name);
 		}
 
+		const [idField, createdAtField, updatedAtField] = collection.systemFields;
+
 		tables[collection.slug] = sqliteTable(collection.slug, {
-			id: sqliteText('id')
-				.primaryKey()
-				.$defaultFn(() => crypto.randomUUID()),
+			[idField.identifier]: createSystemColumn(idField),
 			...columns,
-			createdAt: integer('created_at', { mode: 'timestamp' })
-				.notNull()
-				.$defaultFn(() => new Date()),
-			updatedAt: integer('updated_at', { mode: 'timestamp' })
-				.notNull()
-				.$defaultFn(() => new Date())
+			[createdAtField.identifier]: createSystemColumn(createdAtField),
+			[updatedAtField.identifier]: createSystemColumn(updatedAtField)
 		});
 	}
 

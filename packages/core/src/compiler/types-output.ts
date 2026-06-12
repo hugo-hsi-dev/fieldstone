@@ -1,11 +1,9 @@
 import type { FieldstoneConfig } from '../types.ts';
-import { validateFieldstoneConfig } from './validation.ts';
+import { compileCollectionModel } from './collection-model.ts';
 
 export function generateTypes(config: FieldstoneConfig) {
-	validateFieldstoneConfig(config);
-
-	const collections = Object.values(config.collections)
-		.map((collection) => {
+	const collections = compileCollectionModel(config)
+		.collections.map((collection) => {
 			const fields = collection.fields
 				.map((field) => `    ${JSON.stringify(field.name)}${field.required ? '' : '?'}: string;`)
 				.join('\n');
