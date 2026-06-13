@@ -63,11 +63,11 @@ export function fieldstone(options: FieldstonePluginOptions): Plugin {
 	let rebuildTimer: NodeJS.Timeout | undefined;
 
 	async function rebuild(server: ViteDevServer) {
+		await assertNoBlankKnownCollections(root, previousCollectionSlugs);
 		server.moduleGraph.invalidateAll();
 		invalidateImporters(server, RESOLVED_CONFIG_ID);
 
 		const config = (await server.ssrLoadModule(CONFIG_ID)).default as FieldstoneConfig;
-		await assertNoBlankKnownCollections(root, previousCollectionSlugs);
 		const compiled = compileFieldstoneConfig(config);
 		const fingerprint = compiled.schemaFingerprint();
 		await writeTypes(root, compiled);
