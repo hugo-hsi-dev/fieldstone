@@ -18,7 +18,7 @@
 	],
 	"scripts": {
 		"test": "vitest --run",
-		"typecheck": "svelte-check",
+		"typecheck": "svelte-check --tsconfig ./tsconfig.json",
 		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write ."
 	},

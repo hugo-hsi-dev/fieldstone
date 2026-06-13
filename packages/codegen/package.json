@@ -11,7 +11,7 @@
   },
   "scripts": {
     "test": "vitest --run --passWithNoTests",
-    "typecheck": "files=$(find src -name '*.ts' -print 2>/dev/null); [ -z \"$files\" ] || printf '%s\\n' \"$files\" | xargs tsgo --noEmit --allowImportingTsExtensions --moduleResolution bundler --module esnext --target esnext --strict --skipLibCheck --types node",
+    "typecheck": "tsgo -p tsconfig.json",
     "lint": "oxlint .",
     "format": "oxfmt ."
   },

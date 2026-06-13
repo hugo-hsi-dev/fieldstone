@@ -10,12 +10,14 @@
 		issues: () => { message: string }[] | undefined;
 	};
 
+	type RemoteFormFields = {
+		collection: RemoteFormField;
+		data: Record<string, RemoteFormField>;
+		allIssues: () => { message: string }[] | undefined;
+	};
+
 	type RemoteForm = {
-		fields: {
-			collection: RemoteFormField;
-			data: Record<string, RemoteFormField>;
-			allIssues: () => { message: string }[] | undefined;
-		};
+		fields: unknown;
 		pending?: number;
 	} & Record<string, unknown>;
 
@@ -27,18 +29,20 @@
 		form: RemoteForm;
 	} = $props();
 
+	const formFields = $derived(form.fields as RemoteFormFields);
+
 	function hasFieldIssues() {
 		return collection.fields.some((field) => {
-			return (form.fields.data[field.identifier]?.issues() ?? []).length > 0;
+			return (formFields.data[field.identifier]?.issues() ?? []).length > 0;
 		});
 	}
 </script>
 
 <form class="fs-admin__panel fs-admin__form" {...form}>
-	<input {...form.fields.collection.as('hidden', collection.slug)} />
+	<input {...formFields.collection.as('hidden', collection.slug)} />
 
 	{#if !hasFieldIssues()}
-		{#each form.fields.allIssues() ?? [] as issue, index (`${issue.message}-${index}`)}
+		{#each formFields.allIssues() ?? [] as issue, index (`${issue.message}-${index}`)}
 			<p class="fs-admin__error">{issue.message}</p>
 		{/each}
 	{/if}
@@ -46,7 +50,7 @@
 	{#each collection.fields as field (field.name)}
 		<FieldInput
 			{field}
-			formField={form.fields.data[field.identifier]}
+			formField={formFields.data[field.identifier]}
 			id={`create-${collection.slug}-${field.identifier}`}
 		/>
 	{/each}
