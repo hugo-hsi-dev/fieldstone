@@ -8,6 +8,7 @@
 	import DocumentEditForm from './DocumentEditForm.svelte';
 	import DocumentList from './DocumentList.svelte';
 	import { getCollectionLabel, getFieldLabel, getFieldValue } from './labels';
+	import Button from './primitives/Button.svelte';
 	import type { FieldstoneAdminRemotes } from '@fieldstone/remotes';
 	import {
 		adminCollectionPath,
@@ -89,7 +90,7 @@
 			{:else if route.type === 'notFound'}
 				<section class="fs-admin__index">
 					<h1 class="fs-admin__title">Admin route not found</h1>
-					<a class="fs-admin__button" href={adminIndexPath(base)}>Back to admin</a>
+					<Button href={adminIndexPath(base)}>Back to admin</Button>
 				</section>
 			{:else}
 				<div class="fs-admin__grid">
@@ -110,9 +111,9 @@
 						/>
 
 						{#if selectedCollectionSlug}
-							<a class="fs-admin__button fs-admin__button--primary" href={newDocumentHref(selectedCollectionSlug)}>
+							<Button variant="primary" href={newDocumentHref(selectedCollectionSlug)}>
 								New {selectedCollection ? getCollectionLabel(selectedCollection, 'singular').toLowerCase() : 'document'}
-							</a>
+							</Button>
 						{/if}
 					</section>
 
@@ -125,7 +126,7 @@
 									<h2 class="fs-admin__section-title">
 										{getCollectionLabel(collection, 'plural')}
 									</h2>
-									<a class="fs-admin__button" href={newDocumentHref(collection.slug)}>New</a>
+									<Button href={newDocumentHref(collection.slug)}>New</Button>
 								</div>
 
 								<svelte:boundary>
@@ -141,7 +142,7 @@
 									{#snippet failed(error, reset)}
 										<div class="fs-admin__error">
 											<p>{getBoundaryErrorMessage(error)}</p>
-											<button class="fs-admin__button" type="button" onclick={reset}>Retry</button>
+											<Button type="button" onclick={reset}>Retry</Button>
 										</div>
 									{/snippet}
 								</svelte:boundary>
@@ -153,7 +154,7 @@
 								{#snippet failed(error, reset)}
 									<div class="fs-admin__error">
 										<p>{getBoundaryErrorMessage(error)}</p>
-										<button class="fs-admin__button" type="button" onclick={reset}>Retry</button>
+										<Button type="button" onclick={reset}>Retry</Button>
 									</div>
 								{/snippet}
 							</svelte:boundary>
@@ -165,7 +166,7 @@
 									<h2 class="fs-admin__section-title">
 										New {getCollectionLabel(collection, 'singular').toLowerCase()}
 									</h2>
-									<a class="fs-admin__button" href={collectionHref(collection.slug)}>Back to list</a>
+									<Button href={collectionHref(collection.slug)}>Back to list</Button>
 								</div>
 
 								<CreateDocumentForm collection={collection} form={remotes.createDocument.for(collection.slug)} />
@@ -177,7 +178,7 @@
 								{#snippet failed(error, reset)}
 									<div class="fs-admin__error">
 										<p>{getBoundaryErrorMessage(error)}</p>
-										<button class="fs-admin__button" type="button" onclick={reset}>Retry</button>
+										<Button type="button" onclick={reset}>Retry</Button>
 									</div>
 								{/snippet}
 							</svelte:boundary>
@@ -198,8 +199,8 @@
 												{getFieldValue(document, collection.fields[0]?.name ?? 'id')}
 											</h2>
 											<div class="fs-admin__actions">
-												<a class="fs-admin__button" href={editDocumentHref(collection.slug, document.id)}>Edit</a>
-												<a class="fs-admin__button" href={collectionHref(collection.slug)}>Back to list</a>
+												<Button href={editDocumentHref(collection.slug, document.id)}>Edit</Button>
+												<Button href={collectionHref(collection.slug)}>Back to list</Button>
 											</div>
 										</div>
 
@@ -220,12 +221,9 @@
 												<p class="fs-admin__error">{issue.message}</p>
 											{/each}
 
-											<button
-												class="fs-admin__button fs-admin__button--danger"
-												disabled={Boolean(deleteForm.pending)}
-											>
+											<Button variant="danger" disabled={Boolean(deleteForm.pending)}>
 												Delete {getCollectionLabel(collection, 'singular').toLowerCase()}
-											</button>
+											</Button>
 										</form>
 									</article>
 
@@ -236,7 +234,7 @@
 									{#snippet failed(error, reset)}
 										<div class="fs-admin__error">
 											<p>{getBoundaryErrorMessage(error)}</p>
-											<button class="fs-admin__button" type="button" onclick={reset}>Retry</button>
+											<Button type="button" onclick={reset}>Retry</Button>
 										</div>
 									{/snippet}
 								</svelte:boundary>
@@ -248,7 +246,7 @@
 								{#snippet failed(error, reset)}
 									<div class="fs-admin__error">
 										<p>{getBoundaryErrorMessage(error)}</p>
-										<button class="fs-admin__button" type="button" onclick={reset}>Retry</button>
+										<Button type="button" onclick={reset}>Retry</Button>
 									</div>
 								{/snippet}
 							</svelte:boundary>
@@ -267,7 +265,7 @@
 										<h2 class="fs-admin__section-title">
 											Edit {getCollectionLabel(collection, 'singular').toLowerCase()}
 										</h2>
-										<a class="fs-admin__button" href={documentHref(collection.slug, document.id)}>Back to detail</a>
+										<Button href={documentHref(collection.slug, document.id)}>Back to detail</Button>
 									</div>
 
 									<DocumentEditForm {collection} {document} form={updateForm} />
@@ -279,7 +277,7 @@
 									{#snippet failed(error, reset)}
 										<div class="fs-admin__error">
 											<p>{getBoundaryErrorMessage(error)}</p>
-											<button class="fs-admin__button" type="button" onclick={reset}>Retry</button>
+											<Button type="button" onclick={reset}>Retry</Button>
 										</div>
 									{/snippet}
 								</svelte:boundary>
@@ -291,7 +289,7 @@
 								{#snippet failed(error, reset)}
 									<div class="fs-admin__error">
 										<p>{getBoundaryErrorMessage(error)}</p>
-										<button class="fs-admin__button" type="button" onclick={reset}>Retry</button>
+										<Button type="button" onclick={reset}>Retry</Button>
 									</div>
 								{/snippet}
 							</svelte:boundary>
@@ -307,7 +305,7 @@
 			{#snippet failed(error, reset)}
 				<div class="fs-admin__error">
 					<p>{getBoundaryErrorMessage(error)}</p>
-					<button class="fs-admin__button" type="button" onclick={reset}>Retry</button>
+					<Button type="button" onclick={reset}>Retry</Button>
 				</div>
 			{/snippet}
 		</svelte:boundary>
@@ -435,49 +433,6 @@
 
 	.fs-admin__muted {
 		color: var(--fs-admin-muted);
-	}
-
-	.fs-admin__button {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		box-sizing: border-box;
-		min-height: 2.5rem;
-		border: 1px solid var(--fs-admin-border-strong);
-		border-radius: 0.375rem;
-		background: var(--fs-admin-panel);
-		color: var(--fs-admin-text);
-		padding: 0.5rem 0.75rem;
-		font-size: 0.875rem;
-		font-weight: 500;
-		text-decoration: none;
-	}
-
-	.fs-admin__button:hover {
-		background: #f4f4f5;
-	}
-
-	.fs-admin__button--primary {
-		border-color: var(--fs-admin-primary);
-		background: var(--fs-admin-primary);
-		color: white;
-	}
-
-	.fs-admin__button--primary:hover {
-		background: var(--fs-admin-primary-hover);
-	}
-
-	.fs-admin__button--danger {
-		border-color: var(--fs-admin-danger-border);
-		color: var(--fs-admin-danger);
-	}
-
-	.fs-admin__button--danger:hover {
-		background: var(--fs-admin-danger-bg);
-	}
-
-	.fs-admin__button:disabled {
-		opacity: 0.55;
 	}
 
 	@media (min-width: 1024px) {

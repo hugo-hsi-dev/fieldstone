@@ -4,6 +4,7 @@
 
 	import FieldInput from './FieldInput.svelte';
 	import { getCollectionLabel, getFieldValue } from './labels';
+	import Button from './primitives/Button.svelte';
 	import { adminDocumentPath } from '@fieldstone/routes';
 
 	type RemoteForm = {
@@ -49,10 +50,10 @@
 	{/each}
 
 	<div class="fs-admin__actions">
-		<button class="fs-admin__button fs-admin__button--primary" disabled={Boolean(form.pending)}>
+		<Button variant="primary" disabled={Boolean(form.pending)}>
 			Save {getCollectionLabel(collection, 'singular').toLowerCase()}
-		</button>
-		<a class="fs-admin__button" href={adminDocumentPath(collection.slug, document.id, base)}>Cancel</a>
+		</Button>
+		<Button href={adminDocumentPath(collection.slug, document.id, base)}>Cancel</Button>
 	</div>
 </form>
 
@@ -73,38 +74,6 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.5rem;
-	}
-
-	.fs-admin__button {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		border: 1px solid var(--fs-admin-border-strong);
-		border-radius: 0.375rem;
-		background: var(--fs-admin-panel);
-		color: var(--fs-admin-text);
-		padding: 0.5rem 0.75rem;
-		font-size: 0.875rem;
-		font-weight: 500;
-		text-decoration: none;
-	}
-
-	.fs-admin__button:hover {
-		background: #f4f4f5;
-	}
-
-	.fs-admin__button--primary {
-		border-color: var(--fs-admin-primary);
-		background: var(--fs-admin-primary);
-		color: white;
-	}
-
-	.fs-admin__button--primary:hover {
-		background: var(--fs-admin-primary-hover);
-	}
-
-	.fs-admin__button:disabled {
-		opacity: 0.55;
 	}
 
 	.fs-admin__error {
