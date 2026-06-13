@@ -76,4 +76,15 @@ describe('collection discovery', () => {
 			await rm(root, { recursive: true, force: true });
 		}
 	});
+
+	it('does not read ignored collection directories', async () => {
+		const root = await mkdtemp(path.join(tmpdir(), 'fieldstone-codegen-'));
+		await mkdir(path.join(root, 'src', 'cms', '_draft', '+collection.ts'), { recursive: true });
+
+		try {
+			await expect(discoverCollections(root)).resolves.toEqual([]);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
 });

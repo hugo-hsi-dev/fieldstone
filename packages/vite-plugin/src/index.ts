@@ -1,6 +1,6 @@
 /// <reference path="./fieldstone-config.d.ts" />
 
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import type { FieldstoneConfig, FieldstoneConfigInput } from '@fieldstone/schema';
@@ -25,6 +25,24 @@ async function writeTypes(root: string, compiled: ReturnType<typeof compileField
 	await writeFile(outputFile, compiled.renderTypesDeclaration());
 }
 
+async function assertNoBlankKnownCollections(root: string, knownSlugs: ReadonlySet<string>) {
+	for (const slug of knownSlugs) {
+		const file = path.join(root, CMS_DIR, slug, COLLECTION_FILENAME);
+
+		try {
+			const source = await readFile(file, 'utf-8');
+			if (!source.trim()) {
+				throw new Error(`Collection ${slug} is temporarily blank. Keeping previous config.`);
+			}
+		} catch (error) {
+			if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+				continue;
+			}
+			throw error;
+		}
+	}
+}
+
 function invalidateImporters(server: ViteDevServer, id: string, seen = new Set<string>()) {
 	if (seen.has(id)) return;
 	seen.add(id);
@@ -41,6 +59,7 @@ function invalidateImporters(server: ViteDevServer, id: string, seen = new Set<s
 export function fieldstone(options: FieldstonePluginOptions): Plugin {
 	let root = process.cwd();
 	let previousFingerprint = '';
+	let previousCollectionSlugs = new Set<string>();
 	let rebuildTimer: NodeJS.Timeout | undefined;
 
 	async function rebuild(server: ViteDevServer) {
@@ -48,9 +67,11 @@ export function fieldstone(options: FieldstonePluginOptions): Plugin {
 		invalidateImporters(server, RESOLVED_CONFIG_ID);
 
 		const config = (await server.ssrLoadModule(CONFIG_ID)).default as FieldstoneConfig;
+		await assertNoBlankKnownCollections(root, previousCollectionSlugs);
 		const compiled = compileFieldstoneConfig(config);
 		const fingerprint = compiled.schemaFingerprint();
 		await writeTypes(root, compiled);
+		previousCollectionSlugs = new Set(Object.keys(config.collections));
 
 		if (fingerprint !== previousFingerprint) {
 			const didPush = await pushSchema(config, compiled);

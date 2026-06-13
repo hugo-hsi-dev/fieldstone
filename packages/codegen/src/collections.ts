@@ -92,6 +92,7 @@ export async function discoverCollections(root: string): Promise<CollectionFile[
 		await Promise.all(
 			entries
 				.filter((entry) => entry.isDirectory())
+				.filter((entry) => isCollectionEntry(entry.name) || entry.name === '__proto__')
 				.map((entry) => readCollectionEntry(cmsDir, entry.name))
 		)
 	).filter((entry): entry is CollectionEntry => entry !== null);
