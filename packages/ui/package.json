@@ -17,6 +17,7 @@
 		"*.css"
 	],
 	"scripts": {
+		"typecheck": "svelte-check --tsconfig ./tsconfig.json",
 		"test": "vitest --run"
 	},
 	"dependencies": {
@@ -29,6 +30,8 @@
 		"svelte": "^5.56.1"
 	},
 	"devDependencies": {
+		"svelte-check": "^4.6.0",
+		"typescript": "^6.0.3",
 		"vitest": "^4.1.8"
 	}
 }

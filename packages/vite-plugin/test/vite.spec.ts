@@ -7,12 +7,21 @@ import { describe, expect, it } from 'vitest';
 import { createCollectionScaffold, RESOLVED_CONFIG_ID } from '@fieldstone/codegen';
 import { fieldstone } from '../src/index.ts';
 
+function hook<T extends (...args: never[]) => unknown>(value: T | { handler: T } | undefined): T {
+	if (typeof value === 'function') return value;
+	if (value && 'handler' in value) return value.handler;
+	throw new Error('Expected plugin hook');
+}
+
 describe('fieldstone vite plugin', () => {
 	it('rejects client imports of $fieldstone-config', () => {
 		const plugin = fieldstone({ db: { dialect: 'sqlite', url: ':memory:' } });
 
 		expect(() =>
-			plugin.resolveId?.call({} as never, '$fieldstone-config', undefined, { ssr: false })
+			hook(plugin.resolveId).call({} as never, '$fieldstone-config', undefined, {
+				isEntry: false,
+				ssr: false
+			})
 		).toThrow('$fieldstone-config is server-only');
 	});
 
@@ -34,8 +43,8 @@ export default collection({
 
 		try {
 			const plugin = fieldstone({ db: { dialect: 'sqlite', url: 'fallback.db' } });
-			plugin.configResolved?.call({} as never, { root } as never);
-			const source = await plugin.load?.call({} as never, RESOLVED_CONFIG_ID);
+			hook(plugin.configResolved).call({} as never, { root } as never);
+			const source = await hook(plugin.load).call({} as never, RESOLVED_CONFIG_ID);
 
 			expect(source).toContain('process.env.DATABASE_URL ?? "fallback.db"');
 			expect(source).toContain('dialect: "sqlite"');
@@ -53,9 +62,9 @@ export default collection({
 
 		try {
 			const plugin = fieldstone({ db: { dialect: 'sqlite', url: ':memory:' } });
-			plugin.configResolved?.call({} as never, { root } as never);
+			hook(plugin.configResolved).call({} as never, { root } as never);
 
-			await expect(plugin.load?.call({} as never, RESOLVED_CONFIG_ID)).rejects.toThrow(
+			await expect(hook(plugin.load).call({} as never, RESOLVED_CONFIG_ID)).rejects.toThrow(
 				'Reserved collection slug: __proto__'
 			);
 		} finally {
@@ -72,9 +81,9 @@ export default collection({
 
 		try {
 			const plugin = fieldstone({ db: { dialect: 'sqlite', url: ':memory:' } });
-			plugin.configResolved?.call({} as never, { root } as never);
+			hook(plugin.configResolved).call({} as never, { root } as never);
 
-			const source = await plugin.load?.call({} as never, RESOLVED_CONFIG_ID);
+			const source = await hook(plugin.load).call({} as never, RESOLVED_CONFIG_ID);
 
 			expect(source).toContain('"posts": runtimeCollection0');
 			expect(source).not.toContain('_draft');

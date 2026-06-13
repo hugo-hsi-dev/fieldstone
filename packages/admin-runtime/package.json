@@ -10,6 +10,7 @@
 		}
 	},
 	"scripts": {
+		"typecheck": "tsgo -p tsconfig.json",
 		"test": "vitest --run"
 	},
 	"dependencies": {
@@ -18,6 +19,7 @@
 	},
 	"devDependencies": {
 		"@libsql/client": "^0.15.15",
+		"@typescript/native-preview": "^7.0.0-dev.20260612.1",
 		"typescript": "^6.0.3",
 		"vitest": "^4.1.8"
 	}

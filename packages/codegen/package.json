@@ -10,6 +10,7 @@
 		}
 	},
 	"scripts": {
+		"typecheck": "tsgo -p tsconfig.json",
 		"test": "vitest --run --passWithNoTests"
 	},
 	"dependencies": {
@@ -22,6 +23,7 @@
 		"drizzle-kit": "^0.31.10"
 	},
 	"devDependencies": {
+		"@typescript/native-preview": "^7.0.0-dev.20260612.1",
 		"drizzle-kit": "^0.31.10",
 		"typescript": "^6.0.3",
 		"vitest": "^4.1.8"
