@@ -1,6 +1,6 @@
 /// <reference path="./fieldstone-config.d.ts" />
 
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import type { FieldstoneConfig, FieldstoneConfigInput } from '@fieldstone/schema';
@@ -14,8 +14,7 @@ import {
 	RESOLVED_CONFIG_ID,
 	isWatchedCollectionFile,
 	loadVirtualConfig,
-	pushSchema,
-	scaffoldCollectionFile
+	pushSchema
 } from '@fieldstone/codegen';
 
 type FieldstonePluginOptions = FieldstoneConfigInput;
@@ -24,6 +23,24 @@ async function writeTypes(root: string, compiled: ReturnType<typeof compileField
 	const outputFile = path.join(root, '.fieldstone', 'types.d.ts');
 	await mkdir(path.dirname(outputFile), { recursive: true });
 	await writeFile(outputFile, compiled.renderTypesDeclaration());
+}
+
+async function assertNoBlankKnownCollections(root: string, knownSlugs: ReadonlySet<string>) {
+	for (const slug of knownSlugs) {
+		const file = path.join(root, CMS_DIR, slug, COLLECTION_FILENAME);
+
+		try {
+			const source = await readFile(file, 'utf-8');
+			if (!source.trim()) {
+				throw new Error(`Collection ${slug} is temporarily blank. Keeping previous config.`);
+			}
+		} catch (error) {
+			if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+				continue;
+			}
+			throw error;
+		}
+	}
 }
 
 function invalidateImporters(server: ViteDevServer, id: string, seen = new Set<string>()) {
@@ -42,9 +59,11 @@ function invalidateImporters(server: ViteDevServer, id: string, seen = new Set<s
 export function fieldstone(options: FieldstonePluginOptions): Plugin {
 	let root = process.cwd();
 	let previousFingerprint = '';
+	let previousCollectionSlugs = new Set<string>();
 	let rebuildTimer: NodeJS.Timeout | undefined;
 
 	async function rebuild(server: ViteDevServer) {
+		await assertNoBlankKnownCollections(root, previousCollectionSlugs);
 		server.moduleGraph.invalidateAll();
 		invalidateImporters(server, RESOLVED_CONFIG_ID);
 
@@ -52,24 +71,25 @@ export function fieldstone(options: FieldstonePluginOptions): Plugin {
 		const compiled = compileFieldstoneConfig(config);
 		const fingerprint = compiled.schemaFingerprint();
 		await writeTypes(root, compiled);
+		previousCollectionSlugs = new Set(Object.keys(config.collections));
 
 		if (fingerprint !== previousFingerprint) {
 			const didPush = await pushSchema(config, compiled);
 			if (!didPush) return;
 			previousFingerprint = fingerprint;
+			server.ws.send({ type: 'full-reload' });
 		}
+	}
 
-		server.ws.send({ type: 'full-reload' });
+	function warnRebuildFailure(server: ViteDevServer, error: unknown) {
+		const message = error instanceof Error ? error.stack || error.message : String(error);
+		server.config.logger.warn(`Fieldstone collection rebuild failed. Keeping previous config.\n${message}`);
 	}
 
 	function scheduleRebuild(server: ViteDevServer) {
 		clearTimeout(rebuildTimer);
 		rebuildTimer = setTimeout(() => {
-			void rebuild(server).catch((error) => {
-				server.config.logger.error(
-					error instanceof Error ? error.stack || error.message : String(error)
-				);
-			});
+			void rebuild(server).catch((error) => warnRebuildFailure(server, error));
 		}, 100);
 	}
 
@@ -101,13 +121,7 @@ export function fieldstone(options: FieldstonePluginOptions): Plugin {
 			server.watcher.add(path.join(cmsDir, '*', COLLECTION_FILENAME));
 			server.watcher.on('add', (file) => {
 				if (!isWatchedCollectionFile(cmsDir, file)) return;
-				void scaffoldCollectionFile(file)
-					.catch((error) => {
-						server.config.logger.error(
-							error instanceof Error ? error.stack || error.message : String(error)
-						);
-					})
-					.finally(() => scheduleRebuild(server));
+				scheduleRebuild(server);
 			});
 			server.watcher.on('change', (file) => {
 				if (isWatchedCollectionFile(cmsDir, file)) scheduleRebuild(server);

@@ -1,4 +1,4 @@
-import { access, readFile, readdir, writeFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 
 export const CMS_DIR = path.join('src', 'cms');
@@ -7,6 +7,11 @@ export const COLLECTION_FILENAME = '+collection.ts';
 export type CollectionFile = {
 	file: string;
 	slug: string;
+};
+
+export type CollectionEntry = {
+	entry: string;
+	isBlank: boolean;
 };
 
 export function normalizePath(file: string) {
@@ -37,10 +42,12 @@ export function isWatchedCollectionFile(cmsDir: string, file: string) {
 	);
 }
 
-export function validateCollectionEntries(entries: string[]) {
+export function validateCollectionEntries(entries: CollectionEntry[]) {
 	const slugs = new Set<string>();
 
-	for (const entry of entries) {
+	for (const { entry, isBlank } of entries) {
+		if (isBlank) continue;
+
 		const slug = entry;
 		if (slug === '__proto__') throw new Error('Reserved collection slug: __proto__');
 		if (entry.startsWith('_')) continue;
@@ -49,25 +56,6 @@ export function validateCollectionEntries(entries: string[]) {
 		if (slugs.has(normalizedSlug)) throw new Error(`Duplicate collection slug: ${slug}`);
 		slugs.add(normalizedSlug);
 	}
-}
-
-export function createCollectionScaffold(_slug: string) {
-	return `import { collection, text } from '@fieldstone/schema';
-
-export default collection({
-\tfields: [
-\t\ttext({ name: 'title', required: true })
-\t]
-});
-`;
-}
-
-export async function scaffoldCollectionFile(file: string) {
-	const source = await readFile(file, 'utf-8');
-	if (source.trim()) return false;
-
-	await writeFile(file, createCollectionScaffold(path.basename(file, '.ts')));
-	return true;
 }
 
 export async function readCollectionEntries(root: string) {
@@ -80,28 +68,41 @@ export async function readCollectionEntries(root: string) {
 	}
 }
 
+async function readCollectionEntry(cmsDir: string, entry: string): Promise<CollectionEntry | null> {
+	const file = path.join(cmsDir, entry, COLLECTION_FILENAME);
+
+	try {
+		const source = await readFile(file, 'utf-8');
+		return {
+			entry,
+			isBlank: !source.trim()
+		};
+	} catch (error) {
+		if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+			return null;
+		}
+		throw error;
+	}
+}
+
 export async function discoverCollections(root: string): Promise<CollectionFile[]> {
 	const cmsDir = path.join(root, CMS_DIR);
 	const entries = await readCollectionEntries(root);
-	const collectionEntries = [];
+	const collectionEntries = (
+		await Promise.all(
+			entries
+				.filter((entry) => entry.isDirectory())
+				.filter((entry) => isCollectionEntry(entry.name) || entry.name === '__proto__')
+				.map((entry) => readCollectionEntry(cmsDir, entry.name))
+		)
+	).filter((entry): entry is CollectionEntry => entry !== null);
 
-	for (const entry of entries) {
-		if (!entry.isDirectory()) continue;
-		const file = path.join(cmsDir, entry.name, COLLECTION_FILENAME);
-		try {
-			await access(file);
-			collectionEntries.push(entry.name);
-		} catch {
-			continue;
-		}
-	}
-
-	collectionEntries.sort();
+	collectionEntries.sort((a, b) => a.entry.localeCompare(b.entry));
 	validateCollectionEntries(collectionEntries);
 
 	return collectionEntries
-		.filter(isCollectionEntry)
-		.map((entry) => ({
+		.filter(({ entry, isBlank }) => !isBlank && isCollectionEntry(entry))
+		.map(({ entry }) => ({
 			file: path.join(cmsDir, entry, COLLECTION_FILENAME),
 			slug: entry
 		}));
