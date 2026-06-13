@@ -8,6 +8,47 @@ importers:
 
   .: {}
 
+  config/eslint:
+    devDependencies:
+      '@eslint/js':
+        specifier: ^10.0.1
+        version: 10.0.1(eslint@10.4.1(jiti@2.7.0))
+      eslint:
+        specifier: ^10.4.1
+        version: 10.4.1(jiti@2.7.0)
+      eslint-config-prettier:
+        specifier: ^10.1.8
+        version: 10.1.8(eslint@10.4.1(jiti@2.7.0))
+      eslint-plugin-svelte:
+        specifier: ^3.19.0
+        version: 3.19.0(eslint@10.4.1(jiti@2.7.0))(svelte@5.56.3(@typescript-eslint/types@8.61.0))
+      globals:
+        specifier: ^17.6.0
+        version: 17.6.0
+      typescript-eslint:
+        specifier: ^8.60.1
+        version: 8.61.0(eslint@10.4.1(jiti@2.7.0))(typescript@6.0.3)
+
+  config/oxfmt:
+    devDependencies:
+      oxfmt:
+        specifier: ^0.17.0
+        version: 0.17.0
+
+  config/oxlint:
+    devDependencies:
+      oxlint:
+        specifier: ^1.29.0
+        version: 1.69.0
+
+  config/prettier:
+    devDependencies:
+      prettier-plugin-svelte:
+        specifier: ^4.1.0
+        version: 4.1.0(prettier@3.8.4)(svelte@5.56.3(@typescript-eslint/types@8.61.0))
+
+  config/tsconfig: {}
+
   packages/admin-runtime:
     dependencies:
       '@fieldstone/runtime':
@@ -17,6 +58,15 @@ importers:
         specifier: workspace:*
         version: link:../schema
     devDependencies:
+      '@fieldstone/oxfmt-config':
+        specifier: workspace:*
+        version: link:../../config/oxfmt
+      '@fieldstone/oxlint-config':
+        specifier: workspace:*
+        version: link:../../config/oxlint
+      '@fieldstone/tsconfig':
+        specifier: workspace:*
+        version: link:../../config/tsconfig
       '@libsql/client':
         specifier: ^0.15.15
         version: 0.15.15
@@ -54,6 +104,15 @@ importers:
         specifier: ^8.0.16
         version: 8.0.16(@types/node@24.13.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)
     devDependencies:
+      '@fieldstone/oxfmt-config':
+        specifier: workspace:*
+        version: link:../../config/oxfmt
+      '@fieldstone/oxlint-config':
+        specifier: workspace:*
+        version: link:../../config/oxlint
+      '@fieldstone/tsconfig':
+        specifier: workspace:*
+        version: link:../../config/tsconfig
       '@types/node':
         specifier: ^24.13.1
         version: 24.13.1
@@ -88,6 +147,15 @@ importers:
         specifier: ^0.45.2
         version: 0.45.2(@libsql/client@0.15.15)(@prisma/client@5.22.0)(@types/better-sqlite3@7.6.13)(@types/pg@8.20.0)(better-sqlite3@12.10.0)(kysely@0.28.17)(pg@8.21.0)
     devDependencies:
+      '@fieldstone/oxfmt-config':
+        specifier: workspace:*
+        version: link:../../config/oxfmt
+      '@fieldstone/oxlint-config':
+        specifier: workspace:*
+        version: link:../../config/oxlint
+      '@fieldstone/tsconfig':
+        specifier: workspace:*
+        version: link:../../config/tsconfig
       '@types/node':
         specifier: ^24.13.1
         version: 24.13.1
@@ -119,6 +187,15 @@ importers:
         specifier: ^0.45.2
         version: 0.45.2(@libsql/client@0.15.15)(@prisma/client@5.22.0)(@types/better-sqlite3@7.6.13)(@types/pg@8.20.0)(better-sqlite3@12.10.0)(kysely@0.28.17)(pg@8.21.0)
     devDependencies:
+      '@fieldstone/oxfmt-config':
+        specifier: workspace:*
+        version: link:../../config/oxfmt
+      '@fieldstone/oxlint-config':
+        specifier: workspace:*
+        version: link:../../config/oxlint
+      '@fieldstone/tsconfig':
+        specifier: workspace:*
+        version: link:../../config/tsconfig
       '@types/node':
         specifier: ^24.13.1
         version: 24.13.1
@@ -159,6 +236,15 @@ importers:
         specifier: ^1.4.1
         version: 1.4.1(typescript@6.0.3)
     devDependencies:
+      '@fieldstone/oxfmt-config':
+        specifier: workspace:*
+        version: link:../../config/oxfmt
+      '@fieldstone/oxlint-config':
+        specifier: workspace:*
+        version: link:../../config/oxlint
+      '@fieldstone/tsconfig':
+        specifier: workspace:*
+        version: link:../../config/tsconfig
       '@sveltejs/kit':
         specifier: ^2.64.0
         version: 2.64.0(@sveltejs/vite-plugin-svelte@7.1.2(svelte@5.56.3(@typescript-eslint/types@8.61.0))(vite@8.0.16(@types/node@24.13.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)))(svelte@5.56.3(@typescript-eslint/types@8.61.0))(typescript@6.0.3)(vite@8.0.16(@types/node@24.13.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4))
@@ -180,6 +266,15 @@ importers:
 
   packages/routes:
     devDependencies:
+      '@fieldstone/oxfmt-config':
+        specifier: workspace:*
+        version: link:../../config/oxfmt
+      '@fieldstone/oxlint-config':
+        specifier: workspace:*
+        version: link:../../config/oxlint
+      '@fieldstone/tsconfig':
+        specifier: workspace:*
+        version: link:../../config/tsconfig
       '@types/node':
         specifier: ^24.13.1
         version: 24.13.1
@@ -214,6 +309,15 @@ importers:
         specifier: ^0.45.2
         version: 0.45.2(@libsql/client@0.15.15)(@prisma/client@5.22.0)(@types/better-sqlite3@7.6.13)(@types/pg@8.20.0)(better-sqlite3@12.10.0)(kysely@0.28.17)(pg@8.21.0)
     devDependencies:
+      '@fieldstone/oxfmt-config':
+        specifier: workspace:*
+        version: link:../../config/oxfmt
+      '@fieldstone/oxlint-config':
+        specifier: workspace:*
+        version: link:../../config/oxlint
+      '@fieldstone/tsconfig':
+        specifier: workspace:*
+        version: link:../../config/tsconfig
       '@types/node':
         specifier: ^24.13.1
         version: 24.13.1
@@ -235,6 +339,15 @@ importers:
 
   packages/schema:
     devDependencies:
+      '@fieldstone/oxfmt-config':
+        specifier: workspace:*
+        version: link:../../config/oxfmt
+      '@fieldstone/oxlint-config':
+        specifier: workspace:*
+        version: link:../../config/oxlint
+      '@fieldstone/tsconfig':
+        specifier: workspace:*
+        version: link:../../config/tsconfig
       '@types/node':
         specifier: ^24.13.1
         version: 24.13.1
@@ -269,30 +382,24 @@ importers:
         specifier: ^2.18.1
         version: 2.18.1(@internationalized/date@3.12.2)(@sveltejs/kit@2.64.0(@sveltejs/vite-plugin-svelte@7.1.2(svelte@5.56.3(@typescript-eslint/types@8.61.0))(vite@8.0.16(@types/node@24.13.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)))(svelte@5.56.3(@typescript-eslint/types@8.61.0))(typescript@6.0.3)(vite@8.0.16(@types/node@24.13.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)))(svelte@5.56.3(@typescript-eslint/types@8.61.0))
     devDependencies:
-      '@eslint/js':
-        specifier: ^10.0.1
-        version: 10.0.1(eslint@10.4.1(jiti@2.7.0))
+      '@fieldstone/eslint-config':
+        specifier: workspace:*
+        version: link:../../config/eslint
+      '@fieldstone/prettier-config':
+        specifier: workspace:*
+        version: link:../../config/prettier
+      '@fieldstone/tsconfig':
+        specifier: workspace:*
+        version: link:../../config/tsconfig
       '@sveltejs/kit':
         specifier: ^2.64.0
         version: 2.64.0(@sveltejs/vite-plugin-svelte@7.1.2(svelte@5.56.3(@typescript-eslint/types@8.61.0))(vite@8.0.16(@types/node@24.13.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)))(svelte@5.56.3(@typescript-eslint/types@8.61.0))(typescript@6.0.3)(vite@8.0.16(@types/node@24.13.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4))
       eslint:
         specifier: ^10.4.1
         version: 10.4.1(jiti@2.7.0)
-      eslint-config-prettier:
-        specifier: ^10.1.8
-        version: 10.1.8(eslint@10.4.1(jiti@2.7.0))
-      eslint-plugin-svelte:
-        specifier: ^3.19.0
-        version: 3.19.0(eslint@10.4.1(jiti@2.7.0))(svelte@5.56.3(@typescript-eslint/types@8.61.0))
-      globals:
-        specifier: ^17.6.0
-        version: 17.6.0
       prettier:
         specifier: ^3.8.3
         version: 3.8.4
-      prettier-plugin-svelte:
-        specifier: ^4.1.0
-        version: 4.1.0(prettier@3.8.4)(svelte@5.56.3(@typescript-eslint/types@8.61.0))
       svelte:
         specifier: ^5.56.1
         version: 5.56.3(@typescript-eslint/types@8.61.0)
@@ -302,9 +409,6 @@ importers:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
-      typescript-eslint:
-        specifier: ^8.60.1
-        version: 8.61.0(eslint@10.4.1(jiti@2.7.0))(typescript@6.0.3)
       vitest:
         specifier: ^4.1.8
         version: 4.1.8(@types/node@24.13.1)(@vitest/browser-playwright@4.1.8)(vite@8.0.16(@types/node@24.13.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4))
@@ -321,6 +425,15 @@ importers:
         specifier: workspace:*
         version: link:../schema
     devDependencies:
+      '@fieldstone/oxfmt-config':
+        specifier: workspace:*
+        version: link:../../config/oxfmt
+      '@fieldstone/oxlint-config':
+        specifier: workspace:*
+        version: link:../../config/oxlint
+      '@fieldstone/tsconfig':
+        specifier: workspace:*
+        version: link:../../config/tsconfig
       '@types/node':
         specifier: ^24.13.1
         version: 24.13.1
@@ -364,9 +477,15 @@ importers:
         specifier: ^1.4.1
         version: 1.4.1(typescript@6.0.3)
     devDependencies:
-      '@eslint/js':
-        specifier: ^10.0.1
-        version: 10.0.1(eslint@10.4.1(jiti@2.7.0))
+      '@fieldstone/eslint-config':
+        specifier: workspace:*
+        version: link:../../config/eslint
+      '@fieldstone/prettier-config':
+        specifier: workspace:*
+        version: link:../../config/prettier
+      '@fieldstone/tsconfig':
+        specifier: workspace:*
+        version: link:../../config/tsconfig
       '@playwright/test':
         specifier: ^1.60.0
         version: 1.60.0
@@ -388,24 +507,12 @@ importers:
       eslint:
         specifier: ^10.4.1
         version: 10.4.1(jiti@2.7.0)
-      eslint-config-prettier:
-        specifier: ^10.1.8
-        version: 10.1.8(eslint@10.4.1(jiti@2.7.0))
-      eslint-plugin-svelte:
-        specifier: ^3.19.0
-        version: 3.19.0(eslint@10.4.1(jiti@2.7.0))(svelte@5.56.3(@typescript-eslint/types@8.61.0))
-      globals:
-        specifier: ^17.6.0
-        version: 17.6.0
       playwright:
         specifier: ^1.60.0
         version: 1.60.0
       prettier:
         specifier: ^3.8.3
         version: 3.8.4
-      prettier-plugin-svelte:
-        specifier: ^4.1.0
-        version: 4.1.0(prettier@3.8.4)(svelte@5.56.3(@typescript-eslint/types@8.61.0))
       svelte:
         specifier: ^5.56.1
         version: 5.56.3(@typescript-eslint/types@8.61.0)
@@ -415,9 +522,6 @@ importers:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
-      typescript-eslint:
-        specifier: ^8.60.1
-        version: 8.61.0(eslint@10.4.1(jiti@2.7.0))(typescript@6.0.3)
       vite:
         specifier: ^8.0.16
         version: 8.0.16(@types/node@24.13.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)

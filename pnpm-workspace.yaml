@@ -1,5 +1,6 @@
 packages:
   - packages/*
+  - config/*
   - test/*
 allowBuilds:
   '@prisma/client': true
