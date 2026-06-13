@@ -8,14 +8,17 @@ import { describe, expect, it } from 'vitest';
 const packageRoot = path.dirname(fileURLToPath(new URL('../package.json', import.meta.url)));
 const cliPath = path.join(packageRoot, 'bin', 'fieldstone.mjs');
 
-function runFieldstoneGenerate(cwd: string) {
+function runFieldstone(command: 'generate' | 'push', cwd: string, databaseURL: string | undefined = ':memory:') {
 	return new Promise<{ stderr: string; stdout: string }>((resolve, reject) => {
-		const child = spawn(process.execPath, [cliPath, 'generate'], {
+		const env = { ...process.env };
+		if (databaseURL === undefined) {
+			delete env.DATABASE_URL;
+		} else {
+			env.DATABASE_URL = databaseURL;
+		}
+		const child = spawn(process.execPath, [cliPath, command], {
 			cwd,
-			env: {
-				...process.env,
-				DATABASE_URL: ':memory:'
-			},
+			env,
 			stdio: ['ignore', 'pipe', 'pipe']
 		});
 		let stdout = '';
@@ -34,9 +37,13 @@ function runFieldstoneGenerate(cwd: string) {
 				return;
 			}
 
-			reject(new Error(`fieldstone generate exited ${code}\n${stdout}\n${stderr}`));
+			reject(new Error(`fieldstone ${command} exited ${code}\n${stdout}\n${stderr}`));
 		});
 	});
+}
+
+function runFieldstoneGenerate(cwd: string) {
+	return runFieldstone('generate', cwd);
 }
 
 describe('fieldstone cli', () => {
@@ -114,4 +121,5 @@ export default collection({
 			await rm(root, { recursive: true, force: true });
 		}
 	});
+
 });
