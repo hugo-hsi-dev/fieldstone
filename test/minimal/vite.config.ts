@@ -1,4 +1,3 @@
-import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
 import adapter from '@sveltejs/adapter-auto';
@@ -8,11 +7,12 @@ import { fieldstone } from '@fieldstone/vite-plugin';
 
 export default defineConfig(({ mode }) => {
 	const env = loadEnv(mode, process.cwd(), '');
-	const databaseURL = env.DATABASE_URL ?? process.env.DATABASE_URL ?? 'local.db';
+	const databaseURL = env.DATABASE_URL ?? process.env.DATABASE_URL;
+
+	if (!databaseURL) throw new Error('DATABASE_URL is not set');
 
 	return {
 		plugins: [
-			tailwindcss(),
 			fieldstone({
 				db: {
 					dialect: 'sqlite',
@@ -31,7 +31,6 @@ export default defineConfig(({ mode }) => {
 				// If your environment is not supported, or you settled on a specific environment, switch out the adapter.
 				// See https://svelte.dev/docs/kit/adapters for more information about adapters.
 				adapter: adapter(),
-
 				experimental: {
 					remoteFunctions: true,
 					handleRenderingErrors: true,
@@ -40,7 +39,7 @@ export default defineConfig(({ mode }) => {
 				typescript: {
 					config: (config) => ({
 						...config,
-						include: [...config.include, '../drizzle.config.ts', '../.fieldstone/types.d.ts']
+						include: [...config.include, '../.fieldstone/types.d.ts']
 					})
 				}
 			})
