@@ -11,6 +11,7 @@
   },
   "scripts": {
     "test": "vitest --run",
+    "typecheck": "tsgo -p tsconfig.json",
     "lint": "oxlint .",
     "format": "oxfmt ."
   },
@@ -23,10 +24,12 @@
     "vite": "^8.0.16"
   },
   "devDependencies": {
+    "@types/node": "^24.13.1",
+    "@typescript/native-preview": "7.0.0-dev.20260611.2",
+    "oxfmt": "^0.17.0",
+    "oxlint": "^1.29.0",
     "typescript": "^6.0.3",
     "vite": "^8.0.16",
-    "vitest": "^4.1.8",
-    "oxlint": "^1.29.0",
-    "oxfmt": "^0.17.0"
+    "vitest": "^4.1.8"
   }
 }

@@ -11,6 +11,7 @@
   },
   "scripts": {
     "test": "vitest --run --passWithNoTests",
+    "typecheck": "tsgo -p tsconfig.json",
     "lint": "oxlint .",
     "format": "oxfmt ."
   },
@@ -22,12 +23,15 @@
     "valibot": "^1.4.1"
   },
   "peerDependencies": {
-    "@sveltejs/kit": "^2.63.0",
+    "@sveltejs/kit": "^2.64.0",
     "svelte": "^5.56.1"
   },
   "devDependencies": {
-    "vitest": "^4.1.8",
+    "@sveltejs/kit": "^2.64.0",
+    "@types/node": "^24.13.1",
+    "@typescript/native-preview": "7.0.0-dev.20260611.2",
+    "oxfmt": "^0.17.0",
     "oxlint": "^1.29.0",
-    "oxfmt": "^0.17.0"
+    "vitest": "^4.1.8"
   }
 }
