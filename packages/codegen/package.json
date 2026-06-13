@@ -1,0 +1,29 @@
+{
+	"name": "@fieldstone/codegen",
+	"version": "0.0.1",
+	"private": true,
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"default": "./src/index.ts"
+		}
+	},
+	"scripts": {
+		"test": "vitest --run --passWithNoTests"
+	},
+	"dependencies": {
+		"@fieldstone/compiler": "workspace:*",
+		"@fieldstone/schema": "workspace:*",
+		"@libsql/client": "^0.15.15",
+		"drizzle-orm": "^0.45.2"
+	},
+	"peerDependencies": {
+		"drizzle-kit": "^0.31.10"
+	},
+	"devDependencies": {
+		"drizzle-kit": "^0.31.10",
+		"typescript": "^6.0.3",
+		"vitest": "^4.1.8"
+	}
+}

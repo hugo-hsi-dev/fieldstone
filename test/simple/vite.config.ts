@@ -4,7 +4,7 @@ import { playwright } from '@vitest/browser-playwright';
 import adapter from '@sveltejs/adapter-auto';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { loadEnv } from 'vite';
-import { fieldstone } from '@fieldstone/plugin/vite';
+import { fieldstone } from '@fieldstone/vite-plugin';
 
 export default defineConfig(({ mode }) => {
 	const env = loadEnv(mode, process.cwd(), '');

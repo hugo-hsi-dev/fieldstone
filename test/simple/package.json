@@ -15,7 +15,7 @@
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run && npm run test:e2e",
 		"test:e2e": "playwright install && playwright test",
-		"fieldstone:generate": "node ../../packages/plugin/bin/fieldstone.mjs generate",
+		"fieldstone:generate": "node ../../packages/cli/bin/fieldstone.mjs generate",
 		"db:push": "npm run fieldstone:generate && drizzle-kit push --force",
 		"db:generate": "npm run fieldstone:generate && drizzle-kit generate",
 		"db:migrate": "npm run fieldstone:generate && drizzle-kit migrate",
@@ -54,9 +54,11 @@
 		"vitest-browser-svelte": "^2.1.1"
 	},
 	"dependencies": {
-		"@fieldstone/client": "workspace:*",
-		"@fieldstone/plugin": "workspace:*",
-		"@fieldstone/sveltekit": "workspace:*",
+		"@fieldstone/cli": "workspace:*",
+		"@fieldstone/remotes": "workspace:*",
+		"@fieldstone/schema": "workspace:*",
+		"@fieldstone/ui": "workspace:*",
+		"@fieldstone/vite-plugin": "workspace:*",
 		"better-sqlite3": "^12.10.0",
 		"valibot": "^1.4.1"
 	}
