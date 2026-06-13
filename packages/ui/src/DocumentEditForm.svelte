@@ -1,16 +1,30 @@
 <script lang="ts">
 	import { base } from '$app/paths';
-	import type { CollectionDocument, CollectionRuntimeConfig, CollectionSlug } from '@fieldstone/schema';
+	import type {
+		CollectionDocument,
+		CollectionRuntimeConfig,
+		CollectionSlug
+	} from '@fieldstone/schema';
 
 	import FieldInput from './FieldInput.svelte';
 	import { getCollectionLabel, getFieldValue } from './labels';
 	import Button from './primitives/Button.svelte';
 	import { adminDocumentPath } from '@fieldstone/routes';
 
-	type RemoteForm = {
-		fields: Record<string, any>;
-		pending?: number;
+	type RemoteFormField = {
+		as: (type: 'hidden' | 'text', value?: string) => Record<string, unknown>;
+		issues: () => { message: string }[] | undefined;
 	};
+
+	type RemoteForm = {
+		fields: {
+			collection: RemoteFormField;
+			id: RemoteFormField;
+			data: Record<string, RemoteFormField>;
+			allIssues: () => { message: string }[] | undefined;
+		};
+		pending?: number;
+	} & Record<string, unknown>;
 
 	let {
 		collection,

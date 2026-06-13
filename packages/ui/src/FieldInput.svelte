@@ -31,11 +31,7 @@
 			{id}
 		></textarea>
 	{:else}
-		<input
-			class="fs-admin__input"
-			{...formField.as('text', value ?? '')}
-			{id}
-		/>
+		<input class="fs-admin__input" {...formField.as('text', value ?? '')} {id} />
 	{/if}
 	{#each formField.issues() ?? [] as issue, index (`${issue.message}-${index}`)}
 		<p class="fs-admin__field-error">{issue.message}</p>

@@ -78,11 +78,7 @@
 					</div>
 
 					{#if collections.length}
-						<CollectionNav
-							{collections}
-							{collectionHref}
-							selectedCollectionSlug={null}
-						/>
+						<CollectionNav {collections} {collectionHref} selectedCollectionSlug={null} />
 					{:else}
 						<p class="fs-admin__muted">No collections found.</p>
 					{/if}
@@ -104,15 +100,13 @@
 							</h1>
 						</div>
 
-						<CollectionNav
-							{collections}
-							{collectionHref}
-							{selectedCollectionSlug}
-						/>
+						<CollectionNav {collections} {collectionHref} {selectedCollectionSlug} />
 
 						{#if selectedCollectionSlug}
 							<Button variant="primary" href={newDocumentHref(selectedCollectionSlug)}>
-								New {selectedCollection ? getCollectionLabel(selectedCollection, 'singular').toLowerCase() : 'document'}
+								New {selectedCollection
+									? getCollectionLabel(selectedCollection, 'singular').toLowerCase()
+									: 'document'}
 							</Button>
 						{/if}
 					</section>
@@ -169,7 +163,10 @@
 									<Button href={collectionHref(collection.slug)}>Back to list</Button>
 								</div>
 
-								<CreateDocumentForm collection={collection} form={remotes.createDocument.for(collection.slug)} />
+								<CreateDocumentForm
+									{collection}
+									form={remotes.createDocument.for(collection.slug)}
+								/>
 
 								{#snippet pending()}
 									<p class="fs-admin__muted">Loading collection...</p>
@@ -265,7 +262,8 @@
 										<h2 class="fs-admin__section-title">
 											Edit {getCollectionLabel(collection, 'singular').toLowerCase()}
 										</h2>
-										<Button href={documentHref(collection.slug, document.id)}>Back to detail</Button>
+										<Button href={documentHref(collection.slug, document.id)}>Back to detail</Button
+										>
 									</div>
 
 									<DocumentEditForm {collection} {document} form={updateForm} />
