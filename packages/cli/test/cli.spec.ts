@@ -46,8 +46,8 @@ describe('fieldstone cli', () => {
 		const root = await mkdtemp(path.join(tmpRoot, 'fieldstone-cli-'));
 
 		try {
-			await mkdir(path.join(root, 'collections'), { recursive: true });
 			await mkdir(path.join(root, 'src'), { recursive: true });
+			await mkdir(path.join(root, 'src', 'cms', 'posts'), { recursive: true });
 			await writeFile(
 				path.join(root, 'vite.config.ts'),
 				`import path from 'node:path';
@@ -70,7 +70,7 @@ export const title = text({ name: 'title', required: true });
 `
 			);
 			await writeFile(
-				path.join(root, 'collections', 'posts.ts'),
+				path.join(root, 'src', 'cms', 'posts', '+collection.ts'),
 				`import { collection } from '@fieldstone/schema';
 import { title } from '$fields';
 
@@ -96,9 +96,9 @@ export default collection({
 		const root = await mkdtemp(path.join(tmpRoot, 'fieldstone-cli-'));
 
 		try {
-			await mkdir(path.join(root, 'collections'), { recursive: true });
+			await mkdir(path.join(root, 'src', 'cms', '__proto__'), { recursive: true });
 			await writeFile(
-				path.join(root, 'collections', '__proto__.ts'),
+				path.join(root, 'src', 'cms', '__proto__', '+collection.ts'),
 				`import { collection, text } from '@fieldstone/schema';
 
 export default collection({

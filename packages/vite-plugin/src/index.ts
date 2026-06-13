@@ -8,6 +8,8 @@ import { compileFieldstoneConfig } from '@fieldstone/compiler';
 import type { Plugin, ViteDevServer } from 'vite';
 
 import {
+	CMS_DIR,
+	COLLECTION_FILENAME,
 	CONFIG_ID,
 	RESOLVED_CONFIG_ID,
 	isWatchedCollectionFile,
@@ -94,11 +96,11 @@ export function fieldstone(options: FieldstonePluginOptions): Plugin {
 		configureServer(server) {
 			if (process.env.VITEST || process.env.FIELDSTONE_GENERATE === 'true') return;
 
-			const collectionsDir = path.join(root, 'collections');
-			server.watcher.add(collectionsDir);
-			server.watcher.add(path.join(collectionsDir, '*.ts'));
+			const cmsDir = path.join(root, CMS_DIR);
+			server.watcher.add(cmsDir);
+			server.watcher.add(path.join(cmsDir, '*', COLLECTION_FILENAME));
 			server.watcher.on('add', (file) => {
-				if (!isWatchedCollectionFile(collectionsDir, file)) return;
+				if (!isWatchedCollectionFile(cmsDir, file)) return;
 				void scaffoldCollectionFile(file)
 					.catch((error) => {
 						server.config.logger.error(
@@ -108,10 +110,10 @@ export function fieldstone(options: FieldstonePluginOptions): Plugin {
 					.finally(() => scheduleRebuild(server));
 			});
 			server.watcher.on('change', (file) => {
-				if (isWatchedCollectionFile(collectionsDir, file)) scheduleRebuild(server);
+				if (isWatchedCollectionFile(cmsDir, file)) scheduleRebuild(server);
 			});
 			server.watcher.on('unlink', (file) => {
-				if (isWatchedCollectionFile(collectionsDir, file)) scheduleRebuild(server);
+				if (isWatchedCollectionFile(cmsDir, file)) scheduleRebuild(server);
 			});
 
 			if (process.env.FIELDSTONE_PUSH_ON_CONFIGURE === 'true') {
