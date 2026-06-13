@@ -2,6 +2,7 @@
 	import type { CollectionRuntimeConfig } from '@fieldstone/schema';
 
 	import { getFieldLabel, shouldUseTextarea } from './labels';
+	import Label from './primitives/Label.svelte';
 
 	let {
 		field,
@@ -22,7 +23,7 @@
 </script>
 
 <div class="fs-admin__field">
-	<label class="fs-admin__label" for={id}>{getFieldLabel(field)}</label>
+	<Label for={id}>{getFieldLabel(field)}</Label>
 	{#if shouldUseTextarea(field)}
 		<textarea
 			class={['fs-admin__textarea', compact && 'fs-admin__textarea--compact']}
@@ -45,11 +46,6 @@
 	.fs-admin__field {
 		display: grid;
 		gap: 0.5rem;
-	}
-
-	.fs-admin__label {
-		font-size: 0.875rem;
-		font-weight: 500;
 	}
 
 	.fs-admin__input,

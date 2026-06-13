@@ -22,7 +22,8 @@
 	"dependencies": {
 		"@fieldstone/remotes": "workspace:*",
 		"@fieldstone/routes": "workspace:*",
-		"@fieldstone/schema": "workspace:*"
+		"@fieldstone/schema": "workspace:*",
+		"bits-ui": "^2.18.1"
 	},
 	"peerDependencies": {
 		"svelte": "^5.56.1"
