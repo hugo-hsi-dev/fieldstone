@@ -2,21 +2,15 @@ import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
 import adapter from '@sveltejs/adapter-auto';
 import { sveltekit } from '@sveltejs/kit/vite';
-import { loadEnv } from 'vite';
 import { fieldstone } from '@fieldstone/vite-plugin';
 
-export default defineConfig(({ mode }) => {
-	const env = loadEnv(mode, process.cwd(), '');
-	const databaseURL = env.DATABASE_URL ?? process.env.DATABASE_URL;
-
-	if (!databaseURL) throw new Error('DATABASE_URL is not set');
-
+export default defineConfig(() => {
 	return {
 		plugins: [
 			fieldstone({
 				db: {
 					dialect: 'sqlite',
-					url: databaseURL
+					url: 'local.db'
 				}
 			}),
 			sveltekit({
