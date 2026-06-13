@@ -14,8 +14,7 @@ import {
 	RESOLVED_CONFIG_ID,
 	isWatchedCollectionFile,
 	loadVirtualConfig,
-	pushSchema,
-	scaffoldCollectionFile
+	pushSchema
 } from '@fieldstone/codegen';
 
 type FieldstonePluginOptions = FieldstoneConfigInput;
@@ -57,19 +56,19 @@ export function fieldstone(options: FieldstonePluginOptions): Plugin {
 			const didPush = await pushSchema(config, compiled);
 			if (!didPush) return;
 			previousFingerprint = fingerprint;
+			server.ws.send({ type: 'full-reload' });
 		}
+	}
 
-		server.ws.send({ type: 'full-reload' });
+	function warnRebuildFailure(server: ViteDevServer, error: unknown) {
+		const message = error instanceof Error ? error.stack || error.message : String(error);
+		server.config.logger.warn(`Fieldstone collection rebuild failed. Keeping previous config.\n${message}`);
 	}
 
 	function scheduleRebuild(server: ViteDevServer) {
 		clearTimeout(rebuildTimer);
 		rebuildTimer = setTimeout(() => {
-			void rebuild(server).catch((error) => {
-				server.config.logger.error(
-					error instanceof Error ? error.stack || error.message : String(error)
-				);
-			});
+			void rebuild(server).catch((error) => warnRebuildFailure(server, error));
 		}, 100);
 	}
 
@@ -101,13 +100,7 @@ export function fieldstone(options: FieldstonePluginOptions): Plugin {
 			server.watcher.add(path.join(cmsDir, '*', COLLECTION_FILENAME));
 			server.watcher.on('add', (file) => {
 				if (!isWatchedCollectionFile(cmsDir, file)) return;
-				void scaffoldCollectionFile(file)
-					.catch((error) => {
-						server.config.logger.error(
-							error instanceof Error ? error.stack || error.message : String(error)
-						);
-					})
-					.finally(() => scheduleRebuild(server));
+				scheduleRebuild(server);
 			});
 			server.watcher.on('change', (file) => {
 				if (isWatchedCollectionFile(cmsDir, file)) scheduleRebuild(server);

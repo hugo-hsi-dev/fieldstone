@@ -10,7 +10,8 @@ describe('fieldstone codegen exports', () => {
 	it('exposes generation helpers without Vite plugin exports', () => {
 		expect(codegen).toHaveProperty('loadFieldstoneConfig');
 		expect(codegen).toHaveProperty('writeGeneratedFiles');
-		expect(codegen).toHaveProperty('createCollectionScaffold');
+		expect(codegen).not.toHaveProperty('createCollectionScaffold');
+		expect(codegen).not.toHaveProperty('scaffoldCollectionFile');
 		expect(codegen).not.toHaveProperty('fieldstone');
 	});
 
@@ -18,8 +19,8 @@ describe('fieldstone codegen exports', () => {
 		const root = await mkdtemp(path.join(tmpdir(), 'fieldstone-codegen-'));
 		await mkdir(path.join(root, 'src', 'cms', 'posts'), { recursive: true });
 		await mkdir(path.join(root, 'src', 'cms', 'pages'), { recursive: true });
-		await writeFile(path.join(root, 'src', 'cms', 'posts', '+collection.ts'), '');
-		await writeFile(path.join(root, 'src', 'cms', 'pages', '+collection.ts'), '');
+		await writeFile(path.join(root, 'src', 'cms', 'posts', '+collection.ts'), 'export default {};');
+		await writeFile(path.join(root, 'src', 'cms', 'pages', '+collection.ts'), 'export default {};');
 
 		try {
 			await expect(codegen.discoverCollections(root)).resolves.toEqual([
@@ -36,7 +37,7 @@ describe('fieldstone codegen exports', () => {
 		await mkdir(path.join(root, 'src', 'cms', '_draft'), { recursive: true });
 		await mkdir(path.join(root, 'src', 'cms', '__proto__'), { recursive: true });
 		await writeFile(path.join(root, 'src', 'cms', '_draft', '+collection.ts'), '');
-		await writeFile(path.join(root, 'src', 'cms', '__proto__', '+collection.ts'), '');
+		await writeFile(path.join(root, 'src', 'cms', '__proto__', '+collection.ts'), 'export default {};');
 
 		try {
 			await expect(codegen.discoverCollections(root)).rejects.toThrow(
@@ -50,7 +51,7 @@ describe('fieldstone codegen exports', () => {
 	it('loads virtual config from src/cms collection files', async () => {
 		const root = await mkdtemp(path.join(tmpdir(), 'fieldstone-codegen-'));
 		await mkdir(path.join(root, 'src', 'cms', 'posts'), { recursive: true });
-		await writeFile(path.join(root, 'src', 'cms', 'posts', '+collection.ts'), '');
+		await writeFile(path.join(root, 'src', 'cms', 'posts', '+collection.ts'), 'export default {};');
 
 		try {
 			const source = await codegen.loadVirtualConfig(root, {
@@ -65,8 +66,11 @@ describe('fieldstone codegen exports', () => {
 	});
 
 	it('rejects duplicate collection slugs case-insensitively', () => {
-		expect(() => validateCollectionEntries(['Posts', 'posts'])).toThrow(
-			'Duplicate collection slug: posts'
-		);
+		expect(() =>
+			validateCollectionEntries([
+				{ entry: 'Posts', isBlank: false },
+				{ entry: 'posts', isBlank: false }
+			])
+		).toThrow('Duplicate collection slug: posts');
 	});
 });
