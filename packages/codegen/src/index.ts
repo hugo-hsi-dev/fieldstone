@@ -1,4 +1,6 @@
 export {
+	CMS_DIR,
+	COLLECTION_FILENAME,
 	createCollectionScaffold,
 	discoverCollections,
 	isWatchedCollectionFile,

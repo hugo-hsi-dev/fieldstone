@@ -29,7 +29,8 @@ export default collection({
 
 	it('reads database url from runtime env in virtual config', async () => {
 		const root = await mkdtemp(path.join(tmpdir(), 'fieldstone-vite-'));
-		await mkdir(path.join(root, 'collections'));
+		await mkdir(path.join(root, 'src', 'cms', 'posts'), { recursive: true });
+		await writeFile(path.join(root, 'src', 'cms', 'posts', '+collection.ts'), '');
 
 		try {
 			const plugin = fieldstone({ db: { dialect: 'sqlite', url: 'fallback.db' } });
@@ -38,6 +39,7 @@ export default collection({
 
 			expect(source).toContain('process.env.DATABASE_URL ?? "fallback.db"');
 			expect(source).toContain('dialect: "sqlite"');
+			expect(source).toContain('import collection0 from "/src/cms/posts/+collection.ts"');
 		} finally {
 			await rm(root, { recursive: true, force: true });
 		}
@@ -45,9 +47,9 @@ export default collection({
 
 	it('rejects prototype-mutating collection slugs', async () => {
 		const root = await mkdtemp(path.join(tmpdir(), 'fieldstone-vite-'));
-		const collectionsDir = path.join(root, 'collections');
-		await mkdir(collectionsDir);
-		await writeFile(path.join(collectionsDir, '__proto__.ts'), '');
+		const collectionDir = path.join(root, 'src', 'cms', '__proto__');
+		await mkdir(collectionDir, { recursive: true });
+		await writeFile(path.join(collectionDir, '+collection.ts'), '');
 
 		try {
 			const plugin = fieldstone({ db: { dialect: 'sqlite', url: ':memory:' } });
@@ -60,4 +62,25 @@ export default collection({
 			await rm(root, { recursive: true, force: true });
 		}
 	});
+
+	it('ignores underscored cms dirs', async () => {
+		const root = await mkdtemp(path.join(tmpdir(), 'fieldstone-vite-'));
+		await mkdir(path.join(root, 'src', 'cms', '_draft'), { recursive: true });
+		await mkdir(path.join(root, 'src', 'cms', 'posts'), { recursive: true });
+		await writeFile(path.join(root, 'src', 'cms', '_draft', '+collection.ts'), '');
+		await writeFile(path.join(root, 'src', 'cms', 'posts', '+collection.ts'), '');
+
+		try {
+			const plugin = fieldstone({ db: { dialect: 'sqlite', url: ':memory:' } });
+			plugin.configResolved?.call({} as never, { root } as never);
+
+			const source = await plugin.load?.call({} as never, RESOLVED_CONFIG_ID);
+
+			expect(source).toContain('"posts": runtimeCollection0');
+			expect(source).not.toContain('_draft');
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
 });
