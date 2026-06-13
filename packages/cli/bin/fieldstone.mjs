@@ -34,7 +34,7 @@ try {
     command === "push"
       ? (await server.ssrLoadModule(CONFIG_ID)).default
       : await loadFieldstoneConfig({
-          loadModule: (id) => server.ssrLoadModule(id),
+          loadModule: (/** @type {string} */ id) => server.ssrLoadModule(id),
           root,
         });
   const compiled = compileFieldstoneConfig(config);

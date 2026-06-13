@@ -7,7 +7,7 @@
     "skipLibCheck": true,
     "strict": true,
     "target": "esnext",
-    "types": ["node"]
+    "types": ["node", "@sveltejs/kit"]
   },
   "include": ["src/**/*.ts"]
 }

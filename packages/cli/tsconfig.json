@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "allowJs": true,
-    "checkJs": false,
+    "checkJs": true,
     "module": "esnext",
     "moduleResolution": "bundler",
     "noEmit": true,

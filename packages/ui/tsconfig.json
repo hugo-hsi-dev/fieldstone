@@ -6,7 +6,8 @@
     "noEmit": true,
     "skipLibCheck": true,
     "strict": true,
-    "target": "esnext"
+    "target": "esnext",
+    "types": ["@sveltejs/kit"]
   },
   "include": ["src/**/*.ts", "src/**/*.svelte"]
 }
