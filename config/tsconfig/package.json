@@ -1,0 +1,12 @@
+{
+  "name": "@fieldstone/tsconfig",
+  "version": "0.0.1",
+  "private": true,
+  "exports": {
+    "./base.json": "./base.json",
+    "./node.json": "./node.json",
+    "./cli.json": "./cli.json",
+    "./svelte-library.json": "./svelte-library.json",
+    "./sveltekit.json": "./sveltekit.json"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "@fieldstone/oxfmt-config",
+  "version": "0.0.1",
+  "private": true,
+  "exports": {
+    ".": "./oxfmt.json"
+  },
+  "devDependencies": {
+    "oxfmt": "^0.17.0"
+  }
+}

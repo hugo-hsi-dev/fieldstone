@@ -17,9 +17,12 @@
     "test": "vitest --run --passWithNoTests",
     "typecheck": "tsgo -p tsconfig.json",
     "lint": "oxlint .",
-    "format": "oxfmt ."
+    "format": "oxfmt -c ../../config/oxfmt/oxfmt.json ."
   },
   "devDependencies": {
+    "@fieldstone/oxfmt-config": "workspace:*",
+    "@fieldstone/oxlint-config": "workspace:*",
+    "@fieldstone/tsconfig": "workspace:*",
     "@types/node": "^24.13.1",
     "@typescript/native-preview": "7.0.0-dev.20260611.2",
     "oxfmt": "^0.17.0",
