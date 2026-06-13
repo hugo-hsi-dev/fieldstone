@@ -5,7 +5,7 @@ import { createServer } from 'vite';
 
 const command = process.argv[2] ?? 'generate';
 
-if (command !== 'generate') {
+if (command !== 'generate' && command !== 'push') {
 	console.error(`Unknown fieldstone command: ${command}`);
 	process.exit(1);
 }
@@ -23,21 +23,31 @@ const server = await createServer({
 try {
 	const generatorModulePath = require.resolve('@fieldstone/codegen');
 	const coreModulePath = require.resolve('@fieldstone/compiler');
-	const [{ loadFieldstoneConfig, writeGeneratedFiles }, { compileFieldstoneConfig }] =
-		await Promise.all([
-			server.ssrLoadModule(generatorModulePath),
-			server.ssrLoadModule(coreModulePath)
-		]);
-	const config = await loadFieldstoneConfig({
-		loadModule: (id) => server.ssrLoadModule(id),
-		root
-	});
+	const [
+		{ CONFIG_ID, loadFieldstoneConfig, pushSchema, writeGeneratedFiles },
+		{ compileFieldstoneConfig }
+	] = await Promise.all([
+		server.ssrLoadModule(generatorModulePath),
+		server.ssrLoadModule(coreModulePath)
+	]);
+	const config =
+		command === 'push'
+			? (await server.ssrLoadModule(CONFIG_ID)).default
+			: await loadFieldstoneConfig({
+					loadModule: (id) => server.ssrLoadModule(id),
+					root
+				});
 	const compiled = compileFieldstoneConfig(config);
 
-	await writeGeneratedFiles({
-		compiled,
-		root
-	});
+	if (command === 'push') {
+		const didPush = await pushSchema(config, compiled);
+		if (!didPush) process.exitCode = 1;
+	} else {
+		await writeGeneratedFiles({
+			compiled,
+			root
+		});
+	}
 } finally {
 	await server.close();
 	if (previousGenerateEnv === undefined) {
