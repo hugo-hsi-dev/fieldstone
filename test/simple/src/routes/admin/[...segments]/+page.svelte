@@ -1,6 +1,6 @@
 <script lang="ts">
-	import '@fieldstone/sveltekit/admin.css';
-	import { FieldstoneAdmin } from '@fieldstone/sveltekit/admin';
+	import '@fieldstone/ui/admin.css';
+	import { FieldstoneAdmin } from '@fieldstone/ui';
 
 	import * as remotes from '../dashboard.remote';
 </script>

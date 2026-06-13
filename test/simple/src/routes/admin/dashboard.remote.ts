@@ -1,5 +1,5 @@
 import config from '$fieldstone-config';
-import { createFieldstoneAdminRemotes } from '@fieldstone/sveltekit/admin/remote';
+import { createFieldstoneAdminRemotes } from '@fieldstone/remotes';
 
 export const {
 	createDocument,

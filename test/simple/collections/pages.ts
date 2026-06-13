@@ -1,4 +1,4 @@
-import { collection, text } from '@fieldstone/plugin';
+import { collection, text } from '@fieldstone/schema';
 
 export default collection({
 	fields: [
