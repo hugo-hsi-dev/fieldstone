@@ -62,6 +62,11 @@ describe('fieldstone admin runtime', () => {
 			description: 'Created from admin service'
 		});
 		expect(admin.getCollection('posts')).toMatchObject({ slug: 'posts' });
+		expect(admin.getCollection('posts')?.fields[0]).toMatchObject({
+			identifier: 'title',
+			name: 'title',
+			required: true
+		});
 		expect(admin.collections).toHaveLength(1);
 	});
 });

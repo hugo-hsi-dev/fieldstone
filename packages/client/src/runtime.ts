@@ -8,7 +8,7 @@ export async function createFieldstoneRuntime(config: FieldstoneConfig) {
 	const documents = createDocumentRuntime(database);
 
 	return {
-		collections: Object.values(config.collections),
+		collections: database.collections,
 
 		getCollection: (slug: string) => database.compiledConfig.getCollection(slug),
 

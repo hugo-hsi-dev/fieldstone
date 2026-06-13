@@ -7,11 +7,16 @@
 		field,
 		id,
 		value = '',
-		compact = false
+		compact = false,
+		formField
 	}: {
 		field: CollectionRuntimeConfig['fields'][number];
+		formField: {
+			as: (type: 'text', value?: string) => Record<string, unknown>;
+			issues: () => { message: string }[] | undefined;
+		};
 		id: string;
-		value?: string;
+		value?: string | null;
 		compact?: boolean;
 	} = $props();
 </script>
@@ -21,26 +26,25 @@
 	{#if shouldUseTextarea(field)}
 		<textarea
 			class={['fs-admin__textarea', compact && 'fs-admin__textarea--compact']}
+			{...formField.as('text', value ?? '')}
 			{id}
-			name={field.name}
-			required={field.required}
-			{value}
 		></textarea>
 	{:else}
 		<input
 			class="fs-admin__input"
+			{...formField.as('text', value ?? '')}
 			{id}
-			name={field.name}
-			required={field.required}
-			{value}
 		/>
 	{/if}
+	{#each formField.issues() ?? [] as issue, index (`${issue.message}-${index}`)}
+		<p class="fs-admin__field-error">{issue.message}</p>
+	{/each}
 </div>
 
 <style>
 	.fs-admin__field {
 		display: grid;
-		gap: 1rem;
+		gap: 0.5rem;
 	}
 
 	.fs-admin__label {
@@ -74,5 +78,11 @@
 
 	.fs-admin__textarea--compact {
 		min-height: 7rem;
+	}
+
+	.fs-admin__field-error {
+		margin: 0;
+		color: var(--fs-admin-danger);
+		font-size: 0.8125rem;
 	}
 </style>

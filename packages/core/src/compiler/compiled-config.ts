@@ -1,6 +1,8 @@
-import type { FieldstoneConfig } from '../types.ts';
+import type { NormalizedDocumentData } from '../document-data.ts';
+import type { CollectionRuntimeConfig, FieldstoneConfig } from '../types.ts';
 import {
 	buildSchemaPlan,
+	createCollectionRuntimeConfigs,
 	getCollectionConfig,
 	normalizeDocumentData
 } from './collection-model.ts';
@@ -11,9 +13,10 @@ import { createRuntimeSchema, type RuntimeSchema } from './runtime-schema.ts';
 import { createTypesDeclaration } from './types-output.ts';
 
 export type FieldstoneCompiledConfig = {
+	createCollectionRuntimeConfigs(): CollectionRuntimeConfig[];
 	readonly schemaPlan: SchemaPlan;
 	getCollection(slug: string): ReturnType<typeof getCollectionConfig>;
-	normalizeDocumentData(slug: string, data: Record<string, unknown>): Record<string, string>;
+	normalizeDocumentData(slug: string, data: Record<string, unknown>): NormalizedDocumentData;
 	renderRuntimeSchema(): RuntimeSchema;
 	renderSchemaSource(): string;
 	renderTypesDeclaration(): string;
@@ -28,6 +31,7 @@ export function compileFieldstoneConfig(config: FieldstoneConfig): FieldstoneCom
 	let fingerprint: string | undefined;
 
 	return {
+		createCollectionRuntimeConfigs: () => createCollectionRuntimeConfigs(schemaPlan),
 		schemaPlan,
 		getCollection(slug) {
 			return getCollectionConfig(schemaPlan, slug);

@@ -1,3 +1,7 @@
+import {
+	normalizeCollectionData,
+	type NormalizedDocumentData
+} from '../document-data.ts';
 import type { CollectionRuntimeConfig, FieldstoneConfig, TextFieldDefinition } from '../types.ts';
 import { validateCollectionFields } from '../field-validation.ts';
 import { toUniqueIdentifier } from './identifiers.ts';
@@ -125,7 +129,13 @@ export function getCollectionConfig(
 	if (!collection) return null;
 
 	return {
-		fields: collection.fields.map(({ identifier: _identifier, ...field }) => field),
+		fields: collection.fields.map((field) => ({
+			identifier: field.identifier,
+			multiline: field.multiline,
+			name: field.name,
+			required: field.required,
+			type: field.type
+		})),
 		slug: collection.slug
 	};
 }
@@ -140,22 +150,10 @@ export function normalizeDocumentData(
 	schemaPlan: SchemaPlan,
 	slug: string,
 	data: Record<string, unknown>
-) {
-	const collection = requireSchemaPlanCollection(schemaPlan, slug);
-	const allowedFields = new Set(collection.fields.map((field) => field.name));
-	const normalized: Record<string, string> = {};
-
-	for (const field of collection.fields) {
-		const value = String(data[field.name] ?? '').trim();
-		if (field.required && !value) throw new Error(`${field.name} is required`);
-		normalized[field.name] = value;
-	}
-
-	for (const fieldName of Object.keys(data)) {
-		if (!allowedFields.has(fieldName)) throw new Error(`Unknown field: ${fieldName}`);
-	}
-
-	return normalized;
+): NormalizedDocumentData {
+	const collection = getCollectionConfig(schemaPlan, slug);
+	if (!collection) throw new Error(`Unsupported collection: ${slug}`);
+	return normalizeCollectionData(collection, data);
 }
 
 export function buildSchemaPlan(config: FieldstoneConfig): SchemaPlan {
@@ -203,4 +201,10 @@ export function buildSchemaPlan(config: FieldstoneConfig): SchemaPlan {
 		collections,
 		fingerprintPayload: collections.map((compiled) => compiled.fingerprint)
 	};
+}
+
+export function createCollectionRuntimeConfigs(
+	schemaPlan: SchemaPlan
+): CollectionRuntimeConfig[] {
+	return schemaPlan.collections.map((collection) => getCollectionConfig(schemaPlan, collection.slug)!);
 }

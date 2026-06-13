@@ -4,9 +4,9 @@ import { createFieldstoneAdminRemotes } from '@fieldstone/sveltekit/admin/remote
 export const {
 	createDocument,
 	deleteDocument,
-	getAdminIndex,
-	getAdminView,
+	getCollection,
 	getDocument,
+	listCollections,
 	listDocuments,
 	updateDocument
 } = createFieldstoneAdminRemotes({ config });

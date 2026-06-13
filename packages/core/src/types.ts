@@ -5,11 +5,21 @@ export type TextFieldDefinition = {
 	type: 'text';
 };
 
+export type CollectionRuntimeField = TextFieldDefinition & {
+	identifier: string;
+	required: boolean;
+};
+
 export type CollectionDefinition = {
 	fields: TextFieldDefinition[];
 };
 
-export type CollectionRuntimeConfig = CollectionDefinition & {
+export type CollectionRuntimeConfig = {
+	fields: CollectionRuntimeField[];
+	slug: string;
+};
+
+export type CollectionConfig = CollectionDefinition & {
 	slug: string;
 };
 
@@ -21,7 +31,7 @@ export type FieldstoneConfigInput = {
 };
 
 export type FieldstoneConfig = FieldstoneConfigInput & {
-	collections: Record<string, CollectionRuntimeConfig>;
+	collections: Record<string, CollectionConfig>;
 };
 
 export interface GeneratedCollections {}
@@ -38,7 +48,7 @@ type CollectionFieldName<TCollection extends keyof GeneratedCollections> =
 	Exclude<keyof GeneratedCollections[TCollection], SystemFieldName> & string;
 
 type RequiredCollectionFieldName<TCollection extends keyof GeneratedCollections> = {
-	[TField in CollectionFieldName<TCollection>]: undefined extends GeneratedCollections[TCollection][TField]
+	[TField in CollectionFieldName<TCollection>]: null extends GeneratedCollections[TCollection][TField]
 		? never
 		: TField;
 }[CollectionFieldName<TCollection>];
@@ -52,8 +62,8 @@ type CollectionDataValue<
 	TCollection extends keyof GeneratedCollections,
 	TField extends CollectionFieldName<TCollection>
 > =
-	Exclude<GeneratedCollections[TCollection][TField], undefined> extends string
-		? string
+	Exclude<GeneratedCollections[TCollection][TField], undefined> extends string | null
+		? Exclude<GeneratedCollections[TCollection][TField], undefined>
 		: Exclude<GeneratedCollections[TCollection][TField], undefined>;
 
 export type CollectionDocument<TCollection extends string> =
@@ -72,4 +82,4 @@ export type CollectionData<TCollection extends string> =
 			} & {
 				[K in OptionalCollectionFieldName<TCollection>]?: CollectionDataValue<TCollection, K>;
 			}
-		: Record<string, string>;
+		: Record<string, string | null>;
