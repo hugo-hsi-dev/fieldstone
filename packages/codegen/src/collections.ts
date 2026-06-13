@@ -1,4 +1,4 @@
-import { access, readFile, readdir } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 
 export const CMS_DIR = path.join('src', 'cms');
@@ -72,14 +72,16 @@ async function readCollectionEntry(cmsDir: string, entry: string): Promise<Colle
 	const file = path.join(cmsDir, entry, COLLECTION_FILENAME);
 
 	try {
-		await access(file);
 		const source = await readFile(file, 'utf-8');
 		return {
 			entry,
 			isBlank: !source.trim()
 		};
-	} catch {
-		return null;
+	} catch (error) {
+		if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+			return null;
+		}
+		throw error;
 	}
 }
 

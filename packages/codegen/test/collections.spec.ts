@@ -65,4 +65,15 @@ describe('collection discovery', () => {
 			])
 		).toThrow('Duplicate collection slug: posts');
 	});
+
+	it('rejects collection files that exist but cannot be read', async () => {
+		const root = await mkdtemp(path.join(tmpdir(), 'fieldstone-codegen-'));
+		await mkdir(path.join(root, 'src', 'cms', 'posts', '+collection.ts'), { recursive: true });
+
+		try {
+			await expect(discoverCollections(root)).rejects.toThrow();
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
 });
