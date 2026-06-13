@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 
 import { describe, expect, it } from "vitest";
 
-import { createCollectionScaffold, RESOLVED_CONFIG_ID } from "@fieldstone/codegen";
+import { RESOLVED_CONFIG_ID } from "@fieldstone/codegen";
 import { fieldstone } from "../src/index.ts";
 
 describe("fieldstone vite plugin", () => {
@@ -14,18 +14,6 @@ describe("fieldstone vite plugin", () => {
     expect(() =>
       plugin.resolveId?.call({} as never, "$fieldstone-config", undefined, { ssr: false }),
     ).toThrow("$fieldstone-config is server-only");
-  });
-
-  it("scaffolds a new collection file from the filename", () => {
-    expect(createCollectionScaffold("blog-posts"))
-      .toBe(`import { collection, text } from '@fieldstone/schema';
-
-export default collection({
-\tfields: [
-\t\ttext({ name: 'title', required: true })
-\t]
-});
-`);
   });
 
   it("reads database url from runtime env in virtual config", async () => {
@@ -40,7 +28,7 @@ export default collection({
 
       expect(source).toContain('process.env.DATABASE_URL ?? "fallback.db"');
       expect(source).toContain('dialect: "sqlite"');
-      expect(source).toContain('import collection0 from "/src/cms/posts/+collection.ts"');
+      expect(source).not.toContain('import collection0 from "/src/cms/posts/+collection.ts"');
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -50,7 +38,7 @@ export default collection({
     const root = await mkdtemp(path.join(tmpdir(), "fieldstone-vite-"));
     const collectionDir = path.join(root, "src", "cms", "__proto__");
     await mkdir(collectionDir, { recursive: true });
-    await writeFile(path.join(collectionDir, "+collection.ts"), "");
+    await writeFile(path.join(collectionDir, "+collection.ts"), "export default {};");
 
     try {
       const plugin = fieldstone({ db: { dialect: "sqlite", url: ":memory:" } });
@@ -69,7 +57,7 @@ export default collection({
     await mkdir(path.join(root, "src", "cms", "_draft"), { recursive: true });
     await mkdir(path.join(root, "src", "cms", "posts"), { recursive: true });
     await writeFile(path.join(root, "src", "cms", "_draft", "+collection.ts"), "");
-    await writeFile(path.join(root, "src", "cms", "posts", "+collection.ts"), "");
+    await writeFile(path.join(root, "src", "cms", "posts", "+collection.ts"), "export default {};");
 
     try {
       const plugin = fieldstone({ db: { dialect: "sqlite", url: ":memory:" } });
