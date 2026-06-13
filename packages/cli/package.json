@@ -1,22 +1,26 @@
 {
-	"name": "@fieldstone/cli",
-	"version": "0.0.1",
-	"private": true,
-	"type": "module",
-	"bin": {
-		"fieldstone": "./bin/fieldstone.mjs"
-	},
-	"scripts": {
-		"test": "vitest --run"
-	},
-	"dependencies": {
-		"@fieldstone/codegen": "workspace:*",
-		"@fieldstone/compiler": "workspace:*",
-		"@fieldstone/schema": "workspace:*",
-		"vite": "^8.0.16"
-	},
-	"devDependencies": {
-		"typescript": "^6.0.3",
-		"vitest": "^4.1.8"
-	}
+  "name": "@fieldstone/cli",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "fieldstone": "./bin/fieldstone.mjs"
+  },
+  "scripts": {
+    "test": "vitest --run",
+    "lint": "oxlint .",
+    "format": "oxfmt ."
+  },
+  "dependencies": {
+    "@fieldstone/codegen": "workspace:*",
+    "@fieldstone/compiler": "workspace:*",
+    "@fieldstone/schema": "workspace:*",
+    "vite": "^8.0.16"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.8",
+    "oxlint": "^1.29.0",
+    "oxfmt": "^0.17.0"
+  }
 }

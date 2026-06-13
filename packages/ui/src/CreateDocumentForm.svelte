@@ -5,10 +5,19 @@
 	import { getCollectionLabel } from './labels';
 	import Button from './primitives/Button.svelte';
 
-	type RemoteForm = {
-		fields: Record<string, any>;
-		pending?: number;
+	type RemoteFormField = {
+		as: (type: 'hidden' | 'text', value?: string) => Record<string, unknown>;
+		issues: () => { message: string }[] | undefined;
 	};
+
+	type RemoteForm = {
+		fields: {
+			collection: RemoteFormField;
+			data: Record<string, RemoteFormField>;
+			allIssues: () => { message: string }[] | undefined;
+		};
+		pending?: number;
+	} & Record<string, unknown>;
 
 	let {
 		collection,

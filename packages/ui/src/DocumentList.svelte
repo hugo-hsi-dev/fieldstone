@@ -1,5 +1,9 @@
 <script lang="ts">
-	import type { CollectionDocument, CollectionRuntimeConfig, CollectionSlug } from '@fieldstone/schema';
+	import type {
+		CollectionDocument,
+		CollectionRuntimeConfig,
+		CollectionSlug
+	} from '@fieldstone/schema';
 
 	import DocumentCard from './DocumentCard.svelte';
 	import { getCollectionLabel } from './labels';
@@ -16,7 +20,9 @@
 {#each documents as document (document.id)}
 	<DocumentCard {collection} {document} />
 {:else}
-	<div class="fs-admin__empty">No {getCollectionLabel(collection, 'plural').toLowerCase()} yet.</div>
+	<div class="fs-admin__empty">
+		No {getCollectionLabel(collection, 'plural').toLowerCase()} yet.
+	</div>
 {/each}
 
 <style>

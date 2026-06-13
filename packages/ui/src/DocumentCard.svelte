@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { base } from '$app/paths';
-	import type { CollectionDocument, CollectionRuntimeConfig, CollectionSlug } from '@fieldstone/schema';
+	import type {
+		CollectionDocument,
+		CollectionRuntimeConfig,
+		CollectionSlug
+	} from '@fieldstone/schema';
 
 	import { getFieldValue } from './labels';
 	import Button from './primitives/Button.svelte';
@@ -20,7 +24,10 @@
 <article class="fs-admin__panel">
 	<div class="fs-admin__document">
 		<div class="fs-admin__document-body">
-			<a class="fs-admin__document-title" href={adminDocumentPath(collection.slug, document.id, base)}>
+			<a
+				class="fs-admin__document-title"
+				href={adminDocumentPath(collection.slug, document.id, base)}
+			>
 				{getFieldValue(document, titleField)}
 			</a>
 			{#each collection.fields.slice(1, 3) as field (field.name)}
