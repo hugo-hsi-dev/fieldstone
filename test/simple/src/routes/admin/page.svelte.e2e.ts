@@ -20,7 +20,10 @@ test('creates, edits, and deletes a post through route-driven admin', async ({ p
 
 	await page.getByRole('link', { name: 'Edit' }).click();
 	await expect(page).toHaveURL(/\/admin\/collections\/posts\/[^/]+\/edit$/);
+	const documentId = new URL(page.url()).pathname.split('/').at(-2);
+	if (!documentId) throw new Error('Expected document id in edit URL');
 	await expect(page.getByLabel('Title')).toHaveValue('POC post');
+	await expect(page.locator('form input[name="id"]')).toHaveValue(documentId);
 	await page.getByLabel('Title').fill('Edited POC post');
 	await page.getByLabel('Description').fill('Updated body');
 	await page.getByRole('button', { name: 'Save post' }).click();
@@ -28,6 +31,7 @@ test('creates, edits, and deletes a post through route-driven admin', async ({ p
 	await expect(page).toHaveURL(/\/admin\/collections\/posts\/[^/]+$/);
 	await expect(page.getByRole('heading', { name: 'Edited POC post' })).toBeVisible();
 	await expect(page.getByText('Updated body')).toBeVisible();
+	await expect(page.locator('form.fs-admin__delete-form input[name="id"]')).toHaveValue(documentId);
 
 	await page.getByRole('button', { name: 'Delete post' }).click();
 	await expect(page).toHaveURL(/\/admin\/collections\/posts$/);

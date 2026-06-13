@@ -30,6 +30,7 @@
 
 <form class="fs-admin__panel fs-admin__form" {...form}>
 	<input {...form.fields.collection.as('hidden', collection.slug)} />
+	<input {...form.fields.id.as('hidden', document.id)} />
 
 	{#if !hasFieldIssues()}
 		{#each form.fields.allIssues() ?? [] as issue, index (`${issue.message}-${index}`)}

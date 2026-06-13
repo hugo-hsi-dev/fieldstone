@@ -214,6 +214,7 @@
 
 										<form class="fs-admin__delete-form" {...deleteForm}>
 											<input {...deleteForm.fields.collection.as('hidden', collection.slug)} />
+											<input {...deleteForm.fields.id.as('hidden', document.id)} />
 
 											{#each deleteForm.fields.allIssues() ?? [] as issue, index (`${issue.message}-${index}`)}
 												<p class="fs-admin__error">{issue.message}</p>
