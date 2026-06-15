@@ -3,4 +3,7 @@ import { svelteKitConfig } from '@fieldstone/eslint-config';
 
 const gitignorePath = path.resolve(import.meta.dirname, '.gitignore');
 
-export default svelteKitConfig({ gitignorePath });
+export default svelteKitConfig({
+	gitignorePath,
+	tsconfigRootDir: import.meta.dirname
+});

@@ -2,7 +2,7 @@
 /// <reference path="./fieldstone-config.d.ts" />
 
 import { form, query } from "$app/server";
-import { base } from "$app/paths";
+import { resolve } from "$app/paths";
 import { error, invalid, redirect } from "@sveltejs/kit";
 import * as v from "valibot";
 
@@ -27,7 +27,13 @@ import {
   adminCollectionPath,
   adminDocumentPath,
   adminGlobalPath,
+  adminRouteId,
+  adminRouteSegments,
 } from "@fieldstone/routes";
+
+function resolveAdminPath(path: string) {
+  return resolve(adminRouteId, { segments: adminRouteSegments(path) });
+}
 
 const collectionSchema = v.object({
   collection: v.string(),
@@ -269,7 +275,10 @@ export function createFieldstoneAdminRemotes({
           data: input.data as CollectionData<CollectionSlug>,
         });
 
-        redirect(303, adminDocumentPath(collection.slug, document.id, base));
+        redirect(
+          303,
+          resolveAdminPath(adminDocumentPath(collection.slug, document.id)),
+        );
       },
     ),
 
@@ -291,7 +300,10 @@ export function createFieldstoneAdminRemotes({
             id: input.id,
           });
 
-          redirect(303, adminDocumentPath(collection.slug, document.id, base));
+          redirect(
+            303,
+            resolveAdminPath(adminDocumentPath(collection.slug, document.id)),
+          );
         } catch (caught) {
           if (isDocumentNotFound(caught))
             invalid("Could not find requested document");
@@ -309,7 +321,7 @@ export function createFieldstoneAdminRemotes({
           data: input.data as GlobalData<GlobalSlug>,
         });
 
-        redirect(303, adminGlobalPath(global.slug, base));
+        redirect(303, resolveAdminPath(adminGlobalPath(global.slug)));
       },
     ),
 
@@ -324,7 +336,7 @@ export function createFieldstoneAdminRemotes({
           id: input.id,
         });
 
-        redirect(303, adminCollectionPath(collection.slug, base));
+        redirect(303, resolveAdminPath(adminCollectionPath(collection.slug)));
       } catch (caught) {
         if (isDocumentNotFound(caught))
           invalid("Could not find requested document");

@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   adminDocumentPath,
   adminGlobalPath,
+  adminIndexPath,
+  adminRouteSegments,
   getAdminSegments,
   parseAdminRoute,
 } from "../src/index.ts";
@@ -58,6 +60,13 @@ describe("admin route helpers", () => {
   it("preserves configured base path in generated admin URLs", () => {
     expect(adminDocumentPath("blog posts", "doc/1", "/cms")).toBe(
       "/cms/admin/collections/blog%20posts/doc%2F1",
+    );
+  });
+
+  it("extracts SvelteKit rest route segments from generated admin paths", () => {
+    expect(adminRouteSegments(adminIndexPath())).toBe("");
+    expect(adminRouteSegments(adminDocumentPath("blog posts", "doc/1"))).toBe(
+      "collections/blog%20posts/doc%2F1",
     );
   });
 });
