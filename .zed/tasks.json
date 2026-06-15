@@ -5,7 +5,7 @@
   {
     "label": "install deps",
     "command": "pnpm",
-    "args": ["install", "$ZED_WORKTREE_ROOT/.env"],
+    "args": ["install", "--frozen-lockfile"],
     "hooks": ["create_worktree"],
     "reveal": "no_focus",
     "hide": "on_success",
