@@ -20,6 +20,10 @@ function createRuntimeColumn(column: CompiledColumn) {
       : sqliteText(column.columnName);
   }
 
+  if (column.sourceExpression === "boolean") {
+    return integer(column.columnName, { mode: "boolean" }).notNull();
+  }
+
   if (column.sourceExpression === "uuidTextPrimaryKey") {
     return sqliteText(column.columnName)
       .primaryKey()

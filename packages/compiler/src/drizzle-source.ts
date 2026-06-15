@@ -6,6 +6,10 @@ function renderColumn(column: CompiledColumn) {
     return `\t${column.identifier}: ${renderedColumn},`;
   }
 
+  if (column.sourceExpression === "boolean") {
+    return `\t${column.identifier}: integer(${JSON.stringify(column.columnName)}, { mode: 'boolean' }).notNull(),`;
+  }
+
   if (column.sourceExpression === "uuidTextPrimaryKey") {
     return `\t${column.identifier}: text(${JSON.stringify(column.columnName)})
 \t\t.primaryKey()

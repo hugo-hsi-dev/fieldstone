@@ -1,6 +1,8 @@
 import { validateCollectionFields } from "./field-validation.ts";
 import type {
+  BooleanFieldDefinition,
   CollectionDefinition,
+  FieldDefinition,
   FieldstoneConfigInput,
   GlobalDefinition,
   TextFieldDefinition,
@@ -8,6 +10,7 @@ import type {
 
 export { validateCollectionFields } from "./field-validation.ts";
 export {
+  normalizeBooleanFieldValue,
   normalizeCollectionData,
   normalizeTextFieldValue,
   type DocumentDataValue,
@@ -29,6 +32,8 @@ export type {
   GlobalRuntimeConfig,
   GlobalRuntimeField,
   GlobalSlug,
+  BooleanFieldDefinition,
+  FieldDefinition,
   FieldstoneConfigInput,
   GeneratedCollections,
   GeneratedGlobals,
@@ -42,8 +47,14 @@ export function text(
   return { ...config, type: "text" };
 }
 
+export function boolean(
+  config: Omit<BooleanFieldDefinition, "type">,
+): BooleanFieldDefinition {
+  return { ...config, type: "boolean" };
+}
+
 export function collection(config: {
-  fields: readonly TextFieldDefinition[];
+  fields: readonly FieldDefinition[];
 }): CollectionDefinition {
   validateCollectionFields(config.fields);
 
@@ -51,7 +62,7 @@ export function collection(config: {
 }
 
 export function global(config: {
-  fields: readonly TextFieldDefinition[];
+  fields: readonly FieldDefinition[];
 }): GlobalDefinition {
   validateCollectionFields(config.fields);
 
