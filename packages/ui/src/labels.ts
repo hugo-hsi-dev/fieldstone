@@ -1,4 +1,8 @@
-import type { CollectionRuntimeConfig, GlobalRuntimeConfig } from '@fieldstone/schema';
+import type {
+	CollectionRuntimeConfig,
+	DocumentDataValue,
+	GlobalRuntimeConfig
+} from '@fieldstone/schema';
 
 export function titleCase(value: string) {
 	return value
@@ -31,8 +35,17 @@ export function getFieldValue(document: Record<string, unknown>, fieldName: stri
 	return String(document[fieldName] ?? '');
 }
 
+export function getFieldInputValue(
+	document: Record<string, unknown> | null,
+	fieldName: string
+): DocumentDataValue | undefined {
+	const value = document?.[fieldName];
+	if (typeof value === 'boolean' || typeof value === 'string' || value === null) return value;
+	return undefined;
+}
+
 export function shouldUseTextarea(field: CollectionRuntimeConfig['fields'][number]) {
-	return Boolean(field.multiline);
+	return field.type === 'text' && Boolean(field.multiline);
 }
 
 export function getSelectedCollection(

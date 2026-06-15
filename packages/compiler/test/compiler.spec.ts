@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  boolean,
   collection,
   global,
   text,
@@ -182,6 +183,7 @@ describe("fieldstone compiler", () => {
           fields: [
             text({ name: "title", required: true }),
             text({ name: "description", required: false }),
+            boolean({ name: "published" }),
           ],
           slug: "posts",
         },
@@ -193,6 +195,7 @@ describe("fieldstone compiler", () => {
     expect(output).toContain("    id: string;");
     expect(output).toContain('"title": string');
     expect(output).toContain('"description": string | null');
+    expect(output).toContain('"published": boolean');
     expect(output).toContain("    createdAt: Date;");
     expect(output).toContain("    updatedAt: Date;");
   });
@@ -243,7 +246,10 @@ describe("fieldstone compiler", () => {
       db: { dialect: "sqlite", url: ":memory:" },
       collections: {
         "blog-posts": {
-          fields: [text({ name: "title", required: true })],
+          fields: [
+            text({ name: "title", required: true }),
+            boolean({ name: "published" }),
+          ],
           slug: "blog-posts",
         },
       },
@@ -254,6 +260,9 @@ describe("fieldstone compiler", () => {
     );
     expect(output).toContain("import crypto from 'node:crypto'");
     expect(output).toContain('title: text("title").notNull()');
+    expect(output).toContain(
+      "published: integer(\"published\", { mode: 'boolean' }).notNull().default(false)",
+    );
   });
 
   it("preserves fields whose generated identifiers collide", () => {
@@ -280,7 +289,12 @@ describe("fieldstone compiler", () => {
       collections: {},
       globals: {
         "site-settings": {
-          ...global({ fields: [text({ name: "siteTitle", required: true })] }),
+          ...global({
+            fields: [
+              text({ name: "siteTitle", required: true }),
+              boolean({ name: "showBanner" }),
+            ],
+          }),
           slug: "site-settings",
         },
       },
@@ -295,6 +309,12 @@ describe("fieldstone compiler", () => {
             name: "siteTitle",
             required: true,
             type: "text",
+          },
+          {
+            identifier: "showBanner",
+            name: "showBanner",
+            required: true,
+            type: "boolean",
           },
         ],
         slug: "site-settings",

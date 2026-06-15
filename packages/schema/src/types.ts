@@ -5,7 +5,14 @@ export type TextFieldDefinition = {
   type: "text";
 };
 
-export type RuntimeField = TextFieldDefinition & {
+export type BooleanFieldDefinition = {
+  name: string;
+  type: "boolean";
+};
+
+export type FieldDefinition = TextFieldDefinition | BooleanFieldDefinition;
+
+export type RuntimeField = FieldDefinition & {
   identifier: string;
   required: boolean;
 };
@@ -14,7 +21,7 @@ export type CollectionRuntimeField = RuntimeField;
 export type GlobalRuntimeField = RuntimeField;
 
 export type ContentDefinition = {
-  fields: TextFieldDefinition[];
+  fields: FieldDefinition[];
 };
 
 export type CollectionDefinition = ContentDefinition;
@@ -73,10 +80,14 @@ type RequiredContentFieldName<
   TGenerated extends object,
   TSlug extends keyof TGenerated,
 > = {
-  [TField in ContentFieldName<
-    TGenerated,
-    TSlug
-  >]: null extends TGenerated[TSlug][TField] ? never : TField;
+  [TField in ContentFieldName<TGenerated, TSlug>]: Exclude<
+    TGenerated[TSlug][TField],
+    undefined
+  > extends boolean
+    ? never
+    : null extends TGenerated[TSlug][TField]
+      ? never
+      : TField;
 }[ContentFieldName<TGenerated, TSlug>];
 
 type OptionalContentFieldName<
@@ -132,9 +143,9 @@ export type GlobalDocument<TGlobal extends string> =
 export type CollectionData<TCollection extends string> =
   TCollection extends keyof GeneratedCollections
     ? GeneratedData<GeneratedCollections, TCollection>
-    : Record<string, string | null>;
+    : Record<string, boolean | string | null>;
 
 export type GlobalData<TGlobal extends string> =
   TGlobal extends keyof GeneratedGlobals
     ? GeneratedData<GeneratedGlobals, TGlobal>
-    : Record<string, string | null>;
+    : Record<string, boolean | string | null>;

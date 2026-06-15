@@ -6,7 +6,7 @@
 	import Button from './primitives/Button.svelte';
 
 	type RemoteFormField = {
-		as: (type: 'hidden' | 'text', value?: string) => Record<string, unknown>;
+		as: (type: 'checkbox' | 'hidden' | 'text', value?: string) => Record<string, unknown>;
 		issues: () => { message: string }[] | undefined;
 	};
 

@@ -7,12 +7,12 @@
 	} from '@fieldstone/schema';
 
 	import FieldInput from './FieldInput.svelte';
-	import { getCollectionLabel, getFieldValue } from './labels';
+	import { getCollectionLabel, getFieldInputValue } from './labels';
 	import Button from './primitives/Button.svelte';
 	import { adminDocumentPath } from '@fieldstone/routes';
 
 	type RemoteFormField = {
-		as: (type: 'hidden' | 'text', value?: string) => Record<string, unknown>;
+		as: (type: 'checkbox' | 'hidden' | 'text', value?: string) => Record<string, unknown>;
 		issues: () => { message: string }[] | undefined;
 	};
 
@@ -62,7 +62,7 @@
 			{field}
 			formField={formFields.data[field.identifier]}
 			id={`edit-${document.id}-${field.identifier}`}
-			value={getFieldValue(document, field.name)}
+			value={getFieldInputValue(document, field.name)}
 			compact
 		/>
 	{/each}

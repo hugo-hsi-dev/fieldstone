@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import ts from "typescript";
 
 import {
+  boolean,
   collection,
   global,
   text,
@@ -84,6 +85,7 @@ describe("fieldstone runtime", () => {
 						id: string;
 						title: string;
 						description: string | null;
+						published: boolean;
 						createdAt: Date;
 						updatedAt: Date;
 					};
@@ -93,6 +95,7 @@ describe("fieldstone runtime", () => {
 						id: string;
 						siteTitle: string;
 						tagline: string | null;
+						showBanner: boolean;
 						createdAt: Date;
 						updatedAt: Date;
 					};
@@ -109,11 +112,12 @@ describe("fieldstone runtime", () => {
 				const posts = await stone.find({ collection: 'posts' });
 				const title: string = posts[0].title;
 				const description: string | null = posts[0].description;
+				const published: boolean = posts[0].published;
 				const createdAt: Date = posts[0].createdAt;
 
 				await stone.create({
 					collection: 'posts',
-					data: { title: 'Hello', description: 'Body' }
+					data: { title: 'Hello', description: 'Body', published: true }
 				});
 
 				await stone.create({
@@ -125,11 +129,12 @@ describe("fieldstone runtime", () => {
 				if (settings) {
 					const siteTitle: string = settings.siteTitle;
 					const tagline: string | null = settings.tagline;
+					const showBanner: boolean = settings.showBanner;
 				}
 
 				await stone.updateGlobal({
 					global: 'site-settings',
-					data: { siteTitle: 'Fieldstone' }
+					data: { siteTitle: 'Fieldstone', showBanner: true }
 				});
 
 				// @ts-expect-error missing configured global field
@@ -167,20 +172,26 @@ describe("fieldstone runtime", () => {
       await expect(
         stone.create({
           collection: "posts",
-          data: { title: "Hello", description: "Body", extra: "Nope" },
+          data: {
+            title: "Hello",
+            description: "Body",
+            published: true,
+            extra: "Nope",
+          },
         }),
       ).rejects.toThrow("Unknown field: extra");
 
       const created = await stone.create({
         collection: "posts",
         createdAt,
-        data: { title: " Hello ", description: " Body " },
+        data: { title: " Hello ", description: " Body ", published: true },
         updatedAt,
       });
 
       expect(created).toMatchObject({
         title: "Hello",
         description: "Body",
+        published: true,
         createdAt,
         updatedAt,
       });
@@ -190,12 +201,14 @@ describe("fieldstone runtime", () => {
         data: { title: "Empty optional", description: "" },
       });
       expect(emptyOptional.description).toBeNull();
+      expect(emptyOptional.published).toBe(false);
 
       const omittedOptional = await stone.create({
         collection: "posts",
         data: { title: "Omitted optional" },
       });
       expect(omittedOptional.description).toBeNull();
+      expect(omittedOptional.published).toBe(false);
 
       const listed = await stone.find({ collection: "posts" });
       expect(listed).toHaveLength(3);
@@ -204,6 +217,7 @@ describe("fieldstone runtime", () => {
       ).toMatchObject({
         id: created.id,
         title: "Hello",
+        published: true,
       });
       expect(
         await stone.findById({ collection: "posts", id: "missing" }),
@@ -219,7 +233,7 @@ describe("fieldstone runtime", () => {
       const updateTime = new Date("2026-01-03T00:00:00.000Z");
       const updated = await stone.update({
         collection: "posts",
-        data: { title: " Updated ", description: " Again " },
+        data: { title: " Updated ", description: " Again ", published: false },
         id: created.id,
         updatedAt: updateTime,
       });
@@ -227,6 +241,7 @@ describe("fieldstone runtime", () => {
         id: created.id,
         title: "Updated",
         description: "Again",
+        published: false,
         updatedAt: updateTime,
       });
 
@@ -236,6 +251,7 @@ describe("fieldstone runtime", () => {
         id: created.id,
       });
       expect(cleared.description).toBeNull();
+      expect(cleared.published).toBe(false);
 
       await expect(
         stone.update({
@@ -260,11 +276,19 @@ describe("fieldstone runtime", () => {
       const [firstConcurrentSave, secondConcurrentSave] = await Promise.all([
         stone.updateGlobal({
           global: "site-settings",
-          data: { siteTitle: "Concurrent first save", tagline: "First" },
+          data: {
+            siteTitle: "Concurrent first save",
+            tagline: "First",
+            showBanner: true,
+          },
         }),
         stone.updateGlobal({
           global: "site-settings",
-          data: { siteTitle: "Concurrent first save", tagline: "Second" },
+          data: {
+            siteTitle: "Concurrent first save",
+            tagline: "Second",
+            showBanner: false,
+          },
         }),
       ]);
       expect(firstConcurrentSave.id).toBe("global");
@@ -277,19 +301,20 @@ describe("fieldstone runtime", () => {
 
       const settings = await stone.updateGlobal({
         global: "site-settings",
-        data: { siteTitle: " Fieldstone ", tagline: " CMS " },
+        data: { siteTitle: " Fieldstone ", tagline: " CMS ", showBanner: true },
         updatedAt: updatedGlobalAt,
       });
       expect(settings).toMatchObject({
         id: "global",
         siteTitle: "Fieldstone",
         tagline: "CMS",
+        showBanner: true,
         updatedAt: updatedGlobalAt,
       });
 
       const changedSettings = await stone.updateGlobal({
         global: "site-settings",
-        data: { siteTitle: "Fieldstone", tagline: "" },
+        data: { siteTitle: "Fieldstone", tagline: "", showBanner: false },
       });
       expect(changedSettings.id).toBe("global");
       expect(changedSettings.tagline).toBeNull();
@@ -299,6 +324,7 @@ describe("fieldstone runtime", () => {
         id: "global",
         siteTitle: "Fieldstone",
         tagline: null,
+        showBanner: false,
       });
     } finally {
       await cleanup();
@@ -315,6 +341,7 @@ async function createRuntimeFixture() {
 					id text primary key not null,
 					title text not null,
 					description text,
+					published integer not null,
 					created_at integer not null,
 					updated_at integer not null
 			);
@@ -322,6 +349,7 @@ async function createRuntimeFixture() {
 					id text primary key not null,
 					siteTitle text not null,
 					tagline text,
+					showBanner integer not null,
 					created_at integer not null,
 					updated_at integer not null
 			);
@@ -336,6 +364,7 @@ async function createRuntimeFixture() {
           fields: [
             text({ name: "title", required: true }),
             text({ name: "description" }),
+            boolean({ name: "published" }),
           ],
         }),
         slug: "posts",
@@ -347,6 +376,7 @@ async function createRuntimeFixture() {
           fields: [
             text({ name: "siteTitle", required: true }),
             text({ name: "tagline" }),
+            boolean({ name: "showBanner" }),
           ],
         }),
         slug: "site-settings",

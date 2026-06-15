@@ -7,31 +7,39 @@
 	let {
 		field,
 		id,
-		value = '',
+		value = undefined,
 		compact = false,
 		formField
 	}: {
 		field: CollectionRuntimeConfig['fields'][number];
 		formField: {
-			as: (type: 'text', value?: string) => Record<string, unknown>;
+			as: (type: 'checkbox' | 'hidden' | 'text', value?: string) => Record<string, unknown>;
 			issues: () => { message: string }[] | undefined;
 		};
 		id: string;
-		value?: string | null;
+		value?: boolean | string | null;
 		compact?: boolean;
 	} = $props();
 </script>
 
 <div class="fs-admin__field">
 	<Label for={id}>{getFieldLabel(field)}</Label>
-	{#if shouldUseTextarea(field)}
+	{#if field.type === 'boolean'}
+		<input {...formField.as('hidden', 'false')} />
+		<input
+			class="fs-admin__checkbox"
+			checked={value === true}
+			{...formField.as('checkbox', 'true')}
+			{id}
+		/>
+	{:else if shouldUseTextarea(field)}
 		<textarea
 			class={['fs-admin__textarea', compact && 'fs-admin__textarea--compact']}
-			{...formField.as('text', value ?? '')}
+			{...formField.as('text', String(value ?? ''))}
 			{id}
 		></textarea>
 	{:else}
-		<input class="fs-admin__input" {...formField.as('text', value ?? '')} {id} />
+		<input class="fs-admin__input" {...formField.as('text', String(value ?? ''))} {id} />
 	{/if}
 	{#each formField.issues() ?? [] as issue, index (`${issue.message}-${index}`)}
 		<p class="fs-admin__field-error">{issue.message}</p>
@@ -70,6 +78,12 @@
 
 	.fs-admin__textarea--compact {
 		min-height: 7rem;
+	}
+
+	.fs-admin__checkbox {
+		width: 1rem;
+		height: 1rem;
+		accent-color: var(--fs-admin-primary);
 	}
 
 	.fs-admin__field-error {

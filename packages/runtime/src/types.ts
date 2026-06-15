@@ -7,7 +7,7 @@ import type {
   GlobalSlug,
 } from "@fieldstone/schema";
 
-export type DocumentData = Record<string, string | null>;
+export type DocumentData = Record<string, boolean | string | null>;
 export type FieldstoneCollectionSlug = CollectionSlug;
 export type FieldstoneDocument<TCollection extends CollectionSlug> =
   CollectionDocument<TCollection>;

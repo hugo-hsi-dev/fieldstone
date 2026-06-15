@@ -4,15 +4,15 @@ import {
 } from "@fieldstone/schema";
 import type {
   CollectionRuntimeConfig,
+  FieldDefinition,
   FieldstoneConfig,
   GlobalRuntimeConfig,
-  TextFieldDefinition,
 } from "@fieldstone/schema";
 import { validateCollectionFields } from "@fieldstone/schema";
 import { toUniqueIdentifier } from "./identifiers.ts";
 
 export type CompiledCollectionField = Readonly<
-  TextFieldDefinition & {
+  FieldDefinition & {
     identifier: string;
     required: boolean;
   }
@@ -28,25 +28,25 @@ export type CompiledSystemField = (typeof systemFields)[number];
 
 export type CompiledColumn = Readonly<{
   columnName: string;
-  drizzleType: "text" | "timestamp";
+  drizzleType: "boolean" | "text" | "timestamp";
   fingerprint: boolean;
   identifier: string;
   name: string;
   origin: "field" | "system";
   required: boolean;
   runtimeKey: string;
-  sourceExpression: "text" | "timestampNow" | "uuidTextPrimaryKey";
+  sourceExpression: "boolean" | "text" | "timestampNow" | "uuidTextPrimaryKey";
   typeScriptName: string;
   typeScriptProperty: string;
-  typeScriptType: "Date" | "string";
+  typeScriptType: "Date" | "boolean" | "string";
 }>;
 
 export type CollectionFingerprint = Readonly<{
   fields: readonly Readonly<{
-    multiline: boolean;
+    multiline?: boolean;
     name: string;
     required: boolean;
-    type: TextFieldDefinition["type"];
+    type: FieldDefinition["type"];
   }>[];
   slug: string;
 }>;
@@ -128,24 +128,26 @@ function createSystemColumn(field: CompiledSystemField): CompiledColumn {
 }
 
 function createFieldColumn(field: CompiledCollectionField): CompiledColumn {
+  const isBoolean = field.type === "boolean";
+
   return {
     columnName: field.name,
-    drizzleType: "text",
+    drizzleType: isBoolean ? "boolean" : "text",
     fingerprint: true,
     identifier: field.identifier,
     name: field.name,
     origin: "field",
     required: field.required,
     runtimeKey: field.name,
-    sourceExpression: "text",
+    sourceExpression: isBoolean ? "boolean" : "text",
     typeScriptName: field.name,
     typeScriptProperty: JSON.stringify(field.name),
-    typeScriptType: "string",
+    typeScriptType: isBoolean ? "boolean" : "string",
   };
 }
 
 function compileContent(
-  content: { fields: TextFieldDefinition[]; slug: string },
+  content: { fields: FieldDefinition[]; slug: string },
   kind: "collection" | "global",
   tableIdentifiers: Set<string>,
 ): CompiledContent {
@@ -154,12 +156,12 @@ function compileContent(
   const fields = content.fields.map((field) => ({
     ...field,
     identifier: toUniqueIdentifier(field.name, fieldIdentifiers),
-    required: Boolean(field.required),
+    required: field.type === "boolean" ? true : Boolean(field.required),
   }));
   const fingerprint = {
     fields: fields.map((field) => ({
       name: field.name,
-      multiline: Boolean(field.multiline),
+      ...(field.type === "text" ? { multiline: Boolean(field.multiline) } : {}),
       required: field.required,
       type: field.type,
     })),
@@ -219,7 +221,7 @@ function createRuntimeConfig(content: CompiledContent) {
   return {
     fields: content.fields.map((field) => ({
       identifier: field.identifier,
-      multiline: field.multiline,
+      ...(field.type === "text" ? { multiline: field.multiline } : {}),
       name: field.name,
       required: field.required,
       type: field.type,

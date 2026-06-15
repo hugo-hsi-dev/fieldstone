@@ -20,6 +20,7 @@ import type {
   GlobalSlug,
   NormalizedDocumentData,
 } from "@fieldstone/schema";
+import { normalizeBooleanFieldValue } from "@fieldstone/schema";
 import { compileFieldstoneConfig } from "@fieldstone/compiler";
 
 import {
@@ -51,20 +52,41 @@ function createTextFieldSchema(field: CollectionRuntimeField) {
   );
 }
 
+function createBooleanFieldSchema() {
+  const booleanValue = v.union([
+    v.boolean(),
+    v.literal("false"),
+    v.literal("true"),
+    v.literal("0"),
+    v.literal("1"),
+    v.literal("on"),
+  ]);
+
+  return v.pipe(
+    v.union([booleanValue, v.array(booleanValue)]),
+    v.transform((value) =>
+      Array.isArray(value)
+        ? value.some((entry) => normalizeBooleanFieldValue(entry))
+        : normalizeBooleanFieldValue(value),
+    ),
+  );
+}
+
 function createCollectionDataSchema(
   collection: CollectionRuntimeConfig | GlobalRuntimeConfig,
 ) {
-  const entries: Record<string, ReturnType<typeof createTextFieldSchema>> = {};
+  const entries: Record<string, any> = {};
 
   for (const field of collection.fields) {
     switch (field.type) {
       case "text":
         entries[field.identifier] = createTextFieldSchema(field);
         break;
-      default: {
-        const exhaustive: never = field.type;
-        throw new Error(`Unsupported field type: ${exhaustive}`);
-      }
+      case "boolean":
+        entries[field.identifier] = createBooleanFieldSchema();
+        break;
+      default:
+        throw new Error("Unsupported field type");
     }
   }
 
