@@ -6,7 +6,11 @@ settings:
 
 importers:
 
-  .: {}
+  .:
+    devDependencies:
+      eslint:
+        specifier: ^10.4.1
+        version: 10.4.1(jiti@2.7.0)
 
   config/eslint:
     devDependencies:
