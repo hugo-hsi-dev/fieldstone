@@ -1,10 +1,17 @@
 import type { NormalizedDocumentData } from "@fieldstone/schema";
-import type { CollectionRuntimeConfig, FieldstoneConfig } from "@fieldstone/schema";
+import type {
+  CollectionRuntimeConfig,
+  FieldstoneConfig,
+  GlobalRuntimeConfig,
+} from "@fieldstone/schema";
 import {
   buildSchemaPlan,
   createCollectionRuntimeConfigs,
+  createGlobalRuntimeConfigs,
   getCollectionConfig,
+  getGlobalConfig,
   normalizeDocumentData,
+  normalizeGlobalData,
 } from "./collection-model.ts";
 import type { SchemaPlan } from "./collection-model.ts";
 import { createDrizzleSchemaSource } from "./drizzle-source.ts";
@@ -14,16 +21,27 @@ import { createTypesDeclaration } from "./types-output.ts";
 
 export type FieldstoneCompiledConfig = {
   createCollectionRuntimeConfigs(): CollectionRuntimeConfig[];
+  createGlobalRuntimeConfigs(): GlobalRuntimeConfig[];
   readonly schemaPlan: SchemaPlan;
   getCollection(slug: string): ReturnType<typeof getCollectionConfig>;
-  normalizeDocumentData(slug: string, data: Record<string, unknown>): NormalizedDocumentData;
+  getGlobal(slug: string): ReturnType<typeof getGlobalConfig>;
+  normalizeDocumentData(
+    slug: string,
+    data: Record<string, unknown>,
+  ): NormalizedDocumentData;
+  normalizeGlobalData(
+    slug: string,
+    data: Record<string, unknown>,
+  ): NormalizedDocumentData;
   renderRuntimeSchema(): RuntimeSchema;
   renderSchemaSource(): string;
   renderTypesDeclaration(): string;
   schemaFingerprint(): string;
 };
 
-export function compileFieldstoneConfig(config: FieldstoneConfig): FieldstoneCompiledConfig {
+export function compileFieldstoneConfig(
+  config: FieldstoneConfig,
+): FieldstoneCompiledConfig {
   const schemaPlan = buildSchemaPlan(config);
   let runtimeSchema: RuntimeSchema | undefined;
   let drizzleSchemaSource: string | undefined;
@@ -31,13 +49,21 @@ export function compileFieldstoneConfig(config: FieldstoneConfig): FieldstoneCom
   let fingerprint: string | undefined;
 
   return {
-    createCollectionRuntimeConfigs: () => createCollectionRuntimeConfigs(schemaPlan),
+    createCollectionRuntimeConfigs: () =>
+      createCollectionRuntimeConfigs(schemaPlan),
+    createGlobalRuntimeConfigs: () => createGlobalRuntimeConfigs(schemaPlan),
     schemaPlan,
     getCollection(slug) {
       return getCollectionConfig(schemaPlan, slug);
     },
+    getGlobal(slug) {
+      return getGlobalConfig(schemaPlan, slug);
+    },
     normalizeDocumentData(slug, data) {
       return normalizeDocumentData(schemaPlan, slug, data);
+    },
+    normalizeGlobalData(slug, data) {
+      return normalizeGlobalData(schemaPlan, slug, data);
     },
     renderRuntimeSchema() {
       runtimeSchema ??= createRuntimeSchema(schemaPlan);

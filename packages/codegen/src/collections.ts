@@ -3,10 +3,21 @@ import path from "node:path";
 
 export const CMS_DIR = path.join("src", "cms");
 export const COLLECTION_FILENAME = "+collection.ts";
+export const GLOBAL_FILENAME = "+global.ts";
 
-export type CollectionFile = {
+export type ContentFile = {
   file: string;
   slug: string;
+};
+
+export type CollectionFile = ContentFile;
+export type GlobalFile = ContentFile;
+
+export type ContentEntry = {
+  entry: string;
+  hasCollection: boolean;
+  hasGlobal: boolean;
+  isBlank: boolean;
 };
 
 export type CollectionEntry = {
@@ -18,7 +29,7 @@ export function normalizePath(file: string) {
   return file.split(path.sep).join("/");
 }
 
-function isCollectionSource(entry: string) {
+function isContentSource(entry: string) {
   return (
     entry.endsWith(".ts") &&
     !entry.endsWith(".d.ts") &&
@@ -32,30 +43,58 @@ export function isCollectionEntry(entry: string) {
 }
 
 export function isWatchedCollectionFile(cmsDir: string, file: string) {
+  return (
+    isWatchedContentFile(cmsDir, file) &&
+    path.basename(file) === COLLECTION_FILENAME
+  );
+}
+
+export function isWatchedGlobalFile(cmsDir: string, file: string) {
+  return (
+    isWatchedContentFile(cmsDir, file) &&
+    path.basename(file) === GLOBAL_FILENAME
+  );
+}
+
+export function isWatchedContentFile(cmsDir: string, file: string) {
   const basename = path.basename(file);
   return (
     file.startsWith(cmsDir) &&
-    isCollectionSource(file) &&
-    basename === COLLECTION_FILENAME &&
+    isContentSource(file) &&
+    (basename === COLLECTION_FILENAME || basename === GLOBAL_FILENAME) &&
     (!path.basename(path.dirname(file)).startsWith("_") ||
       path.basename(path.dirname(file)) === "__proto__")
   );
 }
 
-export function validateCollectionEntries(entries: CollectionEntry[]) {
+export function validateContentEntries(entries: ContentEntry[]) {
   const slugs = new Set<string>();
 
-  for (const { entry, isBlank } of entries) {
+  for (const { entry, hasCollection, hasGlobal, isBlank } of entries) {
     if (isBlank) continue;
 
-    const slug = entry;
-    if (slug === "__proto__") throw new Error("Reserved collection slug: __proto__");
+    if (entry === "__proto__")
+      throw new Error("Reserved content slug: __proto__");
     if (entry.startsWith("_")) continue;
+    if (hasCollection && hasGlobal)
+      throw new Error(`Duplicate content slug: ${entry}`);
 
-    const normalizedSlug = slug.toLowerCase();
-    if (slugs.has(normalizedSlug)) throw new Error(`Duplicate collection slug: ${slug}`);
+    const normalizedSlug = entry.toLowerCase();
+    if (slugs.has(normalizedSlug))
+      throw new Error(`Duplicate content slug: ${entry}`);
     slugs.add(normalizedSlug);
   }
+}
+
+export function validateCollectionEntries(entries: CollectionEntry[]) {
+  validateContentEntries(
+    entries.map((entry) => ({
+      entry: entry.entry,
+      hasCollection: true,
+      hasGlobal: false,
+      isBlank: entry.isBlank,
+    })),
+  );
 }
 
 export async function readCollectionEntries(root: string) {
@@ -68,42 +107,89 @@ export async function readCollectionEntries(root: string) {
   }
 }
 
-async function readCollectionEntry(cmsDir: string, entry: string): Promise<CollectionEntry | null> {
-  const file = path.join(cmsDir, entry, COLLECTION_FILENAME);
-
+async function readOptionalSource(file: string) {
   try {
-    const source = await readFile(file, "utf-8");
-    return {
-      entry,
-      isBlank: !source.trim(),
-    };
+    return await readFile(file, "utf-8");
   } catch (error) {
-    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "ENOENT"
+    ) {
       return null;
     }
     throw error;
   }
 }
 
-export async function discoverCollections(root: string): Promise<CollectionFile[]> {
+async function readContentEntry(
+  cmsDir: string,
+  entry: string,
+): Promise<ContentEntry | null> {
+  const [collectionSource, globalSource] = await Promise.all([
+    readOptionalSource(path.join(cmsDir, entry, COLLECTION_FILENAME)),
+    readOptionalSource(path.join(cmsDir, entry, GLOBAL_FILENAME)),
+  ]);
+
+  if (collectionSource === null && globalSource === null) return null;
+
+  const hasCollection = Boolean(collectionSource?.trim());
+  const hasGlobal = Boolean(globalSource?.trim());
+
+  return {
+    entry,
+    hasCollection,
+    hasGlobal,
+    isBlank: !hasCollection && !hasGlobal,
+  };
+}
+
+async function discoverContent(root: string) {
   const cmsDir = path.join(root, CMS_DIR);
   const entries = await readCollectionEntries(root);
-  const collectionEntries = (
+  const contentEntries = (
     await Promise.all(
       entries
         .filter((entry) => entry.isDirectory())
-        .filter((entry) => isCollectionEntry(entry.name) || entry.name === "__proto__")
-        .map((entry) => readCollectionEntry(cmsDir, entry.name)),
+        .filter(
+          (entry) =>
+            isCollectionEntry(entry.name) || entry.name === "__proto__",
+        )
+        .map((entry) => readContentEntry(cmsDir, entry.name)),
     )
-  ).filter((entry): entry is CollectionEntry => entry !== null);
+  ).filter((entry): entry is ContentEntry => entry !== null);
 
-  collectionEntries.sort((a, b) => a.entry.localeCompare(b.entry));
-  validateCollectionEntries(collectionEntries);
+  contentEntries.sort((a, b) => a.entry.localeCompare(b.entry));
+  validateContentEntries(contentEntries);
 
-  return collectionEntries
-    .filter(({ entry, isBlank }) => !isBlank && isCollectionEntry(entry))
+  return contentEntries.filter(
+    ({ entry, isBlank }) => !isBlank && isCollectionEntry(entry),
+  );
+}
+
+export async function discoverCollections(
+  root: string,
+): Promise<CollectionFile[]> {
+  const cmsDir = path.join(root, CMS_DIR);
+  const contentEntries = await discoverContent(root);
+
+  return contentEntries
+    .filter(({ hasCollection }) => hasCollection)
     .map(({ entry }) => ({
       file: path.join(cmsDir, entry, COLLECTION_FILENAME),
+      slug: entry,
+    }));
+}
+
+export async function discoverGlobals(root: string): Promise<GlobalFile[]> {
+  const cmsDir = path.join(root, CMS_DIR);
+  const contentEntries = await discoverContent(root);
+
+  return contentEntries
+    .filter(({ hasGlobal }) => hasGlobal)
+    .map(({ entry }) => ({
+      file: path.join(cmsDir, entry, GLOBAL_FILENAME),
       slug: entry,
     }));
 }

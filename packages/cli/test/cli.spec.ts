@@ -5,7 +5,9 @@ import { spawn } from "node:child_process";
 
 import { describe, expect, it } from "vitest";
 
-const packageRoot = path.dirname(fileURLToPath(new URL("../package.json", import.meta.url)));
+const packageRoot = path.dirname(
+  fileURLToPath(new URL("../package.json", import.meta.url)),
+);
 const cliPath = path.join(packageRoot, "bin", "fieldstone.mjs");
 
 function runFieldstone(
@@ -41,7 +43,9 @@ function runFieldstone(
         return;
       }
 
-      reject(new Error(`fieldstone ${command} exited ${code}\n${stdout}\n${stderr}`));
+      reject(
+        new Error(`fieldstone ${command} exited ${code}\n${stdout}\n${stderr}`),
+      );
     });
   });
 }
@@ -92,9 +96,14 @@ export default collection({
       );
 
       await runFieldstoneGenerate(root);
-      const schema = await readFile(path.join(root, ".fieldstone", "schema.ts"), "utf-8");
+      const schema = await readFile(
+        path.join(root, ".fieldstone", "schema.ts"),
+        "utf-8",
+      );
 
-      expect(schema).toContain('export const collection_posts = sqliteTable("posts"');
+      expect(schema).toContain(
+        'export const collection_posts = sqliteTable("posts"',
+      );
       expect(schema).toContain('title: text("title").notNull()');
     } finally {
       await rm(root, { recursive: true, force: true });
@@ -107,7 +116,9 @@ export default collection({
     const root = await mkdtemp(path.join(tmpRoot, "fieldstone-cli-"));
 
     try {
-      await mkdir(path.join(root, "src", "cms", "__proto__"), { recursive: true });
+      await mkdir(path.join(root, "src", "cms", "__proto__"), {
+        recursive: true,
+      });
       await writeFile(
         path.join(root, "src", "cms", "__proto__", "+collection.ts"),
         `import { collection, text } from '@fieldstone/schema';
@@ -119,7 +130,7 @@ export default collection({
       );
 
       await expect(runFieldstoneGenerate(root)).rejects.toThrow(
-        "Reserved collection slug: __proto__",
+        "Reserved content slug: __proto__",
       );
     } finally {
       await rm(root, { recursive: true, force: true });

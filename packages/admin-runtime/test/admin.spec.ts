@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { collection, text } from "@fieldstone/schema";
+import { collection, global, text } from "@fieldstone/schema";
 
 import { createFieldstoneAdmin } from "../src/index.ts";
 
@@ -30,6 +30,12 @@ describe("fieldstone admin runtime", () => {
 				created_at integer not null,
 				updated_at integer not null
 			);
+			create table "site-settings" (
+				id text primary key not null,
+				siteTitle text not null,
+				created_at integer not null,
+				updated_at integer not null
+			);
 		`);
     client.close();
     const admin = await createFieldstoneAdmin({
@@ -44,6 +50,14 @@ describe("fieldstone admin runtime", () => {
               ],
             }),
             slug: "posts",
+          },
+        },
+        globals: {
+          "site-settings": {
+            ...global({
+              fields: [text({ name: "siteTitle", required: true })],
+            }),
+            slug: "site-settings",
           },
         },
       },
@@ -68,5 +82,21 @@ describe("fieldstone admin runtime", () => {
       required: true,
     });
     expect(admin.collections).toHaveLength(1);
+    expect(admin.globals).toHaveLength(1);
+    expect(admin.getGlobalConfig("site-settings")).toMatchObject({
+      slug: "site-settings",
+    });
+
+    expect(await admin.getGlobal({ global: "site-settings" })).toBeNull();
+    const settings = await admin.updateGlobal({
+      global: "site-settings",
+      data: { siteTitle: "Fieldstone" },
+    });
+    expect(settings).toMatchObject({ id: "global", siteTitle: "Fieldstone" });
+    await expect(
+      admin.getGlobal({ global: "site-settings" }),
+    ).resolves.toMatchObject({
+      siteTitle: "Fieldstone",
+    });
   });
 });

@@ -1,5 +1,10 @@
 import { validateCollectionFields } from "./field-validation.ts";
-import type { CollectionDefinition, FieldstoneConfigInput, TextFieldDefinition } from "./types.ts";
+import type {
+  CollectionDefinition,
+  FieldstoneConfigInput,
+  GlobalDefinition,
+  TextFieldDefinition,
+} from "./types.ts";
 
 export { validateCollectionFields } from "./field-validation.ts";
 export {
@@ -17,13 +22,23 @@ export type {
   CollectionRuntimeConfig,
   CollectionSlug,
   FieldstoneConfig,
+  GlobalConfig,
+  GlobalData,
+  GlobalDefinition,
+  GlobalDocument,
+  GlobalRuntimeConfig,
+  GlobalRuntimeField,
+  GlobalSlug,
   FieldstoneConfigInput,
   GeneratedCollections,
+  GeneratedGlobals,
   SystemFieldName,
   TextFieldDefinition,
 } from "./types.ts";
 
-export function text(config: Omit<TextFieldDefinition, "type">): TextFieldDefinition {
+export function text(
+  config: Omit<TextFieldDefinition, "type">,
+): TextFieldDefinition {
   return { ...config, type: "text" };
 }
 
@@ -35,6 +50,16 @@ export function collection(config: {
   return { fields: [...config.fields] };
 }
 
-export function defineConfig(config: FieldstoneConfigInput): FieldstoneConfigInput {
+export function global(config: {
+  fields: readonly TextFieldDefinition[];
+}): GlobalDefinition {
+  validateCollectionFields(config.fields);
+
+  return { fields: [...config.fields] };
+}
+
+export function defineConfig(
+  config: FieldstoneConfigInput,
+): FieldstoneConfigInput {
   return config;
 }

@@ -6,7 +6,11 @@ export const {
 	deleteDocument,
 	getCollection,
 	getDocument,
+	getGlobal,
+	getGlobalConfig,
 	listCollections,
 	listDocuments,
-	updateDocument
+	listGlobals,
+	updateDocument,
+	updateGlobal
 } = createFieldstoneAdminRemotes({ config });

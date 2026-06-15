@@ -18,7 +18,7 @@ function renderColumn(column: CompiledColumn) {
 }
 
 export function createDrizzleSchemaSource(schemaPlan: SchemaPlan) {
-  const tableDeclarations = schemaPlan.collections
+  const tableDeclarations = [...schemaPlan.collections, ...schemaPlan.globals]
     .map((collection) => {
       return `export const ${collection.tableIdentifier} = sqliteTable(${JSON.stringify(collection.slug)}, {
 ${collection.columns.map(renderColumn).join("\n")}

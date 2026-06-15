@@ -5,7 +5,12 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import ts from "typescript";
 
-import { collection, text, type FieldstoneConfig } from "@fieldstone/schema";
+import {
+  collection,
+  global,
+  text,
+  type FieldstoneConfig,
+} from "@fieldstone/schema";
 import { getFieldstone } from "../src/index.ts";
 
 describe("fieldstone runtime", () => {
@@ -50,7 +55,9 @@ describe("fieldstone runtime", () => {
     const originalFileExists = host.fileExists;
 
     host.readFile = (requestedFileName) =>
-      requestedFileName === fileName ? source : originalReadFile(requestedFileName);
+      requestedFileName === fileName
+        ? source
+        : originalReadFile(requestedFileName);
     host.fileExists = (requestedFileName) =>
       requestedFileName === fileName || originalFileExists(requestedFileName);
 
@@ -81,6 +88,15 @@ describe("fieldstone runtime", () => {
 						updatedAt: Date;
 					};
 				}
+				interface GeneratedGlobals {
+					"site-settings": {
+						id: string;
+						siteTitle: string;
+						tagline: string | null;
+						createdAt: Date;
+						updatedAt: Date;
+					};
+				}
 			}
 
 			const config = {
@@ -105,6 +121,23 @@ describe("fieldstone runtime", () => {
 					data: { title: 'Hello' }
 				});
 
+				const settings = await stone.getGlobal({ global: 'site-settings' });
+				if (settings) {
+					const siteTitle: string = settings.siteTitle;
+					const tagline: string | null = settings.tagline;
+				}
+
+				await stone.updateGlobal({
+					global: 'site-settings',
+					data: { siteTitle: 'Fieldstone' }
+				});
+
+				// @ts-expect-error missing configured global field
+				await stone.updateGlobal({ global: 'site-settings', data: { tagline: 'Nope' } });
+
+				// @ts-expect-error unknown global
+				await stone.getGlobal({ global: 'navigation' });
+
 				// @ts-expect-error missing configured field
 				await stone.create({ collection: 'posts', data: { description: 'Body' } });
 
@@ -126,7 +159,10 @@ describe("fieldstone runtime", () => {
       const updatedAt = new Date("2026-01-02T00:00:00.000Z");
 
       await expect(
-        stone.create({ collection: "posts", data: { description: "Missing title" } }),
+        stone.create({
+          collection: "posts",
+          data: { description: "Missing title" },
+        }),
       ).rejects.toThrow("title is required");
       await expect(
         stone.create({
@@ -163,11 +199,15 @@ describe("fieldstone runtime", () => {
 
       const listed = await stone.find({ collection: "posts" });
       expect(listed).toHaveLength(3);
-      expect(await stone.findById({ collection: "posts", id: created.id })).toMatchObject({
+      expect(
+        await stone.findById({ collection: "posts", id: created.id }),
+      ).toMatchObject({
         id: created.id,
         title: "Hello",
       });
-      expect(await stone.findById({ collection: "posts", id: "missing" })).toBeNull();
+      expect(
+        await stone.findById({ collection: "posts", id: "missing" }),
+      ).toBeNull();
 
       const defaulted = await stone.create({
         collection: "posts",
@@ -204,9 +244,62 @@ describe("fieldstone runtime", () => {
           id: "missing",
         }),
       ).rejects.toThrow("Document not found");
-      await expect(stone.delete({ collection: "posts", id: "missing" })).rejects.toThrow(
-        "Document not found",
-      );
+      await expect(
+        stone.delete({ collection: "posts", id: "missing" }),
+      ).rejects.toThrow("Document not found");
+
+      expect(await stone.getGlobal({ global: "site-settings" })).toBeNull();
+      await expect(
+        stone.updateGlobal({
+          global: "site-settings",
+          data: { tagline: "Missing title" },
+        }),
+      ).rejects.toThrow("siteTitle is required");
+
+      const updatedGlobalAt = new Date("2026-01-04T00:00:00.000Z");
+      const [firstConcurrentSave, secondConcurrentSave] = await Promise.all([
+        stone.updateGlobal({
+          global: "site-settings",
+          data: { siteTitle: "Concurrent first save", tagline: "First" },
+        }),
+        stone.updateGlobal({
+          global: "site-settings",
+          data: { siteTitle: "Concurrent first save", tagline: "Second" },
+        }),
+      ]);
+      expect(firstConcurrentSave.id).toBe("global");
+      expect(secondConcurrentSave.id).toBe("global");
+      await expect(
+        stone.getGlobal({ global: "site-settings" }),
+      ).resolves.toMatchObject({
+        id: "global",
+      });
+
+      const settings = await stone.updateGlobal({
+        global: "site-settings",
+        data: { siteTitle: " Fieldstone ", tagline: " CMS " },
+        updatedAt: updatedGlobalAt,
+      });
+      expect(settings).toMatchObject({
+        id: "global",
+        siteTitle: "Fieldstone",
+        tagline: "CMS",
+        updatedAt: updatedGlobalAt,
+      });
+
+      const changedSettings = await stone.updateGlobal({
+        global: "site-settings",
+        data: { siteTitle: "Fieldstone", tagline: "" },
+      });
+      expect(changedSettings.id).toBe("global");
+      expect(changedSettings.tagline).toBeNull();
+      await expect(
+        stone.getGlobal({ global: "site-settings" }),
+      ).resolves.toMatchObject({
+        id: "global",
+        siteTitle: "Fieldstone",
+        tagline: null,
+      });
     } finally {
       await cleanup();
     }
@@ -219,13 +312,20 @@ async function createRuntimeFixture() {
   const client = createClient({ url: `file:${dbPath}` });
   await client.executeMultiple(`
 			create table posts (
-				id text primary key not null,
-				title text not null,
-				description text,
-				created_at integer not null,
-				updated_at integer not null
-		);
-	`);
+					id text primary key not null,
+					title text not null,
+					description text,
+					created_at integer not null,
+					updated_at integer not null
+			);
+			create table "site-settings" (
+					id text primary key not null,
+					siteTitle text not null,
+					tagline text,
+					created_at integer not null,
+					updated_at integer not null
+			);
+		`);
   client.close();
 
   const config: FieldstoneConfig = {
@@ -233,9 +333,23 @@ async function createRuntimeFixture() {
     collections: {
       posts: {
         ...collection({
-          fields: [text({ name: "title", required: true }), text({ name: "description" })],
+          fields: [
+            text({ name: "title", required: true }),
+            text({ name: "description" }),
+          ],
         }),
         slug: "posts",
+      },
+    },
+    globals: {
+      "site-settings": {
+        ...global({
+          fields: [
+            text({ name: "siteTitle", required: true }),
+            text({ name: "tagline" }),
+          ],
+        }),
+        slug: "site-settings",
       },
     },
   };
@@ -271,12 +385,16 @@ function getDiagnostics(source: string) {
   const originalFileExists = host.fileExists;
 
   host.readFile = (requestedFileName) =>
-    requestedFileName === fileName ? source : originalReadFile(requestedFileName);
+    requestedFileName === fileName
+      ? source
+      : originalReadFile(requestedFileName);
   host.fileExists = (requestedFileName) =>
     requestedFileName === fileName || originalFileExists(requestedFileName);
 
   const program = ts.createProgram([fileName], compilerOptions, host);
   return ts
     .getPreEmitDiagnostics(program)
-    .map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"));
+    .map((diagnostic) =>
+      ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"),
+    );
 }

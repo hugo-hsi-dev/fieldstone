@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { afterNavigate } from '$app/navigation';
 	import { base } from '$app/paths';
 	import { page } from '$app/state';
 
@@ -7,13 +6,15 @@
 	import CreateDocumentForm from './CreateDocumentForm.svelte';
 	import DocumentEditForm from './DocumentEditForm.svelte';
 	import DocumentList from './DocumentList.svelte';
-	import { getCollectionLabel, getFieldLabel, getFieldValue } from './labels';
+	import GlobalEditForm from './GlobalEditForm.svelte';
+	import { getCollectionLabel, getFieldLabel, getFieldValue, getGlobalLabel } from './labels';
 	import Button from './primitives/Button.svelte';
 	import type { FieldstoneAdminRemotes } from '@fieldstone/remotes';
 	import {
 		adminCollectionPath,
 		adminDocumentPath,
 		adminEditDocumentPath,
+		adminGlobalPath,
 		adminIndexPath,
 		adminNewDocumentPath,
 		getAdminSegments,
@@ -23,12 +24,7 @@
 
 	let { remotes }: { remotes: FieldstoneAdminRemotes } = $props();
 
-	let currentPathname = $state<string>(page.url.pathname);
-
-	afterNavigate(({ to }) => {
-		currentPathname = to?.url.pathname ?? page.url.pathname;
-	});
-
+	const currentPathname = $derived(page.url.pathname);
 	const route = $derived(parseAdminRoute(getAdminSegments(currentPathname)));
 	const routeKey = $derived(currentPathname);
 
@@ -41,6 +37,10 @@
 		return 'collection' in route ? route.collection : null;
 	}
 
+	function routeGlobal(route: AdminRoute) {
+		return 'global' in route ? route.global : null;
+	}
+
 	function getBoundaryErrorMessage(error: unknown) {
 		return error instanceof Error ? error.message : 'Could not load admin data';
 	}
@@ -51,6 +51,10 @@
 
 	function newDocumentHref(collection: string) {
 		return adminNewDocumentPath(collection, base);
+	}
+
+	function globalHref(global: string) {
+		return adminGlobalPath(global, base);
 	}
 
 	function documentHref(collection: string, id: string) {
@@ -66,21 +70,31 @@
 	<main class="fs-admin">
 		<svelte:boundary>
 			{@const collections = await remotes.listCollections()}
+			{@const globals = await remotes.listGlobals()}
 			{@const selectedCollectionSlug = routeCollection(route)}
+			{@const selectedGlobalSlug = routeGlobal(route)}
 			{@const selectedCollection =
 				collections.find((collection) => collection.slug === selectedCollectionSlug) ?? null}
+			{@const selectedGlobal = globals.find((global) => global.slug === selectedGlobalSlug) ?? null}
 
 			{#if route.type === 'index'}
 				<section class="fs-admin__index">
 					<div>
 						<p class="fs-admin__eyebrow">CMS</p>
-						<h1 class="fs-admin__title">Collections</h1>
+						<h1 class="fs-admin__title">CMS</h1>
 					</div>
 
-					{#if collections.length}
-						<CollectionNav {collections} {collectionHref} selectedCollectionSlug={null} />
+					{#if collections.length || globals.length}
+						<CollectionNav
+							{collections}
+							{collectionHref}
+							{globals}
+							{globalHref}
+							selectedCollectionSlug={null}
+							selectedGlobalSlug={null}
+						/>
 					{:else}
-						<p class="fs-admin__muted">No collections found.</p>
+						<p class="fs-admin__muted">No CMS content found.</p>
 					{/if}
 				</section>
 			{:else if route.type === 'notFound'}
@@ -96,11 +110,20 @@
 							<h1 class="fs-admin__title">
 								{selectedCollection
 									? getCollectionLabel(selectedCollection, 'plural')
-									: selectedCollectionSlug}
+									: selectedGlobal
+										? getGlobalLabel(selectedGlobal)
+										: (selectedCollectionSlug ?? selectedGlobalSlug)}
 							</h1>
 						</div>
 
-						<CollectionNav {collections} {collectionHref} {selectedCollectionSlug} />
+						<CollectionNav
+							{collections}
+							{collectionHref}
+							{globals}
+							{globalHref}
+							{selectedCollectionSlug}
+							{selectedGlobalSlug}
+						/>
 
 						{#if selectedCollectionSlug}
 							<Button variant="primary" href={newDocumentHref(selectedCollectionSlug)}>
@@ -238,6 +261,29 @@
 
 								{#snippet pending()}
 									<p class="fs-admin__muted">Loading collection...</p>
+								{/snippet}
+
+								{#snippet failed(error, reset)}
+									<div class="fs-admin__error">
+										<p>{getBoundaryErrorMessage(error)}</p>
+										<Button type="button" onclick={reset}>Retry</Button>
+									</div>
+								{/snippet}
+							</svelte:boundary>
+						{:else if route.type === 'globalEdit'}
+							<svelte:boundary>
+								{@const global = await remotes.getGlobalConfig({ global: route.global })}
+								{@const document = await remotes.getGlobal({ global: global.slug })}
+								{@const updateForm = remotes.updateGlobal.for(global.slug)}
+
+								<div class="fs-admin__section-header">
+									<h2 class="fs-admin__section-title">{getGlobalLabel(global)}</h2>
+								</div>
+
+								<GlobalEditForm globalConfig={global} {document} form={updateForm} />
+
+								{#snippet pending()}
+									<p class="fs-admin__muted">Loading global...</p>
 								{/snippet}
 
 								{#snippet failed(error, reset)}

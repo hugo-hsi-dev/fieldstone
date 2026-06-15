@@ -14,11 +14,19 @@ import type {
   CollectionRuntimeField,
   CollectionSlug,
   FieldstoneConfig,
+  GlobalData,
+  GlobalDocument,
+  GlobalRuntimeConfig,
+  GlobalSlug,
   NormalizedDocumentData,
 } from "@fieldstone/schema";
 import { compileFieldstoneConfig } from "@fieldstone/compiler";
 
-import { adminCollectionPath, adminDocumentPath } from "@fieldstone/routes";
+import {
+  adminCollectionPath,
+  adminDocumentPath,
+  adminGlobalPath,
+} from "@fieldstone/routes";
 
 const collectionSchema = v.object({
   collection: v.string(),
@@ -29,16 +37,23 @@ const findByIdSchema = v.object({
   id: v.string(),
 });
 
+const globalSchema = v.object({
+  global: v.string(),
+});
+
 function createTextFieldSchema(field: CollectionRuntimeField) {
   const text = v.pipe(v.string(), v.trim());
-  if (field.required) return v.pipe(text, v.nonEmpty(`${field.name} is required`));
+  if (field.required)
+    return v.pipe(text, v.nonEmpty(`${field.name} is required`));
   return v.pipe(
     text,
     v.transform((value) => value || null),
   );
 }
 
-function createCollectionDataSchema(collection: CollectionRuntimeConfig) {
+function createCollectionDataSchema(
+  collection: CollectionRuntimeConfig | GlobalRuntimeConfig,
+) {
   const entries: Record<string, ReturnType<typeof createTextFieldSchema>> = {};
 
   for (const field of collection.fields) {
@@ -65,7 +80,9 @@ function createCollectionDataSchema(collection: CollectionRuntimeConfig) {
   );
 }
 
-function createFormDataSchema(collection: CollectionRuntimeConfig) {
+function createFormDataSchema(
+  collection: CollectionRuntimeConfig | GlobalRuntimeConfig,
+) {
   const data = createCollectionDataSchema(collection);
   return collection.fields.length === 0 ? v.optional(data, {}) : data;
 }
@@ -94,18 +111,46 @@ function createDocumentMutationSchema(
     });
   }
 
-  return variants.length === 1 ? variants[0] : v.variant("collection", variants as any);
+  return variants.length === 1
+    ? variants[0]
+    : v.variant("collection", variants as any);
+}
+
+function createGlobalMutationSchema(globals: GlobalRuntimeConfig[]) {
+  const variants = globals.map((global) => {
+    return v.strictObject({
+      global: v.literal(global.slug),
+      data: createFormDataSchema(global),
+    });
+  });
+
+  if (variants.length === 0) {
+    return v.strictObject({
+      global: v.never(),
+      data: v.optional(v.strictObject({}), {}),
+    });
+  }
+
+  return variants.length === 1
+    ? variants[0]
+    : v.variant("global", variants as any);
 }
 
 function isDocumentNotFound(error: unknown) {
   return error instanceof Error && error.message === "Document not found";
 }
 
-export function createFieldstoneAdminRemotes({ config }: { config: FieldstoneConfig }) {
+export function createFieldstoneAdminRemotes({
+  config,
+}: {
+  config: FieldstoneConfig;
+}) {
   const compiled = compileFieldstoneConfig(config);
   const collections = compiled.createCollectionRuntimeConfigs();
   const createSchema = createDocumentMutationSchema(collections, "optional");
+  const globals = compiled.createGlobalRuntimeConfigs();
   const updateSchema = createDocumentMutationSchema(collections, "required");
+  const updateGlobalSchema = createGlobalMutationSchema(globals);
   const deleteSchema = v.strictObject({
     collection: v.string(),
     id: v.string(),
@@ -124,6 +169,14 @@ export function createFieldstoneAdminRemotes({ config }: { config: FieldstoneCon
     return { collection, fieldstoneAdmin };
   }
 
+  async function getAdminGlobal(globalSlug: string) {
+    const fieldstoneAdmin = await getFieldstoneAdmin();
+    const global = fieldstoneAdmin.getGlobalConfig(globalSlug);
+    if (!global) error(404, "Global not found");
+
+    return { fieldstoneAdmin, global };
+  }
+
   return {
     listCollections: query(async () => {
       const fieldstoneAdmin = await getFieldstoneAdmin();
@@ -134,8 +187,26 @@ export function createFieldstoneAdminRemotes({ config }: { config: FieldstoneCon
       return (await getAdminCollection(collection)).collection;
     }),
 
+    listGlobals: query(async () => {
+      const fieldstoneAdmin = await getFieldstoneAdmin();
+      return fieldstoneAdmin.globals;
+    }),
+
+    getGlobalConfig: query(globalSchema, async ({ global }) => {
+      return (await getAdminGlobal(global)).global;
+    }),
+
+    getGlobal: query(globalSchema, async ({ global }) => {
+      const { fieldstoneAdmin, global: globalConfig } =
+        await getAdminGlobal(global);
+      return fieldstoneAdmin.getGlobal({
+        global: globalConfig.slug as GlobalSlug,
+      }) as Promise<GlobalDocument<GlobalSlug> | null>;
+    }),
+
     listDocuments: query(collectionSchema, async ({ collection }) => {
-      const { collection: collectionSlug, fieldstoneAdmin } = await getAdminCollection(collection);
+      const { collection: collectionSlug, fieldstoneAdmin } =
+        await getAdminCollection(collection);
       return fieldstoneAdmin.listDocuments({
         collection: collectionSlug.slug as CollectionSlug,
       }) as Promise<CollectionDocument<CollectionSlug>[]>;
@@ -163,8 +234,14 @@ export function createFieldstoneAdminRemotes({ config }: { config: FieldstoneCon
 
     createDocument: form(
       createSchema as any,
-      async (input: { collection: string; data: NormalizedDocumentData; id?: string }) => {
-        const { collection, fieldstoneAdmin } = await getAdminCollection(input.collection);
+      async (input: {
+        collection: string;
+        data: NormalizedDocumentData;
+        id?: string;
+      }) => {
+        const { collection, fieldstoneAdmin } = await getAdminCollection(
+          input.collection,
+        );
         const document = await fieldstoneAdmin.createDocument({
           collection: collection.slug as CollectionSlug,
           data: input.data as CollectionData<CollectionSlug>,
@@ -176,8 +253,14 @@ export function createFieldstoneAdminRemotes({ config }: { config: FieldstoneCon
 
     updateDocument: form(
       updateSchema as any,
-      async (input: { collection: string; data: NormalizedDocumentData; id: string }) => {
-        const { collection, fieldstoneAdmin } = await getAdminCollection(input.collection);
+      async (input: {
+        collection: string;
+        data: NormalizedDocumentData;
+        id: string;
+      }) => {
+        const { collection, fieldstoneAdmin } = await getAdminCollection(
+          input.collection,
+        );
 
         try {
           const document = await fieldstoneAdmin.updateDocument({
@@ -188,14 +271,30 @@ export function createFieldstoneAdminRemotes({ config }: { config: FieldstoneCon
 
           redirect(303, adminDocumentPath(collection.slug, document.id, base));
         } catch (caught) {
-          if (isDocumentNotFound(caught)) invalid("Could not find requested document");
+          if (isDocumentNotFound(caught))
+            invalid("Could not find requested document");
           throw caught;
         }
       },
     ),
 
+    updateGlobal: form(
+      updateGlobalSchema as any,
+      async (input: { data: NormalizedDocumentData; global: string }) => {
+        const { fieldstoneAdmin, global } = await getAdminGlobal(input.global);
+        await fieldstoneAdmin.updateGlobal({
+          global: global.slug as GlobalSlug,
+          data: input.data as GlobalData<GlobalSlug>,
+        });
+
+        redirect(303, adminGlobalPath(global.slug, base));
+      },
+    ),
+
     deleteDocument: form(deleteSchema, async (input) => {
-      const { collection, fieldstoneAdmin } = await getAdminCollection(input.collection);
+      const { collection, fieldstoneAdmin } = await getAdminCollection(
+        input.collection,
+      );
 
       try {
         await fieldstoneAdmin.deleteDocument({
@@ -205,11 +304,14 @@ export function createFieldstoneAdminRemotes({ config }: { config: FieldstoneCon
 
         redirect(303, adminCollectionPath(collection.slug, base));
       } catch (caught) {
-        if (isDocumentNotFound(caught)) invalid("Could not find requested document");
+        if (isDocumentNotFound(caught))
+          invalid("Could not find requested document");
         throw caught;
       }
     }),
   };
 }
 
-export type FieldstoneAdminRemotes = ReturnType<typeof createFieldstoneAdminRemotes>;
+export type FieldstoneAdminRemotes = ReturnType<
+  typeof createFieldstoneAdminRemotes
+>;
