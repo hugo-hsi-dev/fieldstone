@@ -10,4 +10,12 @@
     "reveal": "no_focus",
     "hide": "on_success",
   },
+  {
+    "label": "push db",
+    "command": "pnpm",
+    "args": ["db:push"],
+    "hooks": ["create_worktree"],
+    "reveal": "no_focus",
+    "hide": "on_success",
+  },
 ]
