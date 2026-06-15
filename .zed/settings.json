@@ -1,0 +1,27 @@
+{
+  "file_scan_exclusions": [
+    "**/.git",
+    "**/.svn",
+    "**/.hg",
+    "**/.jj",
+    "**/CVS",
+    "**/.DS_Store",
+    "**/Thumbs.db",
+    "**/.classpath",
+    "**/.settings",
+    "**/node_modules",
+    "**/.svelte-kit",
+  ],
+  "lsp": {
+    "eslint": {
+      "settings": {
+        "options": {
+          "warnIgnored": false,
+        },
+        "workingDirectory": {
+          "mode": "auto",
+        },
+      },
+    },
+  },
+}
