@@ -21,7 +21,9 @@ function createRuntimeColumn(column: CompiledColumn) {
   }
 
   if (column.sourceExpression === "boolean") {
-    return integer(column.columnName, { mode: "boolean" }).notNull();
+    return integer(column.columnName, { mode: "boolean" })
+      .notNull()
+      .default(false);
   }
 
   if (column.sourceExpression === "uuidTextPrimaryKey") {

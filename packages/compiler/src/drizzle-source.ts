@@ -7,7 +7,7 @@ function renderColumn(column: CompiledColumn) {
   }
 
   if (column.sourceExpression === "boolean") {
-    return `\t${column.identifier}: integer(${JSON.stringify(column.columnName)}, { mode: 'boolean' }).notNull(),`;
+    return `\t${column.identifier}: integer(${JSON.stringify(column.columnName)}, { mode: 'boolean' }).notNull().default(false),`;
   }
 
   if (column.sourceExpression === "uuidTextPrimaryKey") {

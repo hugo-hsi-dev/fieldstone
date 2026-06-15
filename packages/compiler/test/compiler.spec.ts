@@ -261,7 +261,7 @@ describe("fieldstone compiler", () => {
     expect(output).toContain("import crypto from 'node:crypto'");
     expect(output).toContain('title: text("title").notNull()');
     expect(output).toContain(
-      "published: integer(\"published\", { mode: 'boolean' }).notNull()",
+      "published: integer(\"published\", { mode: 'boolean' }).notNull().default(false)",
     );
   });
 

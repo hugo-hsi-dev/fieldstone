@@ -28,8 +28,8 @@
 		<input {...formField.as('hidden', 'false')} />
 		<input
 			class="fs-admin__checkbox"
-			{...formField.as('checkbox', 'true')}
 			checked={value === true}
+			{...formField.as('checkbox', 'true')}
 			{id}
 		/>
 	{:else if shouldUseTextarea(field)}
