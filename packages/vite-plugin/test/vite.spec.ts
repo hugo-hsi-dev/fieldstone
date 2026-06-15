@@ -7,12 +7,40 @@ import { describe, expect, it } from "vitest";
 import { RESOLVED_CONFIG_ID } from "@fieldstone/codegen";
 import { fieldstone } from "../src/index.ts";
 
+type TestPlugin = ReturnType<typeof fieldstone> & {
+  configResolved?: {
+    call(thisArg: unknown, config: { root: string }): void | Promise<void>;
+  };
+  load?: {
+    call(
+      thisArg: unknown,
+      id: string,
+    ): Promise<string | undefined> | string | undefined;
+  };
+  resolveId?: {
+    call(
+      thisArg: unknown,
+      source: string,
+      importer: string | undefined,
+      options: { ssr: boolean },
+    ): unknown;
+  };
+};
+
+function createTestPlugin(
+  options: Parameters<typeof fieldstone>[0],
+): TestPlugin {
+  return fieldstone(options) as TestPlugin;
+}
+
 describe("fieldstone vite plugin", () => {
   it("rejects client imports of $fieldstone-config", () => {
-    const plugin = fieldstone({ db: { dialect: "sqlite", url: ":memory:" } });
+    const plugin = createTestPlugin({
+      db: { dialect: "sqlite", url: ":memory:" },
+    });
 
     expect(() =>
-      plugin.resolveId?.call({} as never, "$fieldstone-config", undefined, {
+      plugin.resolveId?.call({}, "$fieldstone-config", undefined, {
         ssr: false,
       }),
     ).toThrow("$fieldstone-config is server-only");
@@ -27,11 +55,11 @@ describe("fieldstone vite plugin", () => {
     );
 
     try {
-      const plugin = fieldstone({
+      const plugin = createTestPlugin({
         db: { dialect: "sqlite", url: "fallback.db" },
       });
-      plugin.configResolved?.call({} as never, { root } as never);
-      const source = await plugin.load?.call({} as never, RESOLVED_CONFIG_ID);
+      await plugin.configResolved?.call({}, { root });
+      const source = await plugin.load?.call({}, RESOLVED_CONFIG_ID);
 
       expect(source).toContain('process.env.DATABASE_URL ?? "fallback.db"');
       expect(source).toContain('dialect: "sqlite"');
@@ -53,12 +81,14 @@ describe("fieldstone vite plugin", () => {
     );
 
     try {
-      const plugin = fieldstone({ db: { dialect: "sqlite", url: ":memory:" } });
-      plugin.configResolved?.call({} as never, { root } as never);
+      const plugin = createTestPlugin({
+        db: { dialect: "sqlite", url: ":memory:" },
+      });
+      await plugin.configResolved?.call({}, { root });
 
-      await expect(
-        plugin.load?.call({} as never, RESOLVED_CONFIG_ID),
-      ).rejects.toThrow("Reserved content slug: __proto__");
+      await expect(plugin.load?.call({}, RESOLVED_CONFIG_ID)).rejects.toThrow(
+        "Reserved content slug: __proto__",
+      );
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -78,10 +108,12 @@ describe("fieldstone vite plugin", () => {
     );
 
     try {
-      const plugin = fieldstone({ db: { dialect: "sqlite", url: ":memory:" } });
-      plugin.configResolved?.call({} as never, { root } as never);
+      const plugin = createTestPlugin({
+        db: { dialect: "sqlite", url: ":memory:" },
+      });
+      await plugin.configResolved?.call({}, { root });
 
-      const source = await plugin.load?.call({} as never, RESOLVED_CONFIG_ID);
+      const source = await plugin.load?.call({}, RESOLVED_CONFIG_ID);
 
       expect(source).toContain('"posts": runtimeCollection0');
       expect(source).not.toContain("_draft");

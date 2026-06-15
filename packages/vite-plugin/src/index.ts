@@ -39,6 +39,7 @@ async function assertNoBlankKnownContent(
   knownSlugs: ReadonlySet<string>,
 ) {
   for (const slug of knownSlugs) {
+    const sources: string[] = [];
     const files = [
       path.join(root, CMS_DIR, slug, COLLECTION_FILENAME),
       path.join(root, CMS_DIR, slug, GLOBAL_FILENAME),
@@ -46,12 +47,7 @@ async function assertNoBlankKnownContent(
 
     for (const file of files) {
       try {
-        const source = await readFile(file, "utf-8");
-        if (!source.trim()) {
-          throw new Error(
-            `Content ${slug} is temporarily blank. Keeping previous config.`,
-          );
-        }
+        sources.push(await readFile(file, "utf-8"));
       } catch (error) {
         if (
           error &&
@@ -63,6 +59,13 @@ async function assertNoBlankKnownContent(
         }
         throw error;
       }
+    }
+
+    if (sources.some((source) => source.trim())) continue;
+    if (sources.length > 0) {
+      throw new Error(
+        `Content ${slug} is temporarily blank. Keeping previous config.`,
+      );
     }
   }
 }
