@@ -98,6 +98,33 @@ describe("collection discovery", () => {
     }
   });
 
+  it("ignores blank sibling content files", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "fieldstone-codegen-"));
+    await mkdir(path.join(root, "src", "cms", "site-settings"), {
+      recursive: true,
+    });
+    await writeFile(
+      path.join(root, "src", "cms", "site-settings", "+collection.ts"),
+      "",
+    );
+    await writeFile(
+      path.join(root, "src", "cms", "site-settings", "+global.ts"),
+      "export default {};",
+    );
+
+    try {
+      await expect(discoverCollections(root)).resolves.toEqual([]);
+      await expect(discoverGlobals(root)).resolves.toEqual([
+        {
+          file: path.join(root, "src", "cms", "site-settings", "+global.ts"),
+          slug: "site-settings",
+        },
+      ]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("rejects collection and global files with the same slug", () => {
     expect(() =>
       validateContentEntries([

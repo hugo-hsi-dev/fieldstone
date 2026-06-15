@@ -257,6 +257,24 @@ describe("fieldstone runtime", () => {
       ).rejects.toThrow("siteTitle is required");
 
       const updatedGlobalAt = new Date("2026-01-04T00:00:00.000Z");
+      const [firstConcurrentSave, secondConcurrentSave] = await Promise.all([
+        stone.updateGlobal({
+          global: "site-settings",
+          data: { siteTitle: "Concurrent first save", tagline: "First" },
+        }),
+        stone.updateGlobal({
+          global: "site-settings",
+          data: { siteTitle: "Concurrent first save", tagline: "Second" },
+        }),
+      ]);
+      expect(firstConcurrentSave.id).toBe("global");
+      expect(secondConcurrentSave.id).toBe("global");
+      await expect(
+        stone.getGlobal({ global: "site-settings" }),
+      ).resolves.toMatchObject({
+        id: "global",
+      });
+
       const settings = await stone.updateGlobal({
         global: "site-settings",
         data: { siteTitle: " Fieldstone ", tagline: " CMS " },

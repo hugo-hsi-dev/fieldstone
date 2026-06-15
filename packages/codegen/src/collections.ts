@@ -134,14 +134,14 @@ async function readContentEntry(
 
   if (collectionSource === null && globalSource === null) return null;
 
-  const sources = [collectionSource, globalSource].filter(
-    (source): source is string => source !== null,
-  );
+  const hasCollection = Boolean(collectionSource?.trim());
+  const hasGlobal = Boolean(globalSource?.trim());
+
   return {
     entry,
-    hasCollection: collectionSource !== null,
-    hasGlobal: globalSource !== null,
-    isBlank: sources.every((source) => !source.trim()),
+    hasCollection,
+    hasGlobal,
+    isBlank: !hasCollection && !hasGlobal,
   };
 }
 

@@ -18,7 +18,9 @@ export function createGlobalRuntime(context: DatabaseContext) {
   }
 
   return {
-    getGlobal: async <TGlobal extends GlobalSlug>({ global: globalSlug }: GlobalInput<TGlobal>) => {
+    getGlobal: async <TGlobal extends GlobalSlug>({
+      global: globalSlug,
+    }: GlobalInput<TGlobal>) => {
       const table = getTable(globalSlug);
       const [document] = await database
         .select()
@@ -36,25 +38,7 @@ export function createGlobalRuntime(context: DatabaseContext) {
       const document = compiledConfig.normalizeGlobalData(globalSlug, data);
       const table = getTable(globalSlug);
       const now = new Date();
-      const [existing] = await database
-        .select({ createdAt: table.createdAt })
-        .from(table)
-        .where(eq(table.id, GLOBAL_SINGLETON_ID))
-        .limit(1);
-
-      if (existing) {
-        const updatedRows = (await database
-          .update(table)
-          .set({
-            ...document,
-            updatedAt: updatedAt ?? now,
-          })
-          .where(eq(table.id, GLOBAL_SINGLETON_ID))
-          .returning()) as unknown[];
-        return updatedRows[0] as GlobalDocument<TGlobal>;
-      }
-
-      const createdRows = (await database
+      const savedRows = (await database
         .insert(table)
         .values({
           ...document,
@@ -62,9 +46,16 @@ export function createGlobalRuntime(context: DatabaseContext) {
           createdAt: now,
           updatedAt: updatedAt ?? now,
         })
+        .onConflictDoUpdate({
+          target: table.id,
+          set: {
+            ...document,
+            updatedAt: updatedAt ?? now,
+          },
+        })
         .returning()) as unknown[];
 
-      return createdRows[0] as GlobalDocument<TGlobal>;
+      return savedRows[0] as GlobalDocument<TGlobal>;
     },
   };
 }
