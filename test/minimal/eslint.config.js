@@ -1,6 +1,0 @@
-import path from 'node:path';
-import { svelteKitConfig } from '@fieldstone/eslint-config';
-
-const gitignorePath = path.resolve(import.meta.dirname, '.gitignore');
-
-export default svelteKitConfig({ gitignorePath });

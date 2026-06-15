@@ -6,44 +6,25 @@
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
-		"preview": "vite preview",
-		"prepare": "svelte-kit sync || echo ''",
-		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-		"lint": "prettier --check . && eslint .",
-		"format": "prettier --write .",
 		"db:push": "node ../../packages/cli/bin/fieldstone.mjs push",
-		"test:unit": "vitest",
-		"test": "npm run test:unit -- --run && npm run test:e2e",
 		"test:e2e": "playwright install && playwright test",
 		"fieldstone:generate": "node ../../packages/cli/bin/fieldstone.mjs generate"
 	},
 	"devDependencies": {
-		"@fieldstone/eslint-config": "workspace:*",
-		"@fieldstone/prettier-config": "workspace:*",
 		"@fieldstone/tsconfig": "workspace:*",
 		"@playwright/test": "^1.60.0",
 		"@sveltejs/adapter-auto": "^7.0.1",
 		"@sveltejs/kit": "^2.63.0",
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
 		"@types/node": "^24",
-		"@vitest/browser-playwright": "^4.1.8",
-		"eslint": "^10.4.1",
-		"playwright": "^1.60.0",
-		"prettier": "^3.8.3",
 		"svelte": "^5.56.1",
-		"svelte-check": "^4.6.0",
 		"typescript": "^6.0.3",
-		"vite": "^8.0.16",
-		"vitest": "^4.1.8",
-		"vitest-browser-svelte": "^2.1.1"
+		"vite": "^8.0.16"
 	},
 	"dependencies": {
-		"@fieldstone/cli": "workspace:*",
 		"@fieldstone/remotes": "workspace:*",
 		"@fieldstone/schema": "workspace:*",
 		"@fieldstone/ui": "workspace:*",
-		"@fieldstone/vite-plugin": "workspace:*",
-		"valibot": "^1.4.1"
+		"@fieldstone/vite-plugin": "workspace:*"
 	}
 }
