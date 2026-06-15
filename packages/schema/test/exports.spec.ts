@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { collection, defineConfig, text } from "../src/index.ts";
+import { collection, defineConfig, global, text } from "../src/index.ts";
 
 describe("fieldstone schema exports", () => {
   it("exposes authoring helpers from the schema package", () => {
@@ -12,7 +12,12 @@ describe("fieldstone schema exports", () => {
     expect(collection({ fields: [text({ name: "title" })] })).toEqual({
       fields: [{ name: "title", type: "text" }],
     });
-    expect(defineConfig({ db: { dialect: "sqlite", url: ":memory:" } })).toEqual({
+    expect(global({ fields: [text({ name: "siteTitle" })] })).toEqual({
+      fields: [{ name: "siteTitle", type: "text" }],
+    });
+    expect(
+      defineConfig({ db: { dialect: "sqlite", url: ":memory:" } }),
+    ).toEqual({
       db: { dialect: "sqlite", url: ":memory:" },
     });
   });

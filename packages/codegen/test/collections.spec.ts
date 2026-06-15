@@ -4,7 +4,12 @@ import { tmpdir } from "node:os";
 
 import { describe, expect, it } from "vitest";
 
-import { discoverCollections, validateCollectionEntries } from "../src/collections.ts";
+import {
+  discoverCollections,
+  discoverGlobals,
+  validateCollectionEntries,
+  validateContentEntries,
+} from "../src/collections.ts";
 
 async function withCollections(
   files: Record<string, string>,
@@ -52,11 +57,14 @@ describe("collection discovery", () => {
   });
 
   it("rejects nonblank prototype collection files", async () => {
-    await withCollections({ ["__proto__"]: "export default {};" }, async (root) => {
-      await expect(discoverCollections(root)).rejects.toThrow(
-        "Reserved collection slug: __proto__",
-      );
-    });
+    await withCollections(
+      { ["__proto__"]: "export default {};" },
+      async (root) => {
+        await expect(discoverCollections(root)).rejects.toThrow(
+          "Reserved content slug: __proto__",
+        );
+      },
+    );
   });
 
   it("rejects duplicate nonblank collection slugs", async () => {
@@ -65,12 +73,49 @@ describe("collection discovery", () => {
         { entry: "Posts", isBlank: false },
         { entry: "posts", isBlank: false },
       ]),
-    ).toThrow("Duplicate collection slug: posts");
+    ).toThrow("Duplicate content slug: posts");
+  });
+
+  it("discovers global files", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "fieldstone-codegen-"));
+    await mkdir(path.join(root, "src", "cms", "site-settings"), {
+      recursive: true,
+    });
+    await writeFile(
+      path.join(root, "src", "cms", "site-settings", "+global.ts"),
+      "export default {};",
+    );
+
+    try {
+      await expect(discoverGlobals(root)).resolves.toEqual([
+        {
+          file: path.join(root, "src", "cms", "site-settings", "+global.ts"),
+          slug: "site-settings",
+        },
+      ]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects collection and global files with the same slug", () => {
+    expect(() =>
+      validateContentEntries([
+        {
+          entry: "settings",
+          hasCollection: true,
+          hasGlobal: true,
+          isBlank: false,
+        },
+      ]),
+    ).toThrow("Duplicate content slug: settings");
   });
 
   it("rejects collection files that exist but cannot be read", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "fieldstone-codegen-"));
-    await mkdir(path.join(root, "src", "cms", "posts", "+collection.ts"), { recursive: true });
+    await mkdir(path.join(root, "src", "cms", "posts", "+collection.ts"), {
+      recursive: true,
+    });
 
     try {
       await expect(discoverCollections(root)).rejects.toThrow();
@@ -81,7 +126,9 @@ describe("collection discovery", () => {
 
   it("does not read ignored collection directories", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "fieldstone-codegen-"));
-    await mkdir(path.join(root, "src", "cms", "_draft", "+collection.ts"), { recursive: true });
+    await mkdir(path.join(root, "src", "cms", "_draft", "+collection.ts"), {
+      recursive: true,
+    });
 
     try {
       await expect(discoverCollections(root)).resolves.toEqual([]);

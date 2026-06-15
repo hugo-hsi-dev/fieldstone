@@ -1,6 +1,10 @@
 import crypto from "node:crypto";
 
-import { integer, sqliteTable, text as sqliteText } from "drizzle-orm/sqlite-core";
+import {
+  integer,
+  sqliteTable,
+  text as sqliteText,
+} from "drizzle-orm/sqlite-core";
 
 import type { CompiledColumn, SchemaPlan } from "./collection-model.ts";
 
@@ -30,7 +34,7 @@ function createRuntimeColumn(column: CompiledColumn) {
 export function createRuntimeSchema(schemaPlan: SchemaPlan): RuntimeSchema {
   const tables: Record<string, any> = {};
 
-  for (const collection of schemaPlan.collections) {
+  for (const collection of [...schemaPlan.collections, ...schemaPlan.globals]) {
     const columns: Record<string, any> = {};
 
     for (const column of collection.columns) {

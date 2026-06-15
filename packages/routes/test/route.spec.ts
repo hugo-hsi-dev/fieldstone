@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { adminDocumentPath, getAdminSegments, parseAdminRoute } from "../src/index.ts";
+import {
+  adminDocumentPath,
+  adminGlobalPath,
+  getAdminSegments,
+  parseAdminRoute,
+} from "../src/index.ts";
 
 describe("admin route helpers", () => {
   it("preserves unsupported admin route segments for 404 handling", () => {
@@ -8,7 +13,10 @@ describe("admin route helpers", () => {
   });
 
   it("extracts collection route segments", () => {
-    expect(getAdminSegments("/admin/collections/posts")).toEqual(["collections", "posts"]);
+    expect(getAdminSegments("/admin/collections/posts")).toEqual([
+      "collections",
+      "posts",
+    ]);
   });
 
   it("parses route-driven admin document routes", () => {
@@ -31,12 +39,19 @@ describe("admin route helpers", () => {
       id: "123",
       type: "documentEdit",
     });
+    expect(parseAdminRoute(["globals", "site-settings"])).toEqual({
+      global: "site-settings",
+      type: "globalEdit",
+    });
     expect(parseAdminRoute(["foo"])).toEqual({ type: "notFound" });
   });
 
   it("builds encoded document paths with template syntax", () => {
     expect(adminDocumentPath("blog posts", "doc/1")).toBe(
       "/admin/collections/blog%20posts/doc%2F1",
+    );
+    expect(adminGlobalPath("site settings")).toBe(
+      "/admin/globals/site%20settings",
     );
   });
 

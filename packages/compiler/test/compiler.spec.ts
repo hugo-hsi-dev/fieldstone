@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { collection, text, type FieldstoneConfig } from "@fieldstone/schema";
+import {
+  collection,
+  global,
+  text,
+  type FieldstoneConfig,
+} from "@fieldstone/schema";
 import * as schema from "@fieldstone/schema";
 import * as compiler from "../src/index.ts";
 import { compileFieldstoneConfig } from "../src/index.ts";
@@ -33,7 +38,9 @@ describe("fieldstone compiler", () => {
       "blog_posts",
       "pages",
     ]);
-    expect(schemaPlan.collections[1]?.tableIdentifier).toBe("collection_blog_posts_2");
+    expect(schemaPlan.collections[1]?.tableIdentifier).toBe(
+      "collection_blog_posts_2",
+    );
     expect(schemaPlan.collections[0]).toMatchObject({
       slug: "blog-posts",
       tableIdentifier: "collection_blog_posts",
@@ -102,7 +109,7 @@ describe("fieldstone compiler", () => {
         },
       ],
     });
-    expect(schemaPlan.fingerprintPayload[0]).toEqual({
+    expect(schemaPlan.fingerprintPayload.collections[0]).toEqual({
       fields: [
         { multiline: false, name: "seo-title", required: true, type: "text" },
         { multiline: false, name: "seo_title", required: false, type: "text" },
@@ -115,7 +122,10 @@ describe("fieldstone compiler", () => {
         db: { dialect: "sqlite", url: ":memory:" },
         collections: {
           posts: {
-            fields: [text({ name: "seo-title", required: true }), text({ name: "seo_title" })],
+            fields: [
+              text({ name: "seo-title", required: true }),
+              text({ name: "seo_title" }),
+            ],
             slug: "posts",
           },
         },
@@ -190,7 +200,10 @@ describe("fieldstone compiler", () => {
   it("rejects duplicate field names in one collection", () => {
     expect(() =>
       collection({
-        fields: [text({ name: "title", required: true }), text({ name: "title", required: true })],
+        fields: [
+          text({ name: "title", required: true }),
+          text({ name: "title", required: true }),
+        ],
       }),
     ).toThrow("Duplicate field name: title");
   });
@@ -217,7 +230,10 @@ describe("fieldstone compiler", () => {
   it("rejects case-only duplicate field names", () => {
     expect(() =>
       collection({
-        fields: [text({ name: "title", required: true }), text({ name: "Title", required: true })],
+        fields: [
+          text({ name: "title", required: true }),
+          text({ name: "Title", required: true }),
+        ],
       }),
     ).toThrow("Duplicate field name: Title");
   });
@@ -233,7 +249,9 @@ describe("fieldstone compiler", () => {
       },
     }).renderSchemaSource();
 
-    expect(output).toContain('export const collection_blog_posts = sqliteTable("blog-posts"');
+    expect(output).toContain(
+      'export const collection_blog_posts = sqliteTable("blog-posts"',
+    );
     expect(output).toContain("import crypto from 'node:crypto'");
     expect(output).toContain('title: text("title").notNull()');
   });
@@ -256,6 +274,64 @@ describe("fieldstone compiler", () => {
     expect(output).toContain('seo_title_2: text("seo_title")');
   });
 
+  it("compiles global runtime configs and tables", () => {
+    const compiled = compileFieldstoneConfig({
+      db: { dialect: "sqlite", url: ":memory:" },
+      collections: {},
+      globals: {
+        "site-settings": {
+          ...global({ fields: [text({ name: "siteTitle", required: true })] }),
+          slug: "site-settings",
+        },
+      },
+    });
+
+    expect(compiled.createGlobalRuntimeConfigs()).toEqual([
+      {
+        fields: [
+          {
+            identifier: "siteTitle",
+            multiline: undefined,
+            name: "siteTitle",
+            required: true,
+            type: "text",
+          },
+        ],
+        slug: "site-settings",
+      },
+    ]);
+    expect(
+      compiled.renderRuntimeSchema().tables["site-settings"].siteTitle,
+    ).toBeDefined();
+    expect(compiled.renderSchemaSource()).toContain(
+      'export const global_site_settings = sqliteTable("site-settings"',
+    );
+    expect(compiled.renderTypesDeclaration()).toContain(
+      "interface GeneratedGlobals",
+    );
+    expect(compiled.renderTypesDeclaration()).toContain('"site-settings"');
+  });
+
+  it("rejects collection and global slugs that collide", () => {
+    expect(() =>
+      compileFieldstoneConfig({
+        db: { dialect: "sqlite", url: ":memory:" },
+        collections: {
+          settings: {
+            fields: [text({ name: "title", required: true })],
+            slug: "settings",
+          },
+        },
+        globals: {
+          Settings: {
+            fields: [text({ name: "siteTitle", required: true })],
+            slug: "Settings",
+          },
+        },
+      }),
+    ).toThrow("Duplicate content slug: Settings");
+  });
+
   it("generates valid export identifiers for reserved collection slugs", () => {
     const output = compileFieldstoneConfig({
       db: { dialect: "sqlite", url: ":memory:" },
@@ -271,8 +347,12 @@ describe("fieldstone compiler", () => {
       },
     }).renderSchemaSource();
 
-    expect(output).toContain('export const collection_class = sqliteTable("class"');
-    expect(output).toContain('export const collection_class_name = sqliteTable("class-name"');
+    expect(output).toContain(
+      'export const collection_class = sqliteTable("class"',
+    );
+    expect(output).toContain(
+      'export const collection_class_name = sqliteTable("class-name"',
+    );
     expect(output).not.toContain("export const class =");
   });
 
@@ -291,7 +371,7 @@ describe("fieldstone compiler", () => {
           },
         },
       }).renderSchemaSource(),
-    ).toThrow("Duplicate collection slug: Posts");
+    ).toThrow("Duplicate content slug: Posts");
   });
 
   it("rejects reserved field names in direct config input", () => {
@@ -305,7 +385,9 @@ describe("fieldstone compiler", () => {
       },
     };
 
-    expect(() => compileFieldstoneConfig(config)).toThrow("Reserved field name: id");
+    expect(() => compileFieldstoneConfig(config)).toThrow(
+      "Reserved field name: id",
+    );
   });
 
   it("rejects duplicate field names in direct config input", () => {
@@ -339,7 +421,9 @@ describe("fieldstone compiler", () => {
     });
 
     expect(compiled.renderRuntimeSchema().tables.posts.title).toBeDefined();
-    expect(compiled.renderSchemaSource()).toContain('title: text("title").notNull()');
+    expect(compiled.renderSchemaSource()).toContain(
+      'title: text("title").notNull()',
+    );
     expect(compiled.renderTypesDeclaration()).toContain('"title": string');
     expect(compiled.schemaFingerprint()).toContain('"slug":"posts"');
   });
@@ -366,11 +450,14 @@ describe("fieldstone compiler", () => {
         title: " Hello ",
       }),
     ).toEqual({ description: "Body", title: "Hello" });
-    expect(() => compiled.normalizeDocumentData("posts", { description: "Missing title" })).toThrow(
-      "title is required",
-    );
     expect(() =>
-      compiled.normalizeDocumentData("posts", { title: "Hello", extra: "Nope" }),
+      compiled.normalizeDocumentData("posts", { description: "Missing title" }),
+    ).toThrow("title is required");
+    expect(() =>
+      compiled.normalizeDocumentData("posts", {
+        title: "Hello",
+        extra: "Nope",
+      }),
     ).toThrow("Unknown field: extra");
     expect(() => compiled.normalizeDocumentData("missing", {})).toThrow(
       "Unsupported collection: missing",

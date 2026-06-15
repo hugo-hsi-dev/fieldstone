@@ -5,21 +5,34 @@ export type TextFieldDefinition = {
   type: "text";
 };
 
-export type CollectionRuntimeField = TextFieldDefinition & {
+export type RuntimeField = TextFieldDefinition & {
   identifier: string;
   required: boolean;
 };
 
-export type CollectionDefinition = {
+export type CollectionRuntimeField = RuntimeField;
+export type GlobalRuntimeField = RuntimeField;
+
+export type ContentDefinition = {
   fields: TextFieldDefinition[];
 };
 
-export type CollectionRuntimeConfig = {
-  fields: CollectionRuntimeField[];
+export type CollectionDefinition = ContentDefinition;
+export type GlobalDefinition = ContentDefinition;
+
+export type RuntimeConfig = {
+  fields: RuntimeField[];
   slug: string;
 };
 
+export type CollectionRuntimeConfig = RuntimeConfig;
+export type GlobalRuntimeConfig = RuntimeConfig;
+
 export type CollectionConfig = CollectionDefinition & {
+  slug: string;
+};
+
+export type GlobalConfig = GlobalDefinition & {
   slug: string;
 };
 
@@ -32,57 +45,96 @@ export type FieldstoneConfigInput = {
 
 export type FieldstoneConfig = FieldstoneConfigInput & {
   collections: Record<string, CollectionConfig>;
+  globals?: Record<string, GlobalConfig>;
 };
 
 export interface GeneratedCollections {}
+export interface GeneratedGlobals {}
 
 type GeneratedCollectionSlug = keyof GeneratedCollections & string;
+type GeneratedGlobalSlug = keyof GeneratedGlobals & string;
 
 export type CollectionSlug = [GeneratedCollectionSlug] extends [never]
   ? string
   : GeneratedCollectionSlug;
 
+export type GlobalSlug = [GeneratedGlobalSlug] extends [never]
+  ? string
+  : GeneratedGlobalSlug;
+
 export type SystemFieldName = "id" | "createdAt" | "updatedAt";
 
-type CollectionFieldName<TCollection extends keyof GeneratedCollections> = Exclude<
-  keyof GeneratedCollections[TCollection],
-  SystemFieldName
-> &
-  string;
+type ContentFieldName<
+  TGenerated extends object,
+  TSlug extends keyof TGenerated,
+> = Exclude<keyof TGenerated[TSlug], SystemFieldName> & string;
 
-type RequiredCollectionFieldName<TCollection extends keyof GeneratedCollections> = {
-  [TField in CollectionFieldName<TCollection>]: null extends GeneratedCollections[TCollection][TField]
-    ? never
-    : TField;
-}[CollectionFieldName<TCollection>];
+type RequiredContentFieldName<
+  TGenerated extends object,
+  TSlug extends keyof TGenerated,
+> = {
+  [TField in ContentFieldName<
+    TGenerated,
+    TSlug
+  >]: null extends TGenerated[TSlug][TField] ? never : TField;
+}[ContentFieldName<TGenerated, TSlug>];
 
-type OptionalCollectionFieldName<TCollection extends keyof GeneratedCollections> = Exclude<
-  CollectionFieldName<TCollection>,
-  RequiredCollectionFieldName<TCollection>
+type OptionalContentFieldName<
+  TGenerated extends object,
+  TSlug extends keyof TGenerated,
+> = Exclude<
+  ContentFieldName<TGenerated, TSlug>,
+  RequiredContentFieldName<TGenerated, TSlug>
 >;
 
-type CollectionDataValue<
-  TCollection extends keyof GeneratedCollections,
-  TField extends CollectionFieldName<TCollection>,
+type ContentDataValue<
+  TGenerated extends object,
+  TSlug extends keyof TGenerated,
+  TField extends ContentFieldName<TGenerated, TSlug>,
 > =
-  Exclude<GeneratedCollections[TCollection][TField], undefined> extends string | null
-    ? Exclude<GeneratedCollections[TCollection][TField], undefined>
-    : Exclude<GeneratedCollections[TCollection][TField], undefined>;
+  Exclude<TGenerated[TSlug][TField], undefined> extends string | null
+    ? Exclude<TGenerated[TSlug][TField], undefined>
+    : Exclude<TGenerated[TSlug][TField], undefined>;
+
+type GeneratedData<
+  TGenerated extends object,
+  TSlug extends keyof TGenerated,
+> = {
+  [K in RequiredContentFieldName<TGenerated, TSlug>]: ContentDataValue<
+    TGenerated,
+    TSlug,
+    K
+  >;
+} & {
+  [K in OptionalContentFieldName<TGenerated, TSlug>]?: ContentDataValue<
+    TGenerated,
+    TSlug,
+    K
+  >;
+};
+
+type FallbackDocument = {
+  id: string;
+  createdAt: Date;
+  updatedAt: Date;
+} & Record<string, unknown>;
 
 export type CollectionDocument<TCollection extends string> =
   TCollection extends keyof GeneratedCollections
     ? GeneratedCollections[TCollection]
-    : {
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
-      } & Record<string, unknown>;
+    : FallbackDocument;
+
+export type GlobalDocument<TGlobal extends string> =
+  TGlobal extends keyof GeneratedGlobals
+    ? GeneratedGlobals[TGlobal]
+    : FallbackDocument;
 
 export type CollectionData<TCollection extends string> =
   TCollection extends keyof GeneratedCollections
-    ? {
-        [K in RequiredCollectionFieldName<TCollection>]: CollectionDataValue<TCollection, K>;
-      } & {
-        [K in OptionalCollectionFieldName<TCollection>]?: CollectionDataValue<TCollection, K>;
-      }
+    ? GeneratedData<GeneratedCollections, TCollection>
+    : Record<string, string | null>;
+
+export type GlobalData<TGlobal extends string> =
+  TGlobal extends keyof GeneratedGlobals
+    ? GeneratedData<GeneratedGlobals, TGlobal>
     : Record<string, string | null>;

@@ -1,4 +1,11 @@
-import type { CollectionData, CollectionDocument, CollectionSlug } from "@fieldstone/schema";
+import type {
+  CollectionData,
+  CollectionDocument,
+  CollectionSlug,
+  GlobalData,
+  GlobalDocument,
+  GlobalSlug,
+} from "@fieldstone/schema";
 
 export type DocumentData = Record<string, string | null>;
 export type FieldstoneCollectionSlug = CollectionSlug;
@@ -6,8 +13,15 @@ export type FieldstoneDocument<TCollection extends CollectionSlug> =
   CollectionDocument<TCollection>;
 export type FieldstoneDocumentData<TCollection extends CollectionSlug> =
   CollectionData<TCollection>;
+export type FieldstoneGlobalSlug = GlobalSlug;
+export type FieldstoneGlobal<TGlobal extends GlobalSlug> =
+  GlobalDocument<TGlobal>;
+export type FieldstoneGlobalData<TGlobal extends GlobalSlug> =
+  GlobalData<TGlobal>;
 
-export type CollectionInput<TCollection extends CollectionSlug = CollectionSlug> = {
+export type CollectionInput<
+  TCollection extends CollectionSlug = CollectionSlug,
+> = {
   collection: TCollection;
 };
 
@@ -32,3 +46,13 @@ export type UpdateInput<TCollection extends CollectionSlug = CollectionSlug> =
     MutationInput<TCollection> & {
       updatedAt?: Date;
     };
+
+export type GlobalInput<TGlobal extends GlobalSlug = GlobalSlug> = {
+  global: TGlobal;
+};
+
+export type UpdateGlobalInput<TGlobal extends GlobalSlug = GlobalSlug> =
+  GlobalInput<TGlobal> & {
+    data: GlobalData<TGlobal>;
+    updatedAt?: Date;
+  };

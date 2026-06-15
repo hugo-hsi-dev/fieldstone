@@ -13,7 +13,12 @@ export type {
   FieldstoneCollectionSlug,
   FieldstoneDocument,
   FieldstoneDocumentData,
+  FieldstoneGlobal,
+  FieldstoneGlobalData,
+  FieldstoneGlobalSlug,
+  GlobalInput,
   MutationInput,
+  UpdateGlobalInput,
   UpdateInput,
 } from "./types.ts";
 

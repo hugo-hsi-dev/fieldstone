@@ -80,6 +80,23 @@ test('creates a document for a zero-field collection', async ({ page }) => {
 	await expect(page.getByRole('link', { name: 'Back to list' })).toBeVisible();
 });
 
+test('edits a global through route-driven admin', async ({ page }) => {
+	await page.goto('/admin/globals/site-settings');
+
+	await expect(page.getByRole('heading', { level: 1, name: 'Site Settings' })).toBeVisible();
+	await expect(page.getByRole('link', { name: 'Site Settings' })).toHaveAttribute(
+		'aria-current',
+		'page'
+	);
+	await page.getByLabel('SiteTitle').fill('Fieldstone CMS');
+	await page.getByLabel('Tagline').fill('Single use content');
+	await page.getByRole('button', { name: 'Save site settings' }).click();
+
+	await expect(page).toHaveURL(/\/admin\/globals\/site-settings$/);
+	await expect(page.getByLabel('SiteTitle')).toHaveValue('Fieldstone CMS');
+	await expect(page.getByLabel('Tagline')).toHaveValue('Single use content');
+});
+
 test('keeps navigation state current across collection routes', async ({ page }) => {
 	await page.goto('/admin/collections/pages');
 

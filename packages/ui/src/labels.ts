@@ -1,4 +1,4 @@
-import type { CollectionRuntimeConfig } from '@fieldstone/schema';
+import type { CollectionRuntimeConfig, GlobalRuntimeConfig } from '@fieldstone/schema';
 
 export function titleCase(value: string) {
 	return value
@@ -17,6 +17,10 @@ export function getCollectionLabel(
 	count: 'singular' | 'plural'
 ) {
 	return titleCase(count === 'singular' ? singularize(collection.slug) : collection.slug);
+}
+
+export function getGlobalLabel(global: GlobalRuntimeConfig) {
+	return titleCase(global.slug);
 }
 
 export function getFieldLabel(field: CollectionRuntimeConfig['fields'][number]) {

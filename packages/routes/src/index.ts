@@ -12,16 +12,23 @@ export type AdminRoute =
   | { collection: string; type: "collectionNew" }
   | { collection: string; id: string; type: "documentDetail" }
   | { collection: string; id: string; type: "documentEdit" }
+  | { global: string; type: "globalEdit" }
   | { type: "notFound" };
 
 export function parseAdminRoute(segments: string[]): AdminRoute {
   if (segments.length === 0) return { type: "index" };
+  if (segments[0] === "globals") {
+    const global = segments[1];
+    if (!global || segments.length !== 2) return { type: "notFound" };
+    return { global, type: "globalEdit" };
+  }
   if (segments[0] !== "collections") return { type: "notFound" };
 
   const collection = segments[1];
   if (!collection) return { type: "notFound" };
   if (segments.length === 2) return { collection, type: "collectionList" };
-  if (segments.length === 3 && segments[2] === "new") return { collection, type: "collectionNew" };
+  if (segments.length === 3 && segments[2] === "new")
+    return { collection, type: "collectionNew" };
 
   const id = segments[2];
   if (!id) return { type: "notFound" };
@@ -41,17 +48,32 @@ export function adminIndexPath(basePath = "") {
 }
 
 export function adminCollectionPath(collection: string, basePath = "") {
-  return withBase(`/admin/collections/${encodeURIComponent(collection)}`, basePath);
+  return withBase(
+    `/admin/collections/${encodeURIComponent(collection)}`,
+    basePath,
+  );
 }
 
 export function adminNewDocumentPath(collection: string, basePath = "") {
   return `${adminCollectionPath(collection, basePath)}/new`;
 }
 
-export function adminDocumentPath(collection: string, id: string, basePath = "") {
+export function adminDocumentPath(
+  collection: string,
+  id: string,
+  basePath = "",
+) {
   return `${adminCollectionPath(collection, basePath)}/${encodeURIComponent(id)}`;
 }
 
-export function adminEditDocumentPath(collection: string, id: string, basePath = "") {
+export function adminEditDocumentPath(
+  collection: string,
+  id: string,
+  basePath = "",
+) {
   return `${adminDocumentPath(collection, id, basePath)}/edit`;
+}
+
+export function adminGlobalPath(global: string, basePath = "") {
+  return withBase(`/admin/globals/${encodeURIComponent(global)}`, basePath);
 }

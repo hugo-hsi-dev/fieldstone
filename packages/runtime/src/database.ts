@@ -19,6 +19,7 @@ export async function createDatabase(config: FieldstoneConfig) {
 
   return {
     collections: compiledConfig.createCollectionRuntimeConfigs(),
+    globals: compiledConfig.createGlobalRuntimeConfigs(),
     compiled,
     compiledConfig,
     database,
