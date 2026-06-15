@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import type {
 		CollectionDocument,
 		CollectionRuntimeConfig,
@@ -8,7 +8,12 @@
 
 	import { getFieldValue } from './labels';
 	import Button from './primitives/Button.svelte';
-	import { adminDocumentPath, adminEditDocumentPath } from '@fieldstone/routes';
+	import {
+		adminDocumentPath,
+		adminEditDocumentPath,
+		adminRouteId,
+		adminRouteSegments
+	} from '@fieldstone/routes';
 
 	let {
 		collection,
@@ -19,6 +24,10 @@
 	} = $props();
 
 	const titleField = $derived(collection.fields[0]?.name ?? 'id');
+
+	function resolveAdminPath(path: string) {
+		return resolve(adminRouteId, { segments: adminRouteSegments(path) });
+	}
 </script>
 
 <article class="fs-admin__panel">
@@ -26,7 +35,7 @@
 		<div class="fs-admin__document-body">
 			<a
 				class="fs-admin__document-title"
-				href={adminDocumentPath(collection.slug, document.id, base)}
+				href={resolveAdminPath(adminDocumentPath(collection.slug, document.id))}
 			>
 				{getFieldValue(document, titleField)}
 			</a>
@@ -37,8 +46,10 @@
 			{/each}
 		</div>
 		<div class="fs-admin__actions">
-			<Button href={adminDocumentPath(collection.slug, document.id, base)}>View</Button>
-			<Button href={adminEditDocumentPath(collection.slug, document.id, base)}>Edit</Button>
+			<Button href={resolveAdminPath(adminDocumentPath(collection.slug, document.id))}>View</Button>
+			<Button href={resolveAdminPath(adminEditDocumentPath(collection.slug, document.id))}
+				>Edit</Button
+			>
 		</div>
 	</div>
 </article>

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 
 	import CollectionNav from './CollectionNav.svelte';
@@ -17,6 +17,8 @@
 		adminGlobalPath,
 		adminIndexPath,
 		adminNewDocumentPath,
+		adminRouteId,
+		adminRouteSegments,
 		getAdminSegments,
 		parseAdminRoute,
 		type AdminRoute
@@ -45,24 +47,28 @@
 		return error instanceof Error ? error.message : 'Could not load admin data';
 	}
 
+	function resolveAdminPath(path: string) {
+		return resolve(adminRouteId, { segments: adminRouteSegments(path) });
+	}
+
 	function collectionHref(collection: string) {
-		return adminCollectionPath(collection, base);
+		return resolveAdminPath(adminCollectionPath(collection));
 	}
 
 	function newDocumentHref(collection: string) {
-		return adminNewDocumentPath(collection, base);
+		return resolveAdminPath(adminNewDocumentPath(collection));
 	}
 
 	function globalHref(global: string) {
-		return adminGlobalPath(global, base);
+		return resolveAdminPath(adminGlobalPath(global));
 	}
 
 	function documentHref(collection: string, id: string) {
-		return adminDocumentPath(collection, id, base);
+		return resolveAdminPath(adminDocumentPath(collection, id));
 	}
 
 	function editDocumentHref(collection: string, id: string) {
-		return adminEditDocumentPath(collection, id, base);
+		return resolveAdminPath(adminEditDocumentPath(collection, id));
 	}
 </script>
 
@@ -100,7 +106,7 @@
 			{:else if route.type === 'notFound'}
 				<section class="fs-admin__index">
 					<h1 class="fs-admin__title">Admin route not found</h1>
-					<Button href={adminIndexPath(base)}>Back to admin</Button>
+					<Button href={resolveAdminPath(adminIndexPath())}>Back to admin</Button>
 				</section>
 			{:else}
 				<div class="fs-admin__grid">

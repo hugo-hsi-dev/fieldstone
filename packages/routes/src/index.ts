@@ -39,8 +39,15 @@ export function parseAdminRoute(segments: string[]): AdminRoute {
   return { type: "notFound" };
 }
 
+export const adminRouteId = "/admin/[...segments]";
+
 function withBase(path: string, basePath = "") {
   return `${basePath}${path}`;
+}
+
+export function adminRouteSegments(path: string) {
+  if (path === "/admin") return "";
+  return path.startsWith("/admin/") ? path.slice("/admin/".length) : path;
 }
 
 export function adminIndexPath(basePath = "") {

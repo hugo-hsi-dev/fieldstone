@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import type {
 		CollectionDocument,
 		CollectionRuntimeConfig,
@@ -9,7 +9,7 @@
 	import FieldInput from './FieldInput.svelte';
 	import { getCollectionLabel, getFieldInputValue } from './labels';
 	import Button from './primitives/Button.svelte';
-	import { adminDocumentPath } from '@fieldstone/routes';
+	import { adminDocumentPath, adminRouteId, adminRouteSegments } from '@fieldstone/routes';
 
 	type RemoteFormField = {
 		as: (type: 'checkbox' | 'hidden' | 'text', value?: string) => Record<string, unknown>;
@@ -45,6 +45,10 @@
 			return (formFields.data[field.identifier]?.issues() ?? []).length > 0;
 		});
 	}
+
+	function resolveAdminPath(path: string) {
+		return resolve(adminRouteId, { segments: adminRouteSegments(path) });
+	}
 </script>
 
 <form class="fs-admin__panel fs-admin__form" {...form}>
@@ -71,7 +75,7 @@
 		<Button variant="primary" disabled={Boolean(form.pending)}>
 			Save {getCollectionLabel(collection, 'singular').toLowerCase()}
 		</Button>
-		<Button href={adminDocumentPath(collection.slug, document.id, base)}>Cancel</Button>
+		<Button href={resolveAdminPath(adminDocumentPath(collection.slug, document.id))}>Cancel</Button>
 	</div>
 </form>
 
