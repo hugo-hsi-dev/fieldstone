@@ -73,7 +73,7 @@
 </script>
 
 {#key routeKey}
-	<main class="fs-admin">
+	<main class="fs-admin" data-sveltekit-preload-data="off">
 		<svelte:boundary>
 			{@const collections = await remotes.listCollections()}
 			{@const globals = await remotes.listGlobals()}
