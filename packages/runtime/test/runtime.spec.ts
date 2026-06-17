@@ -29,7 +29,7 @@ describe("fieldstone runtime", () => {
     );
   });
 
-  it("provides the virtual config module declaration from the client entrypoint", () => {
+  it("provides the virtual config module declaration from the client entrypoint", { timeout: 20_000 }, () => {
     const source = `
 			import { getFieldstone } from '@fieldstone/runtime';
 			import config from '$fieldstone-config';

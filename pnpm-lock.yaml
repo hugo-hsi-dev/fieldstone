@@ -475,6 +475,9 @@ importers:
         specifier: workspace:*
         version: link:../../packages/vite-plugin
     devDependencies:
+      '@fieldstone/eslint-config':
+        specifier: workspace:*
+        version: link:../../config/eslint
       '@fieldstone/tsconfig':
         specifier: workspace:*
         version: link:../../config/tsconfig
