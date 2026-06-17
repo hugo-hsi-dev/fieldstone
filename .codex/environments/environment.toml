@@ -9,5 +9,6 @@ set -eu
 cd "$CODEX_WORKTREE_PATH"
 
 pnpm install --frozen-lockfile
+pnpm setup:e2e
 pnpm db:push
 '''

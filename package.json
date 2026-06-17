@@ -8,6 +8,7 @@
 		"dev": "pnpm --dir test/minimal dev",
 		"build": "pnpm --dir test/minimal build",
 		"db:push": "pnpm -r --filter './test/*' --if-present db:push",
+		"setup:e2e": "pnpm --dir test/minimal setup:e2e",
 		"test": "pnpm -r --filter './packages/*' test && pnpm test:e2e",
 		"test:e2e": "pnpm --dir test/minimal test:e2e",
 		"lint": "eslint . && pnpm -r --filter './packages/*' --if-present lint",
