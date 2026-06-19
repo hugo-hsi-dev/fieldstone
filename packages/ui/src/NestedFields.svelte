@@ -12,15 +12,23 @@
 		fields,
 		value = $bindable({}),
 		idPrefix,
+		relationOptions = {},
 		onUpdate
 	}: {
 		fields: Field[];
 		value?: Record<string, unknown>;
 		idPrefix: string;
+		// Relationship options keyed by target collection slug.
+		relationOptions?: Record<string, { value: string; label: string }[]>;
 		// Called on every change so nested group/array levels can bubble updates up
 		// (the top level is driven by bind:value from FieldInput instead).
 		onUpdate?: (next: Record<string, unknown>) => void;
 	} = $props();
+
+	function relationValuesOf(raw: unknown): string[] {
+		if (Array.isArray(raw)) return raw.map(String);
+		return raw == null ? [] : [String(raw)];
+	}
 
 	function setValue(name: string, next: unknown) {
 		value = { ...value, [name]: next };
@@ -87,12 +95,59 @@
 						<option value={option.value}>{option.label}</option>
 					{/each}
 				</select>
+			{:else if field.type === 'relationship' && field.hasMany}
+				{@const selected = relationValuesOf(value[field.name])}
+				{@const opts =
+					relationOptions[field.relationTo] ?? selected.map((id) => ({ value: id, label: id }))}
+				<select
+					id={fieldId}
+					class="fs-admin__input"
+					multiple
+					disabled={readOnly}
+					onchange={(event) =>
+						setValue(
+							field.name,
+							Array.from(event.currentTarget.selectedOptions, (option) => option.value)
+						)}
+				>
+					{#each opts as option (option.value)}
+						<option value={option.value} selected={selected.includes(option.value)}
+							>{option.label}</option
+						>
+					{/each}
+				</select>
+			{:else if field.type === 'relationship'}
+				{@const current = value[field.name] == null ? '' : String(value[field.name])}
+				{@const opts = relationOptions[field.relationTo] ?? []}
+				{#if opts.length > 0}
+					<select
+						id={fieldId}
+						class="fs-admin__input"
+						value={current}
+						disabled={readOnly}
+						onchange={(event) => setValue(field.name, event.currentTarget.value || null)}
+					>
+						<option value="">—</option>
+						{#each opts as option (option.value)}
+							<option value={option.value}>{option.label}</option>
+						{/each}
+					</select>
+				{:else}
+					<input
+						id={fieldId}
+						class="fs-admin__input"
+						value={current}
+						readonly={readOnly}
+						oninput={(event) => setValue(field.name, event.currentTarget.value || null)}
+					/>
+				{/if}
 			{:else if field.type === 'group'}
 				<fieldset class="fs-admin__nested">
 					<NestedFields
 						fields={field.fields}
 						value={asRecord(value[field.name])}
 						idPrefix={fieldId}
+						{relationOptions}
 						onUpdate={(next) => setValue(field.name, next)}
 					/>
 				</fieldset>
@@ -104,6 +159,7 @@
 								fields={field.fields}
 								value={entry}
 								idPrefix={`${fieldId}-${index}`}
+								{relationOptions}
 								onUpdate={(next) => setArrayRow(field.name, index, next)}
 							/>
 							{#if !readOnly}

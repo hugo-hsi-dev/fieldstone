@@ -126,6 +126,14 @@ export function createFieldstoneRest({
       if (method === "GET") {
         const params = url.searchParams;
         const statusParam = params.get("status");
+        // Reject an invalid status rather than dropping the filter — silently
+        // ignoring e.g. ?status=publised would return drafts too.
+        if (
+          statusParam !== null &&
+          statusParam !== "draft" &&
+          statusParam !== "published"
+        )
+          return errorResponse(400, `Invalid status: ${statusParam}`);
         const status: DocumentStatus | undefined =
           statusParam === "draft" || statusParam === "published"
             ? statusParam

@@ -1,16 +1,13 @@
 import type { CompiledContent, SchemaPlan } from "./collection-model.ts";
 
 function renderTypeColumn(column: CompiledContent["columns"][number]) {
+  // optionalInput fields (defaulted fields, optional arrays) are optional on
+  // create/update but non-null when stored, so mark them `?` rather than nullable.
   const type =
-    column.origin === "field" && !column.required
+    column.origin === "field" && !column.required && !column.optionalInput
       ? `${column.typeScriptType} | null`
       : column.typeScriptType;
-  // The injected draft status column has a runtime default, so it's optional on
-  // create/update even though the stored value is always non-null. Mark it
-  // optional (not nullable) so mutation input types don't demand it. ("_status"
-  // is STATUS_FIELD_NAME from @fieldstone/schema; collections can't define it.)
-  const optional = column.name === "_status";
-  return `    ${column.typeScriptProperty}${optional ? "?" : ""}: ${type};`;
+  return `    ${column.typeScriptProperty}${column.optionalInput ? "?" : ""}: ${type};`;
 }
 
 function renderGeneratedEntries(contents: readonly CompiledContent[]) {

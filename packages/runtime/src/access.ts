@@ -28,7 +28,12 @@ export async function assertCollectionAccess(
   operation: AccessOperation,
   args: { user: AccessUser; id?: string; data?: Record<string, unknown> },
 ): Promise<void> {
-  const access = config.collections[collection]?.access?.[operation];
+  // Look up by slug, not config key — collections may be registered under a key
+  // that differs from their slug, and runtime/REST calls pass the slug.
+  const collectionConfig = Object.values(config.collections).find(
+    (entry) => entry.slug === collection,
+  );
+  const access = collectionConfig?.access?.[operation];
   if (!access) return;
   const allowed = await access({
     collection,

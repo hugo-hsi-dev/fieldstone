@@ -36,6 +36,11 @@ export type CompiledColumn = Readonly<{
   fingerprint: boolean;
   identifier: string;
   name: string;
+  // The value is optional on create/update even when the stored column is
+  // non-null — i.e. the runtime fills it in (a defaulted field) or it defaults to
+  // an empty collection (an optional array). Generated mutation input marks these
+  // optional so callers needn't pass them.
+  optionalInput: boolean;
   origin: "field" | "system";
   required: boolean;
   runtimeKey: string;
@@ -140,6 +145,7 @@ function createSystemColumn(field: CompiledSystemField): CompiledColumn {
     fingerprint: false,
     identifier: field.identifier,
     name: field.name,
+    optionalInput: false,
     origin: "system",
     required: true,
     runtimeKey: field.identifier,
@@ -207,12 +213,20 @@ function fieldUnique(field: CompiledCollectionField): boolean {
   return "unique" in field ? Boolean(field.unique) : false;
 }
 
+function hasDefaultValue(field: CompiledCollectionField): boolean {
+  return "defaultValue" in field && field.defaultValue !== undefined;
+}
+
 function createFieldColumn(field: CompiledCollectionField): CompiledColumn {
   const base = {
     columnName: field.name,
     fingerprint: true,
     identifier: field.identifier,
     name: field.name,
+    // A defaulted field (runtime fills the default) or an optional array (defaults
+    // to []) is optional on input even though the stored value is non-null.
+    optionalInput:
+      hasDefaultValue(field) || (field.type === "array" && !field.required),
     origin: "field",
     required: field.required,
     runtimeKey: field.name,

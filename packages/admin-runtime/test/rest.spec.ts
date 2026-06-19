@@ -136,6 +136,13 @@ describe("fieldstone REST handler", () => {
     expect(((await unknown.json()) as { error: string }).error).toContain("Unknown field");
   });
 
+  it("rejects an invalid status query value instead of dropping the filter", async () => {
+    const req = new Request("http://localhost/api/posts?status=publised", { method: "GET" });
+    const res = await rest.handle(req, ["posts"]);
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toContain("Invalid status");
+  });
+
   it("handles globals, unknown routes, and method errors", async () => {
     expect(await (await call("GET", ["globals", "site-settings"])).json()).toBeNull();
 

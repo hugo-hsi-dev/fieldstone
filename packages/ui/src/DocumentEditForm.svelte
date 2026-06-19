@@ -81,7 +81,8 @@
 			formField={formFields.data[field.identifier]}
 			id={`edit-${document.id}-${field.identifier}`}
 			value={getFieldInputValue(document, field.name)}
-			options={relationOptions[field.identifier] ?? []}
+			options={field.type === 'relationship' ? (relationOptions[field.relationTo] ?? []) : []}
+			{relationOptions}
 			compact
 		/>
 	{/each}

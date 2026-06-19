@@ -66,7 +66,8 @@
 			{field}
 			formField={formFields.data[field.identifier]}
 			id={`create-${collection.slug}-${field.identifier}`}
-			options={relationOptions[field.identifier] ?? []}
+			options={field.type === 'relationship' ? (relationOptions[field.relationTo] ?? []) : []}
+			{relationOptions}
 		/>
 	{/each}
 

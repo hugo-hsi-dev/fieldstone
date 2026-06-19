@@ -35,6 +35,10 @@ function validateFieldDefinition(field: FieldDefinition) {
           );
         seen.add(option.value);
       }
+      if (field.defaultValue !== undefined && !seen.has(field.defaultValue))
+        throw new Error(
+          `Select field "${field.name}" has a defaultValue not in its options: ${field.defaultValue}`,
+        );
       break;
     }
     case "number": {

@@ -355,7 +355,8 @@ describe("fieldstone compiler", () => {
     expect(types).toContain('"price": number');
     expect(types).toContain('"launchDate": Date | null');
     expect(types).toContain('"contact": string | null');
-    expect(types).toContain('"status": "draft" | "active" | null');
+    // status has a defaultValue, so it's optional (and non-null) on input.
+    expect(types).toContain('"status"?: "draft" | "active"');
 
     expect(compiled.renderRuntimeSchema().tables.products.price).toBeDefined();
   });
@@ -483,7 +484,8 @@ describe("fieldstone compiler", () => {
     expect(types).toContain(
       '"seo": { "title": string; "description": string | null }',
     );
-    expect(types).toContain('"links": { "url": string }[]');
+    // links is an optional array, so it's optional (and non-null) on input.
+    expect(types).toContain('"links"?: { "url": string }[]');
 
     expect(compiled.renderSchemaSource()).toContain(
       "seo: text(\"seo\", { mode: 'json' })",
@@ -502,6 +504,26 @@ describe("fieldstone compiler", () => {
         },
       }),
     ).toThrow("points to unknown collection: missing");
+  });
+
+  it("rejects a select defaultValue that is not one of its options", () => {
+    expect(() =>
+      compileFieldstoneConfig({
+        db: { dialect: "sqlite", url: ":memory:" },
+        collections: {
+          posts: {
+            fields: [
+              select({
+                name: "state",
+                options: ["draft", "published"],
+                defaultValue: "archived",
+              }),
+            ],
+            slug: "posts",
+          },
+        },
+      }),
+    ).toThrow('Select field "state" has a defaultValue not in its options');
   });
 
   it("rejects relationships nested in group/array pointing to unknown collections", () => {

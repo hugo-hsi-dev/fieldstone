@@ -15,6 +15,7 @@
 		value = undefined,
 		compact = false,
 		options = [],
+		relationOptions = {},
 		formField
 	}: {
 		field: Field;
@@ -38,6 +39,9 @@
 		value?: DocumentDataValue | undefined;
 		compact?: boolean;
 		options?: { value: string; label: string }[];
+		// Relationship options keyed by target collection slug, for nested
+		// relationship fields rendered inside group/array via NestedFields.
+		relationOptions?: Record<string, { value: string; label: string }[]>;
 	} = $props();
 
 	function defaultOf(target: Field): DocumentDataValue {
@@ -252,7 +256,7 @@
 	{:else if field.type === 'group'}
 		<fieldset class="fs-admin__nested">
 			<legend class="fs-admin__nested-legend">{getFieldLabel(field)}</legend>
-			<NestedFields fields={field.fields} bind:value={groupState} idPrefix={id} />
+			<NestedFields fields={field.fields} bind:value={groupState} idPrefix={id} {relationOptions} />
 		</fieldset>
 		<input type="hidden" name={`data.${field.identifier}`} value={JSON.stringify(groupState)} />
 	{:else if field.type === 'array'}
@@ -264,6 +268,7 @@
 						fields={field.fields}
 						bind:value={arrayState[index]}
 						idPrefix={`${id}-${index}`}
+						{relationOptions}
 					/>
 					<Button type="button" onclick={() => removeArrayRow(index)}>Remove</Button>
 				</div>

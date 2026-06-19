@@ -69,7 +69,8 @@
 			formField={formFields.data[field.identifier]}
 			id={`global-${globalConfig.slug}-${field.identifier}`}
 			value={getFieldInputValue(document, field.name)}
-			options={relationOptions[field.identifier] ?? []}
+			options={field.type === 'relationship' ? (relationOptions[field.relationTo] ?? []) : []}
+			{relationOptions}
 			compact
 		/>
 	{/each}

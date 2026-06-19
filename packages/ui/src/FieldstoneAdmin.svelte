@@ -9,7 +9,7 @@
 	import GlobalEditForm from './GlobalEditForm.svelte';
 	import { getCollectionLabel, getFieldLabel, getFieldValue, getGlobalLabel } from './labels';
 	import Button from './primitives/Button.svelte';
-	import type { CollectionRuntimeConfig } from '@fieldstone/schema';
+	import type { CollectionRuntimeConfig, FieldDefinition } from '@fieldstone/schema';
 	import type { FieldstoneAdminRemotes } from '@fieldstone/remotes';
 	import {
 		adminCollectionPath,
@@ -32,7 +32,10 @@
 	const routeKey = $derived(currentPathname);
 
 	$effect(() => {
-		if (route.type !== 'documentEdit') return;
+		// Refresh the cached document when viewing or editing it, so the detail page
+		// reflects a just-saved edit (the update redirects back here) instead of a
+		// stale cached copy.
+		if (route.type !== 'documentEdit' && route.type !== 'documentDetail') return;
 		void remotes.getDocument({ collection: route.collection, id: route.id }).refresh();
 	});
 
@@ -57,19 +60,24 @@
 	}
 
 	async function loadRelationOptions(collection: CollectionRuntimeConfig) {
+		// Collect every relationship target, including those nested inside group/array
+		// fields, and key the options by the target slug so top-level and nested
+		// relationship inputs can both look them up.
+		const targets: string[] = [];
+		const collect = (fields: readonly FieldDefinition[]) => {
+			for (const field of fields) {
+				if (field.type === 'relationship') {
+					if (!targets.includes(field.relationTo)) targets.push(field.relationTo);
+				} else if (field.type === 'group' || field.type === 'array') {
+					collect(field.fields);
+				}
+			}
+		};
+		collect(collection.fields);
 		const entries = await Promise.all(
-			collection.fields
-				.filter(
-					(field): field is Extract<typeof field, { type: 'relationship' }> =>
-						field.type === 'relationship'
-				)
-				.map(
-					async (field) =>
-						[
-							field.identifier,
-							await remotes.listRelationOptions({ collection: field.relationTo })
-						] as const
-				)
+			targets.map(
+				async (slug) => [slug, await remotes.listRelationOptions({ collection: slug })] as const
+			)
 		);
 		return Object.fromEntries(entries);
 	}

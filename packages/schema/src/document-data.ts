@@ -199,13 +199,15 @@ function normalizeRelationshipField(
   return id;
 }
 
-function parseNested(raw: unknown): unknown {
+function parseNested(fieldName: string, raw: unknown): unknown {
   if (typeof raw !== "string") return raw;
   if (!raw.trim()) return undefined;
   try {
     return JSON.parse(raw);
   } catch {
-    return undefined;
+    // A non-empty, non-JSON string is malformed input — reject it rather than
+    // silently emptying the nested value to {}/[].
+    throw new Error(`${fieldName} must be valid JSON`);
   }
 }
 
@@ -224,7 +226,7 @@ function normalizeGroupField(
   field: Extract<FieldDefinition, { type: "group" }>,
   raw: unknown,
 ): { [key: string]: DocumentDataValue } {
-  const parsed = parseNested(raw);
+  const parsed = parseNested(field.name, raw);
   const source =
     parsed && typeof parsed === "object" && !Array.isArray(parsed)
       ? (parsed as Record<string, unknown>)
@@ -241,7 +243,7 @@ function normalizeArrayField(
   field: Extract<FieldDefinition, { type: "array" }>,
   raw: unknown,
 ): { [key: string]: DocumentDataValue }[] {
-  const parsed = parseNested(raw);
+  const parsed = parseNested(field.name, raw);
   const list = Array.isArray(parsed) ? parsed : [];
   const entries = list.map((item) => {
     const source =
