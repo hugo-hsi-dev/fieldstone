@@ -111,11 +111,14 @@ export function createDocumentRuntime(context: DatabaseContext) {
       collection: collectionSlug,
       id,
       user,
+      skipReadHooks,
     }: DocumentInput<TCollection>) => {
       await assertCollectionAccess(config, collectionSlug, "read", { user: user ?? null, id });
       const table = getTable(collectionSlug);
       const [document] = await database.select().from(table).where(eq(table.id, id)).limit(1);
       if (!document) return null;
+      if (skipReadHooks)
+        return document as unknown as CollectionDocument<TCollection>;
       const hooks = getCollectionHooks(config, collectionSlug);
       const read = await runAfterReadHooks(hooks, collectionSlug, document as Doc);
       return read as unknown as CollectionDocument<TCollection>;
@@ -179,6 +182,9 @@ export function createDocumentRuntime(context: DatabaseContext) {
       if (hasChangeHooks(hooks)) {
         const [existing] = await database.select().from(table).where(eq(table.id, id)).limit(1);
         originalDoc = (existing ?? null) as Doc | null;
+        // Abort before running beforeChange so a failed update can't fire hook
+        // side effects (mirrors the delete path).
+        if (!originalDoc) throw new Error("Document not found");
       }
       document = await runBeforeChangeHooks(hooks, {
         collection: collectionSlug,

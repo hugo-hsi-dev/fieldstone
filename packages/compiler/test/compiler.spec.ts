@@ -502,6 +502,25 @@ describe("fieldstone compiler", () => {
     ).toThrow("points to unknown collection: missing");
   });
 
+  it("rejects relationships nested in group/array pointing to unknown collections", () => {
+    expect(() =>
+      compileFieldstoneConfig({
+        db: { dialect: "sqlite", url: ":memory:" },
+        collections: {
+          posts: {
+            fields: [
+              group({
+                name: "meta",
+                fields: [relationship({ name: "author", relationTo: "missing" })],
+              }),
+            ],
+            slug: "posts",
+          },
+        },
+      }),
+    ).toThrow("points to unknown collection: missing");
+  });
+
   it("compiles global runtime configs and tables", () => {
     const compiled = compileFieldstoneConfig({
       db: { dialect: "sqlite", url: ":memory:" },

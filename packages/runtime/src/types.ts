@@ -52,6 +52,12 @@ export type ListResult<TCollection extends CollectionSlug = CollectionSlug> = {
 export type DocumentInput<TCollection extends CollectionSlug = CollectionSlug> =
   CollectionInput<TCollection> & {
     id: string;
+    /**
+     * Skip afterRead hooks and return the raw stored row. Used internally when a
+     * read feeds back into a write (e.g. building a PATCH merge base) so hook
+     * decorations/masking aren't persisted.
+     */
+    skipReadHooks?: boolean;
   };
 
 export type MutationInput<TCollection extends CollectionSlug = CollectionSlug> =

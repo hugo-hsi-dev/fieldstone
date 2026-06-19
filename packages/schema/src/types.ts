@@ -177,14 +177,14 @@ export const STATUS_FIELD_NAME = "_status";
 
 export type ContentDefinition = {
   fields: FieldDefinition[];
-  hooks?: CollectionHooks;
   drafts?: boolean;
 };
 
-// Access control is enforced per-collection only. Globals are singletons that
-// don't currently thread a user through getGlobal/updateGlobal, so they
-// deliberately don't accept `access` rather than expose an unenforced option.
+// Hooks and access are collection-only. The global runtime just normalizes and
+// upserts data — it never runs hooks or access checks — so globals deliberately
+// don't accept those options rather than expose ones that silently do nothing.
 export type CollectionDefinition = ContentDefinition & {
+  hooks?: CollectionHooks;
   access?: CollectionAccess;
 };
 export type GlobalDefinition = ContentDefinition;

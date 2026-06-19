@@ -455,13 +455,22 @@ export function buildSchemaPlan(config: FieldstoneConfig): SchemaPlan {
     );
 
   const collectionSlugs = new Set(collections.map((collection) => collection.slug));
-  for (const content of [...collections, ...globals]) {
-    for (const field of content.fields) {
+  const assertRelationshipTargets = (fields: FieldDefinition[]) => {
+    for (const field of fields) {
       if (field.type === "relationship" && !collectionSlugs.has(field.relationTo))
         throw new Error(
           `Relationship field "${field.name}" points to unknown collection: ${field.relationTo}`,
         );
+      // Relationships can be nested inside group/array fields; validate those too.
+      if (field.type === "group" || field.type === "array")
+        assertRelationshipTargets(field.fields);
     }
+  };
+  for (const content of [
+    ...Object.values(config.collections),
+    ...Object.values(config.globals ?? {}),
+  ]) {
+    assertRelationshipTargets(content.fields);
   }
 
   return {

@@ -106,8 +106,10 @@ function createCollectionDataSchema(
   for (const field of collection.fields) {
     if (field.type === "boolean") {
       entries[field.identifier] = createBooleanFieldSchema();
-    } else if (field.type === "relationship" && field.hasMany) {
-      // An empty multi-select submits no key at all, so make it optional.
+    } else if (field.type === "relationship" && field.hasMany && !field.required) {
+      // An empty optional multi-select submits no key at all, so make it optional.
+      // Required ones stay mandatory so an empty selection is a field validation
+      // issue rather than a null forwarded to the runtime.
       entries[field.identifier] = v.optional(createValueFieldSchema(field));
     } else {
       entries[field.identifier] = createValueFieldSchema(field);

@@ -167,14 +167,12 @@ export function collection(config: {
 
 export function global(config: {
   fields: readonly FieldDefinition[];
-  hooks?: CollectionHooks;
   drafts?: boolean;
 }): GlobalDefinition {
   validateCollectionFields(config.fields);
 
   return {
     fields: [...config.fields],
-    ...(config.hooks ? { hooks: config.hooks } : {}),
     ...(config.drafts ? { drafts: true } : {}),
   };
 }

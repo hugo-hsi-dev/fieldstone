@@ -179,11 +179,13 @@ export function createFieldstoneRest({
         if (method === "PATCH") {
           // Merge onto the current document so a partial PATCH doesn't clear
           // omitted fields or fail required-field validation. PUT stays a full
-          // replacement.
+          // replacement. Read the raw row (skipReadHooks) so afterRead
+          // decorations/masking aren't written back through the merge.
           const existing = await admin.getDocument({
             collection: collectionSlug as CollectionSlug,
             id,
             user,
+            skipReadHooks: true,
           });
           if (!existing) return errorResponse(404, "Document not found");
           data = mergePatch(

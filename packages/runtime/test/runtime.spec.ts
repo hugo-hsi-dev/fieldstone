@@ -778,6 +778,13 @@ describe("fieldstone runtime", () => {
       expect(events).toContain("beforeChange:update");
       expect(events).toContain("afterChange:update");
 
+      // Updating a missing id must not fire change hooks for a row that never existed.
+      events.length = 0;
+      await expect(
+        stone.update({ collection: "notes", data: { title: "x" }, id: "missing" }),
+      ).rejects.toThrow("Document not found");
+      expect(events).not.toContain("beforeChange:update");
+
       await stone.delete({ collection: "notes", id: created.id });
       expect(events).toContain("beforeDelete");
       expect(events).toContain("afterDelete:New Title");

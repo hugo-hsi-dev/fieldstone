@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import type { CollectionRuntimeConfig, DocumentDataValue } from '@fieldstone/schema';
 
 	import { getFieldLabel, shouldUseTextarea, toDatetimeLocalValue, toInputValue } from './labels';
@@ -65,27 +66,44 @@
 
 	// Rich text: a contenteditable surface bound to local HTML state, submitted via a
 	// reactive hidden input (same approach as the checkbox — avoids form value tracking).
-	// svelte-ignore state_referenced_locally
-	let richTextHtml = $state(sanitizeHtml(typeof base === 'string' ? base : ''));
+	// Stays empty during SSR and is seeded with the sanitized stored value on mount, so
+	// untrusted HTML never reaches the server-rendered markup.
+	let richTextHtml = $state('');
 
-	// Stored rich-text HTML can originate from another user, an import, or the REST
-	// API, so it must be treated as untrusted before it reaches `innerHTML`. This
-	// denylist strips the common stored-XSS vectors (script/style blocks, inline
-	// event handlers, javascript:/data: URLs) and runs identically on the server
-	// and client to avoid a hydration mismatch. A production deployment should back
-	// this with a vetted sanitizer (e.g. DOMPurify) for full coverage.
+	// Stored rich-text HTML can originate from another user, an import, or the REST API,
+	// so it must be sanitized before it reaches `innerHTML`. Parsing through a detached
+	// <template> lets the browser normalize the markup (quoted or unquoted attributes
+	// alike), after which we strip dangerous elements, inline event handlers, and unsafe
+	// URL protocols. Runs on the client only (it needs the DOM), hence the mount seeding.
+	const DANGEROUS_TAGS = /^(?:SCRIPT|STYLE|IFRAME|OBJECT|EMBED|LINK|META|BASE|FORM|SVG|MATH)$/;
 	function sanitizeHtml(html: string): string {
-		return html
-			.replace(
-				/<\/?(?:script|style|iframe|object|embed|svg|math|link|meta|base|form)\b[^>]*>/gi,
-				''
-			)
-			.replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, '')
-			.replace(/\son[a-z]+\s*=\s*'[^']*'/gi, '')
-			.replace(/\son[a-z]+\s*=\s*[^\s>]+/gi, '')
-			.replace(/\s(?:href|src)\s*=\s*"\s*(?:javascript|data|vbscript):[^"]*"/gi, '')
-			.replace(/\s(?:href|src)\s*=\s*'\s*(?:javascript|data|vbscript):[^']*'/gi, '');
+		const template = document.createElement('template');
+		template.innerHTML = html;
+		for (const element of [...template.content.querySelectorAll('*')]) {
+			if (DANGEROUS_TAGS.test(element.tagName)) {
+				element.remove();
+				continue;
+			}
+			for (const attr of [...element.attributes]) {
+				const name = attr.name.toLowerCase();
+				// Strip control chars so an obfuscated protocol can't bypass the URL check
+				// below; the control-char range is intentional.
+				// eslint-disable-next-line no-control-regex
+				const value = attr.value.replace(/[\u0000-\u0020]+/g, '').toLowerCase();
+				const isUrlAttr = name === 'href' || name === 'src' || name === 'xlink:href';
+				if (name.startsWith('on') || (isUrlAttr && /^(?:javascript|data|vbscript):/.test(value)))
+					element.removeAttribute(attr.name);
+			}
+		}
+		return template.innerHTML;
 	}
+
+	// Seed once on mount (client-only - sanitizeHtml needs the DOM). Not an $effect, so
+	// clearing the editor to empty never re-populates it from the stored value.
+	onMount(() => {
+		if (field.type === 'richText')
+			richTextHtml = sanitizeHtml(typeof base === 'string' ? base : '');
+	});
 
 	function execCommand(command: string) {
 		document.execCommand(command);
@@ -189,31 +207,45 @@
 		</select>
 	{:else if field.type === 'richText'}
 		<div class="fs-admin__richtext">
-			<div class="fs-admin__richtext-toolbar">
-				<button
-					type="button"
-					class="fs-admin__richtext-btn"
-					aria-label="Bold"
-					onmousedown={(event) => event.preventDefault()}
-					onclick={() => execCommand('bold')}><strong>B</strong></button
+			{#if readOnly}
+				<!-- Display-only: render the sanitized HTML without an editable surface. -->
+				<div
+					{id}
+					class="fs-admin__richtext-editor"
+					role="textbox"
+					aria-readonly="true"
+					aria-label={getFieldLabel(field)}
 				>
-				<button
-					type="button"
-					class="fs-admin__richtext-btn"
-					aria-label="Italic"
-					onmousedown={(event) => event.preventDefault()}
-					onclick={() => execCommand('italic')}><em>I</em></button
-				>
-			</div>
-			<div
-				{id}
-				class="fs-admin__richtext-editor"
-				contenteditable="true"
-				role="textbox"
-				aria-multiline="true"
-				aria-label={getFieldLabel(field)}
-				bind:innerHTML={richTextHtml}
-			></div>
+					<!-- eslint-disable-next-line svelte/no-at-html-tags -- richTextHtml is sanitized in sanitizeHtml() -->
+					{@html richTextHtml}
+				</div>
+			{:else}
+				<div class="fs-admin__richtext-toolbar">
+					<button
+						type="button"
+						class="fs-admin__richtext-btn"
+						aria-label="Bold"
+						onmousedown={(event) => event.preventDefault()}
+						onclick={() => execCommand('bold')}><strong>B</strong></button
+					>
+					<button
+						type="button"
+						class="fs-admin__richtext-btn"
+						aria-label="Italic"
+						onmousedown={(event) => event.preventDefault()}
+						onclick={() => execCommand('italic')}><em>I</em></button
+					>
+				</div>
+				<div
+					{id}
+					class="fs-admin__richtext-editor"
+					contenteditable="true"
+					role="textbox"
+					aria-multiline="true"
+					aria-label={getFieldLabel(field)}
+					bind:innerHTML={richTextHtml}
+				></div>
+			{/if}
 			<input type="hidden" name={`data.${field.identifier}`} value={richTextHtml} />
 		</div>
 	{:else if field.type === 'group'}
