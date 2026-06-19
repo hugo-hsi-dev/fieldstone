@@ -246,10 +246,9 @@ function normalizeArrayField(
   const parsed = parseNested(field.name, raw);
   const list = Array.isArray(parsed) ? parsed : [];
   const entries = list.map((item) => {
-    const source =
-      item && typeof item === "object" && !Array.isArray(item)
-        ? (item as Record<string, unknown>)
-        : {};
+    if (!item || typeof item !== "object" || Array.isArray(item))
+      throw new Error(`${field.name} entries must be objects`);
+    const source = item as Record<string, unknown>;
     assertKnownNestedKeys(field, source);
     const entry: { [key: string]: DocumentDataValue } = {};
     for (const subField of field.fields) {

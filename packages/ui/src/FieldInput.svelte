@@ -68,6 +68,17 @@
 		Array.isArray(value) ? value.map(String) : value == null ? [] : [String(value)]
 	);
 
+	// Stored ids whose target isn't in the loaded options (hidden by access.read or
+	// deleted) still need a selectable option, otherwise saving would silently drop
+	// them. Append fallback options for any current id missing from `options`.
+	const relationOptionsMerged = $derived.by(() => {
+		const present = new Set(options.map((option) => option.value));
+		const missing = relationValues
+			.filter((id) => id && !present.has(id))
+			.map((id) => ({ value: id, label: id }));
+		return [...options, ...missing];
+	});
+
 	// Rich text: a contenteditable surface bound to local HTML state, submitted via a
 	// reactive hidden input (same approach as the checkbox — avoids form value tracking).
 	// Stays empty during SSR and is seeded with the sanitized stored value on mount, so
@@ -187,7 +198,7 @@
 			onmousedown={readOnly ? (event) => event.preventDefault() : undefined}
 			onkeydown={readOnly ? (event) => event.preventDefault() : undefined}
 		>
-			{#each options as option (option.value)}
+			{#each relationOptionsMerged as option (option.value)}
 				<option value={option.value} selected={relationValues.includes(option.value)}
 					>{option.label}</option
 				>
@@ -206,7 +217,7 @@
 			{#if !field.required}
 				<option value="">—</option>
 			{/if}
-			{#each options as option (option.value)}
+			{#each relationOptionsMerged as option (option.value)}
 				<option value={option.value} selected={option.value === stringValue}>{option.label}</option>
 			{/each}
 		</select>
@@ -256,7 +267,13 @@
 	{:else if field.type === 'group'}
 		<fieldset class="fs-admin__nested">
 			<legend class="fs-admin__nested-legend">{getFieldLabel(field)}</legend>
-			<NestedFields fields={field.fields} bind:value={groupState} idPrefix={id} {relationOptions} />
+			<NestedFields
+				fields={field.fields}
+				bind:value={groupState}
+				idPrefix={id}
+				{relationOptions}
+				{readOnly}
+			/>
 		</fieldset>
 		<input type="hidden" name={`data.${field.identifier}`} value={JSON.stringify(groupState)} />
 	{:else if field.type === 'array'}
@@ -269,11 +286,16 @@
 						bind:value={arrayState[index]}
 						idPrefix={`${id}-${index}`}
 						{relationOptions}
+						{readOnly}
 					/>
-					<Button type="button" onclick={() => removeArrayRow(index)}>Remove</Button>
+					{#if !readOnly}
+						<Button type="button" onclick={() => removeArrayRow(index)}>Remove</Button>
+					{/if}
 				</div>
 			{/each}
-			<Button type="button" onclick={addArrayRow}>Add item</Button>
+			{#if !readOnly}
+				<Button type="button" onclick={addArrayRow}>Add item</Button>
+			{/if}
 		</fieldset>
 		<input type="hidden" name={`data.${field.identifier}`} value={JSON.stringify(arrayState)} />
 	{:else if field.type === 'number'}

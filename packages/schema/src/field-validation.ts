@@ -48,6 +48,21 @@ function validateFieldDefinition(field: FieldDefinition) {
         field.min > field.max
       )
         throw new Error(`Number field "${field.name}" has min greater than max`);
+      if (field.defaultValue !== undefined) {
+        const value = field.defaultValue;
+        if (field.integer && !Number.isInteger(value))
+          throw new Error(
+            `Number field "${field.name}" has a non-integer defaultValue: ${value}`,
+          );
+        if (typeof field.min === "number" && value < field.min)
+          throw new Error(
+            `Number field "${field.name}" has a defaultValue below min: ${value}`,
+          );
+        if (typeof field.max === "number" && value > field.max)
+          throw new Error(
+            `Number field "${field.name}" has a defaultValue above max: ${value}`,
+          );
+      }
       break;
     }
     case "text": {

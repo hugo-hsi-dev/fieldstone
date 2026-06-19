@@ -526,6 +526,20 @@ describe("fieldstone compiler", () => {
     ).toThrow('Select field "state" has a defaultValue not in its options');
   });
 
+  it("rejects a number defaultValue that violates its constraints", () => {
+    expect(() =>
+      compileFieldstoneConfig({
+        db: { dialect: "sqlite", url: ":memory:" },
+        collections: {
+          posts: {
+            fields: [number({ name: "qty", min: 1, defaultValue: 0 })],
+            slug: "posts",
+          },
+        },
+      }),
+    ).toThrow('Number field "qty" has a defaultValue below min');
+  });
+
   it("rejects relationships nested in group/array pointing to unknown collections", () => {
     expect(() =>
       compileFieldstoneConfig({

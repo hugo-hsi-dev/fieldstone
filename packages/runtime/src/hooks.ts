@@ -10,7 +10,11 @@ export function getCollectionHooks(
   config: FieldstoneConfig,
   slug: string,
 ): CollectionHooks | undefined {
-  return config.collections[slug]?.hooks;
+  // Resolve by slug, not config key — a collection may be registered under a key
+  // that differs from its slug, and runtime calls pass the slug (matches the
+  // access check).
+  return Object.values(config.collections).find((entry) => entry.slug === slug)
+    ?.hooks;
 }
 
 export async function runBeforeChangeHooks(

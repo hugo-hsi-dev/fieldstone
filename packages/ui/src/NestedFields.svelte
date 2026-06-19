@@ -13,6 +13,7 @@
 		value = $bindable({}),
 		idPrefix,
 		relationOptions = {},
+		readOnly = false,
 		onUpdate
 	}: {
 		fields: Field[];
@@ -20,6 +21,9 @@
 		idPrefix: string;
 		// Relationship options keyed by target collection slug.
 		relationOptions?: Record<string, { value: string; label: string }[]>;
+		// When the parent group/array field is read-only, force every nested control
+		// inert so saving can't mutate read-only grouped data.
+		readOnly?: boolean;
 		// Called on every change so nested group/array levels can bubble updates up
 		// (the top level is driven by bind:value from FieldInput instead).
 		onUpdate?: (next: Record<string, unknown>) => void;
@@ -63,7 +67,7 @@
 	}
 
 	function readOnlyOf(field: Field): boolean {
-		return field.admin?.readOnly === true;
+		return readOnly || field.admin?.readOnly === true;
 	}
 </script>
 
@@ -148,6 +152,7 @@
 						value={asRecord(value[field.name])}
 						idPrefix={fieldId}
 						{relationOptions}
+						{readOnly}
 						onUpdate={(next) => setValue(field.name, next)}
 					/>
 				</fieldset>
@@ -160,6 +165,7 @@
 								value={entry}
 								idPrefix={`${fieldId}-${index}`}
 								{relationOptions}
+								{readOnly}
 								onUpdate={(next) => setArrayRow(field.name, index, next)}
 							/>
 							{#if !readOnly}
