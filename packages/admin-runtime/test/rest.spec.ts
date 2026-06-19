@@ -129,6 +129,11 @@ describe("fieldstone REST handler", () => {
     expect(renamed.views).toBe(9);
 
     expect((await call("PATCH", ["posts", "missing"], { views: 1 })).status).toBe(404);
+
+    // A typo'd field is rejected, not silently dropped.
+    const unknown = await call("PATCH", ["posts", id], { titel: "typo" });
+    expect(unknown.status).toBe(400);
+    expect(((await unknown.json()) as { error: string }).error).toContain("Unknown field");
   });
 
   it("handles globals, unknown routes, and method errors", async () => {

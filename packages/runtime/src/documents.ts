@@ -21,6 +21,17 @@ import type {
 type DatabaseContext = Awaited<ReturnType<typeof createDatabase>>;
 type Doc = Record<string, unknown>;
 
+// Drop the runtime-managed system columns so a stored row can be used as a merge
+// base for a partial update without the normalizer rejecting them as unknown.
+const SYSTEM_FIELDS = new Set(["id", "createdAt", "updatedAt"]);
+function stripSystemFields(doc: Doc): Record<string, unknown> {
+  const rest: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(doc)) {
+    if (!SYSTEM_FIELDS.has(key)) rest[key] = value;
+  }
+  return rest;
+}
+
 export function createDocumentRuntime(context: DatabaseContext) {
   const { compiled, compiledConfig, config, database, and, asc, count, desc, eq, like, or } =
     context;
@@ -111,14 +122,11 @@ export function createDocumentRuntime(context: DatabaseContext) {
       collection: collectionSlug,
       id,
       user,
-      skipReadHooks,
     }: DocumentInput<TCollection>) => {
       await assertCollectionAccess(config, collectionSlug, "read", { user: user ?? null, id });
       const table = getTable(collectionSlug);
       const [document] = await database.select().from(table).where(eq(table.id, id)).limit(1);
       if (!document) return null;
-      if (skipReadHooks)
-        return document as unknown as CollectionDocument<TCollection>;
       const hooks = getCollectionHooks(config, collectionSlug);
       const read = await runAfterReadHooks(hooks, collectionSlug, document as Doc);
       return read as unknown as CollectionDocument<TCollection>;
@@ -167,6 +175,7 @@ export function createDocumentRuntime(context: DatabaseContext) {
       collection: collectionSlug,
       data,
       id,
+      merge,
       updatedAt,
       user,
     }: UpdateInput<TCollection>) => {
@@ -177,15 +186,23 @@ export function createDocumentRuntime(context: DatabaseContext) {
       });
       const hooks = getCollectionHooks(config, collectionSlug);
       const table = getTable(collectionSlug);
-      let document = compiledConfig.normalizeDocumentData(collectionSlug, data) as Doc;
       let originalDoc: Doc | null = null;
-      if (hasChangeHooks(hooks)) {
+      if (merge || hasChangeHooks(hooks)) {
         const [existing] = await database.select().from(table).where(eq(table.id, id)).limit(1);
         originalDoc = (existing ?? null) as Doc | null;
         // Abort before running beforeChange so a failed update can't fire hook
         // side effects (mirrors the delete path).
         if (!originalDoc) throw new Error("Document not found");
       }
+      // PATCH/merge: overlay the provided fields onto the stored content so omitted
+      // fields keep their values. This runs under the update access already checked
+      // above and reads the raw row directly (no afterRead). Unknown keys still flow
+      // to the normalizer, which rejects them.
+      const inputData =
+        merge && originalDoc
+          ? { ...stripSystemFields(originalDoc), ...(data as Record<string, unknown>) }
+          : data;
+      let document = compiledConfig.normalizeDocumentData(collectionSlug, inputData) as Doc;
       document = await runBeforeChangeHooks(hooks, {
         collection: collectionSlug,
         data: document,

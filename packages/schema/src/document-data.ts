@@ -32,8 +32,13 @@ export function normalizeBooleanFieldValue(value: unknown) {
 }
 
 export function normalizeNumberFieldValue(value: unknown): number | null {
-  if (value === "" || value === null || value === undefined) return null;
-  const parsed = typeof value === "number" ? value : Number(String(value).trim());
+  if (value === null || value === undefined) return null;
+  if (typeof value === "number") return Number.isNaN(value) ? null : value;
+  // Treat a blank/whitespace-only string as empty so non-HTML callers (e.g. REST)
+  // don't coerce "   " into 0 and pass required-number validation.
+  const trimmed = String(value).trim();
+  if (trimmed === "") return null;
+  const parsed = Number(trimmed);
   return Number.isNaN(parsed) ? null : parsed;
 }
 

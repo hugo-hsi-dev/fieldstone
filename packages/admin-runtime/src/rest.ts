@@ -46,6 +46,12 @@ function mergePatch(
   existing: Record<string, unknown>,
   body: Record<string, unknown>,
 ): Record<string, unknown> {
+  const known = new Set(content.fields.map((field) => field.name));
+  // Reject unknown keys up front (like POST/PUT) instead of silently dropping a
+  // typo such as { titel: "..." } and returning 200 with the document unchanged.
+  for (const key of Object.keys(body)) {
+    if (!known.has(key)) throw new Error(`Unknown field: ${key}`);
+  }
   const merged: Record<string, unknown> = {};
   for (const { name } of content.fields) {
     if (Object.prototype.hasOwnProperty.call(body, name)) merged[name] = body[name];
@@ -174,31 +180,16 @@ export function createFieldstoneRest({
         return json(doc);
       }
       if (method === "PATCH" || method === "PUT") {
-        const body = await readBody(request);
-        let data = body as CollectionData<CollectionSlug>;
-        if (method === "PATCH") {
-          // Merge onto the current document so a partial PATCH doesn't clear
-          // omitted fields or fail required-field validation. PUT stays a full
-          // replacement. Read the raw row (skipReadHooks) so afterRead
-          // decorations/masking aren't written back through the merge.
-          const existing = await admin.getDocument({
-            collection: collectionSlug as CollectionSlug,
-            id,
-            user,
-            skipReadHooks: true,
-          });
-          if (!existing) return errorResponse(404, "Document not found");
-          data = mergePatch(
-            admin.getCollection(collectionSlug)!,
-            existing as Record<string, unknown>,
-            body,
-          ) as CollectionData<CollectionSlug>;
-        }
+        const data = (await readBody(request)) as CollectionData<CollectionSlug>;
+        // PATCH merges onto the stored row inside the runtime (under the same
+        // update access, reading the raw row — no afterRead, no read-gating).
+        // PUT stays a full replacement.
         const doc = await admin.updateDocument({
           collection: collectionSlug as CollectionSlug,
           id,
           data,
           user,
+          ...(method === "PATCH" ? { merge: true } : {}),
         });
         return json(doc);
       }

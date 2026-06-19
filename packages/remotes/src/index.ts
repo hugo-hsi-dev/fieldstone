@@ -236,9 +236,10 @@ export function createFieldstoneAdminRemotes({
     }),
 
     listRelationOptions: query(collectionSchema, async ({ collection }) => {
+      const user = currentUser();
       const fieldstoneAdmin = await getFieldstoneAdmin();
       return fieldstoneAdmin
-        .listRelationOptions(collection, currentUser())
+        .listRelationOptions(collection, user)
         .catch(rethrowAsHttp);
     }),
 
@@ -262,11 +263,12 @@ export function createFieldstoneAdminRemotes({
     listDocuments: query(
       listSchema,
       async ({ collection, limit, offset, search }) => {
+        const user = currentUser();
         const { collection: collectionConfig, fieldstoneAdmin } =
           await getAdminCollection(collection);
         const input = {
           collection: collectionConfig.slug as CollectionSlug,
-          user: currentUser(),
+          user,
           ...(typeof limit === "number" ? { limit } : {}),
           ...(typeof offset === "number" ? { offset } : {}),
           ...(search ? { search } : {}),
@@ -283,8 +285,8 @@ export function createFieldstoneAdminRemotes({
     ),
 
     getDocument: query.batch(findByIdSchema, async (inputs) => {
-      const fieldstoneAdmin = await getFieldstoneAdmin();
       const user = currentUser();
+      const fieldstoneAdmin = await getFieldstoneAdmin();
       const documents = await Promise.all(
         inputs.map(async (input) => {
           const collection = fieldstoneAdmin.getCollection(input.collection);
@@ -311,6 +313,9 @@ export function createFieldstoneAdminRemotes({
         data: NormalizedDocumentData;
         id?: string;
       }) => {
+        // Read the request user synchronously before any await — getRequestEvent()
+        // is only reliable pre-await on adapters without AsyncLocalStorage.
+        const user = currentUser();
         const { collection, fieldstoneAdmin } = await getAdminCollection(
           input.collection,
         );
@@ -318,7 +323,7 @@ export function createFieldstoneAdminRemotes({
           .createDocument({
             collection: collection.slug as CollectionSlug,
             data: input.data as CollectionData<CollectionSlug>,
-            user: currentUser(),
+            user,
           })
           .catch(rethrowAsHttp);
 
@@ -336,6 +341,7 @@ export function createFieldstoneAdminRemotes({
         data: NormalizedDocumentData;
         id: string;
       }) => {
+        const user = currentUser();
         const { collection, fieldstoneAdmin } = await getAdminCollection(
           input.collection,
         );
@@ -345,7 +351,7 @@ export function createFieldstoneAdminRemotes({
             collection: collection.slug as CollectionSlug,
             data: input.data as CollectionData<CollectionSlug>,
             id: input.id,
-            user: currentUser(),
+            user,
           });
 
           redirect(
@@ -375,6 +381,7 @@ export function createFieldstoneAdminRemotes({
     ),
 
     deleteDocument: form(deleteSchema, async (input) => {
+      const user = currentUser();
       const { collection, fieldstoneAdmin } = await getAdminCollection(
         input.collection,
       );
@@ -383,7 +390,7 @@ export function createFieldstoneAdminRemotes({
         await fieldstoneAdmin.deleteDocument({
           collection: collection.slug as CollectionSlug,
           id: input.id,
-          user: currentUser(),
+          user,
         });
 
         redirect(303, resolveAdminPath(adminCollectionPath(collection.slug)));

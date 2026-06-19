@@ -170,17 +170,18 @@
 			{/each}
 		</select>
 	{:else if field.type === 'relationship' && field.hasMany}
-		{#if readOnly}
-			{#each relationValues as relationValue (relationValue)}
-				<input type="hidden" name={`data.${field.identifier}`} value={relationValue} />
-			{/each}
-		{/if}
+		<!-- Read-only stays enabled so the selected ids still submit through the form's
+		     own multi-value name; a disabled multi-select (or duplicate same-name hidden
+		     inputs) would drop or be rejected. It's just made non-interactive instead. -->
 		<select
-			class="fs-admin__select-multiple"
+			class={['fs-admin__select-multiple', readOnly && 'fs-admin__select-multiple--readonly']}
 			multiple
 			{...formField.as('select multiple')}
 			{id}
-			disabled={readOnly}
+			aria-readonly={readOnly}
+			tabindex={readOnly ? -1 : undefined}
+			onmousedown={readOnly ? (event) => event.preventDefault() : undefined}
+			onkeydown={readOnly ? (event) => event.preventDefault() : undefined}
 		>
 			{#each options as option (option.value)}
 				<option value={option.value} selected={relationValues.includes(option.value)}
@@ -430,6 +431,11 @@
 		font-size: 0.875rem;
 		color: var(--fs-admin-text);
 		background: var(--fs-admin-panel);
+	}
+
+	.fs-admin__select-multiple--readonly {
+		pointer-events: none;
+		opacity: 0.7;
 	}
 
 	.fs-admin__field-description {

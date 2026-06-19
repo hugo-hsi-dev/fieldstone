@@ -292,11 +292,13 @@ function withDraftStatusField(content: {
   fields: FieldDefinition[];
   drafts?: boolean;
 }): FieldDefinition[] {
-  if (
-    !content.drafts ||
-    content.fields.some((field) => field.name === STATUS_FIELD_NAME)
-  )
-    return content.fields;
+  if (!content.drafts) return content.fields;
+  // Reserve _status on draft collections: a user field of that name would suppress
+  // the injected draft/published select and break status defaulting and filtering.
+  if (content.fields.some((field) => field.name === STATUS_FIELD_NAME))
+    throw new Error(
+      `Reserved field name on a draft-enabled collection: ${STATUS_FIELD_NAME}`,
+    );
   const statusField: FieldDefinition = {
     name: STATUS_FIELD_NAME,
     type: "select",

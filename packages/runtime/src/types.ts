@@ -52,12 +52,6 @@ export type ListResult<TCollection extends CollectionSlug = CollectionSlug> = {
 export type DocumentInput<TCollection extends CollectionSlug = CollectionSlug> =
   CollectionInput<TCollection> & {
     id: string;
-    /**
-     * Skip afterRead hooks and return the raw stored row. Used internally when a
-     * read feeds back into a write (e.g. building a PATCH merge base) so hook
-     * decorations/masking aren't persisted.
-     */
-    skipReadHooks?: boolean;
   };
 
 export type MutationInput<TCollection extends CollectionSlug = CollectionSlug> =
@@ -75,6 +69,12 @@ export type UpdateInput<TCollection extends CollectionSlug = CollectionSlug> =
   DocumentInput<TCollection> &
     MutationInput<TCollection> & {
       updatedAt?: Date;
+      /**
+       * Partial (PATCH) update: merge `data` onto the stored row instead of
+       * replacing it, so omitted fields keep their values. The merge reads the
+       * raw row under the already-checked update access — no separate read.
+       */
+      merge?: boolean;
     };
 
 export type GlobalInput<TGlobal extends GlobalSlug = GlobalSlug> = {
