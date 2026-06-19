@@ -66,16 +66,24 @@ export type CreateInput<TCollection extends CollectionSlug = CollectionSlug> =
   };
 
 export type UpdateInput<TCollection extends CollectionSlug = CollectionSlug> =
-  DocumentInput<TCollection> &
-    MutationInput<TCollection> & {
-      updatedAt?: Date;
-      /**
-       * Partial (PATCH) update: merge `data` onto the stored row instead of
-       * replacing it, so omitted fields keep their values. The merge reads the
-       * raw row under the already-checked update access — no separate read.
-       */
-      merge?: boolean;
-    };
+  DocumentInput<TCollection> & {
+    updatedAt?: Date;
+  } & (
+    | {
+        /**
+         * Partial (PATCH) update: merge `data` onto the stored row instead of
+         * replacing it, so omitted fields keep their values. The merge reads the
+         * raw row under the already-checked update access — no separate read,
+         * which is why `data` may omit otherwise-required fields.
+         */
+        merge: true;
+        data: Partial<CollectionData<TCollection>>;
+      }
+    | {
+        merge?: false;
+        data: CollectionData<TCollection>;
+      }
+  );
 
 export type GlobalInput<TGlobal extends GlobalSlug = GlobalSlug> = {
   global: TGlobal;

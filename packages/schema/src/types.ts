@@ -242,14 +242,13 @@ type RequiredContentFieldName<
   TGenerated extends object,
   TSlug extends keyof TGenerated,
 > = {
-  [TField in ContentFieldName<TGenerated, TSlug>]: Exclude<
-    TGenerated[TSlug][TField],
-    undefined
-  > extends boolean
-    ? never
-    : null extends TGenerated[TSlug][TField]
+  [TField in ContentFieldName<TGenerated, TSlug>]: undefined extends TGenerated[TSlug][TField]
+    ? never // optional property (e.g. a defaulted field) → optional on input
+    : Exclude<TGenerated[TSlug][TField], undefined> extends boolean
       ? never
-      : TField;
+      : null extends TGenerated[TSlug][TField]
+        ? never
+        : TField;
 }[ContentFieldName<TGenerated, TSlug>];
 
 type OptionalContentFieldName<

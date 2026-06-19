@@ -3,27 +3,66 @@
 
 	import { getFieldLabel } from './labels';
 	import Label from './primitives/Label.svelte';
+	import Button from './primitives/Button.svelte';
+	import NestedFields from './NestedFields.svelte';
 
 	type Field = FieldDefinition;
 
 	let {
 		fields,
 		value = $bindable({}),
-		idPrefix
+		idPrefix,
+		onUpdate
 	}: {
 		fields: Field[];
 		value?: Record<string, unknown>;
 		idPrefix: string;
+		// Called on every change so nested group/array levels can bubble updates up
+		// (the top level is driven by bind:value from FieldInput instead).
+		onUpdate?: (next: Record<string, unknown>) => void;
 	} = $props();
 
 	function setValue(name: string, next: unknown) {
 		value = { ...value, [name]: next };
+		onUpdate?.(value);
+	}
+
+	function asRecord(raw: unknown): Record<string, unknown> {
+		return raw && typeof raw === 'object' && !Array.isArray(raw)
+			? (raw as Record<string, unknown>)
+			: {};
+	}
+
+	function asArray(raw: unknown): Record<string, unknown>[] {
+		return Array.isArray(raw) ? (raw as Record<string, unknown>[]) : [];
+	}
+
+	function setArrayRow(name: string, index: number, next: Record<string, unknown>) {
+		const list = asArray(value[name]).slice();
+		list[index] = next;
+		setValue(name, list);
+	}
+
+	function addArrayRow(name: string) {
+		setValue(name, [...asArray(value[name]), {}]);
+	}
+
+	function removeArrayRow(name: string, index: number) {
+		setValue(
+			name,
+			asArray(value[name]).filter((_, current) => current !== index)
+		);
+	}
+
+	function readOnlyOf(field: Field): boolean {
+		return field.admin?.readOnly === true;
 	}
 </script>
 
 <div class="fs-admin__nested-fields">
 	{#each fields as field (field.name)}
 		{@const fieldId = `${idPrefix}-${field.name}`}
+		{@const readOnly = readOnlyOf(field)}
 		<div class="fs-admin__field">
 			<Label for={fieldId}>{getFieldLabel(field)}</Label>
 			{#if field.type === 'boolean'}
@@ -32,6 +71,7 @@
 					class="fs-admin__checkbox"
 					type="checkbox"
 					checked={value[field.name] === true}
+					disabled={readOnly}
 					onchange={(event) => setValue(field.name, event.currentTarget.checked)}
 				/>
 			{:else if field.type === 'select'}
@@ -39,6 +79,7 @@
 					id={fieldId}
 					class="fs-admin__input"
 					value={String(value[field.name] ?? '')}
+					disabled={readOnly}
 					onchange={(event) => setValue(field.name, event.currentTarget.value)}
 				>
 					<option value="">—</option>
@@ -46,12 +87,43 @@
 						<option value={option.value}>{option.label}</option>
 					{/each}
 				</select>
+			{:else if field.type === 'group'}
+				<fieldset class="fs-admin__nested">
+					<NestedFields
+						fields={field.fields}
+						value={asRecord(value[field.name])}
+						idPrefix={fieldId}
+						onUpdate={(next) => setValue(field.name, next)}
+					/>
+				</fieldset>
+			{:else if field.type === 'array'}
+				<fieldset class="fs-admin__nested">
+					{#each asArray(value[field.name]) as entry, index (index)}
+						<div class="fs-admin__array-row">
+							<NestedFields
+								fields={field.fields}
+								value={entry}
+								idPrefix={`${fieldId}-${index}`}
+								onUpdate={(next) => setArrayRow(field.name, index, next)}
+							/>
+							{#if !readOnly}
+								<Button type="button" onclick={() => removeArrayRow(field.name, index)}
+									>Remove</Button
+								>
+							{/if}
+						</div>
+					{/each}
+					{#if !readOnly}
+						<Button type="button" onclick={() => addArrayRow(field.name)}>Add item</Button>
+					{/if}
+				</fieldset>
 			{:else if field.type === 'number'}
 				<input
 					id={fieldId}
 					class="fs-admin__input"
 					type="number"
 					value={value[field.name] ?? ''}
+					readonly={readOnly}
 					oninput={(event) =>
 						setValue(
 							field.name,
@@ -64,6 +136,7 @@
 					class="fs-admin__input"
 					type={field.type === 'email' ? 'email' : 'text'}
 					value={String(value[field.name] ?? '')}
+					readonly={readOnly}
 					oninput={(event) => setValue(field.name, event.currentTarget.value)}
 				/>
 			{/if}
@@ -80,6 +153,22 @@
 	.fs-admin__field {
 		display: grid;
 		gap: 0.5rem;
+	}
+
+	.fs-admin__nested {
+		display: grid;
+		gap: 0.75rem;
+		border: 1px solid var(--fs-admin-border);
+		border-radius: 0.5rem;
+		padding: 0.75rem;
+		margin: 0;
+	}
+
+	.fs-admin__array-row {
+		display: grid;
+		gap: 0.5rem;
+		border-top: 1px solid var(--fs-admin-border);
+		padding-top: 0.75rem;
 	}
 
 	.fs-admin__input {

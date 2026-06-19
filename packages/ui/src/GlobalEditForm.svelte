@@ -36,11 +36,13 @@
 	let {
 		globalConfig,
 		document,
-		form
+		form,
+		relationOptions = {}
 	}: {
 		globalConfig: GlobalRuntimeConfig;
 		document: GlobalDocument<GlobalSlug> | null;
 		form: RemoteForm;
+		relationOptions?: Record<string, { value: string; label: string }[]>;
 	} = $props();
 
 	const formFields = $derived(form.fields as RemoteFormFields);
@@ -67,6 +69,7 @@
 			formField={formFields.data[field.identifier]}
 			id={`global-${globalConfig.slug}-${field.identifier}`}
 			value={getFieldInputValue(document, field.name)}
+			options={relationOptions[field.identifier] ?? []}
 			compact
 		/>
 	{/each}

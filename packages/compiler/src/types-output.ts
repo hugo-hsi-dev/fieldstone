@@ -5,7 +5,12 @@ function renderTypeColumn(column: CompiledContent["columns"][number]) {
     column.origin === "field" && !column.required
       ? `${column.typeScriptType} | null`
       : column.typeScriptType;
-  return `    ${column.typeScriptProperty}: ${type};`;
+  // The injected draft status column has a runtime default, so it's optional on
+  // create/update even though the stored value is always non-null. Mark it
+  // optional (not nullable) so mutation input types don't demand it. ("_status"
+  // is STATUS_FIELD_NAME from @fieldstone/schema; collections can't define it.)
+  const optional = column.name === "_status";
+  return `    ${column.typeScriptProperty}${optional ? "?" : ""}: ${type};`;
 }
 
 function renderGeneratedEntries(contents: readonly CompiledContent[]) {

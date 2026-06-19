@@ -423,8 +423,10 @@ describe("fieldstone compiler", () => {
       typeScriptType: '"draft" | "published"',
       required: true,
     });
+    // _status is emitted optional (it has a runtime default), so typed creates
+    // needn't pass it even though the stored value is always non-null.
     expect(compiled.renderTypesDeclaration()).toContain(
-      '"_status": "draft" | "published"',
+      '"_status"?: "draft" | "published"',
     );
     // The column keeps its `_status` name; the generated Drizzle identifier drops the
     // leading underscore.

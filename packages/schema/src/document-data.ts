@@ -33,18 +33,27 @@ export function normalizeBooleanFieldValue(value: unknown) {
 
 export function normalizeNumberFieldValue(value: unknown): number | null {
   if (value === null || value === undefined) return null;
-  if (typeof value === "number") return Number.isNaN(value) ? null : value;
+  // Reject non-finite values (NaN, Infinity, "1e999") rather than storing them.
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
   // Treat a blank/whitespace-only string as empty so non-HTML callers (e.g. REST)
   // don't coerce "   " into 0 and pass required-number validation.
   const trimmed = String(value).trim();
   if (trimmed === "") return null;
   const parsed = Number(trimmed);
-  return Number.isNaN(parsed) ? null : parsed;
+  return Number.isFinite(parsed) ? parsed : null;
 }
+
+const DATETIME_LOCAL_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/;
 
 export function normalizeDateFieldValue(value: unknown): Date | null {
   if (value === "" || value === null || value === undefined) return null;
-  const date = value instanceof Date ? value : new Date(String(value));
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  let raw = String(value).trim();
+  if (!raw) return null;
+  // A datetime-local value carries no timezone; interpret it as UTC so the stored
+  // instant doesn't shift by the server's offset (the admin renders UTC too).
+  if (DATETIME_LOCAL_PATTERN.test(raw)) raw += "Z";
+  const date = new Date(raw);
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
@@ -200,6 +209,17 @@ function parseNested(raw: unknown): unknown {
   }
 }
 
+function assertKnownNestedKeys(
+  field: Extract<FieldDefinition, { type: "group" | "array" }>,
+  source: Record<string, unknown>,
+): void {
+  const known = new Set(field.fields.map((subField) => subField.name));
+  for (const key of Object.keys(source)) {
+    if (!known.has(key))
+      throw new Error(`Unknown field: ${field.name}.${key}`);
+  }
+}
+
 function normalizeGroupField(
   field: Extract<FieldDefinition, { type: "group" }>,
   raw: unknown,
@@ -209,6 +229,7 @@ function normalizeGroupField(
     parsed && typeof parsed === "object" && !Array.isArray(parsed)
       ? (parsed as Record<string, unknown>)
       : {};
+  assertKnownNestedKeys(field, source);
   const result: { [key: string]: DocumentDataValue } = {};
   for (const subField of field.fields) {
     result[subField.name] = normalizeFieldValue(subField, source[subField.name]);
@@ -227,6 +248,7 @@ function normalizeArrayField(
       item && typeof item === "object" && !Array.isArray(item)
         ? (item as Record<string, unknown>)
         : {};
+    assertKnownNestedKeys(field, source);
     const entry: { [key: string]: DocumentDataValue } = {};
     for (const subField of field.fields) {
       entry[subField.name] = normalizeFieldValue(subField, source[subField.name]);

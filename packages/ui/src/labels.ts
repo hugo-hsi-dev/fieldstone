@@ -57,7 +57,11 @@ export function toDatetimeLocalValue(value: unknown): string {
 	if (value === null || value === undefined || value === '') return '';
 	const date = value instanceof Date ? value : new Date(String(value));
 	if (Number.isNaN(date.getTime())) return '';
-	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+	// Render the UTC wall-clock time. The datetime-local control carries no offset,
+	// so the server parses the submitted value as UTC too (see normalizeDateFieldValue);
+	// using UTC on both sides keeps the stored instant stable and avoids an SSR/client
+	// hydration mismatch from differing local timezones.
+	return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}T${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
 }
 
 export function toInputValue(value: unknown): string {

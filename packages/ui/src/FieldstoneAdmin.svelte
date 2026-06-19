@@ -357,12 +357,18 @@
 								{@const global = await remotes.getGlobalConfig({ global: route.global })}
 								{@const document = await remotes.getGlobal({ global: global.slug })}
 								{@const updateForm = remotes.updateGlobal.for(global.slug)}
+								{@const globalRelationOptions = await loadRelationOptions(global)}
 
 								<div class="fs-admin__section-header">
 									<h2 class="fs-admin__section-title">{getGlobalLabel(global)}</h2>
 								</div>
 
-								<GlobalEditForm globalConfig={global} {document} form={updateForm} />
+								<GlobalEditForm
+									globalConfig={global}
+									{document}
+									form={updateForm}
+									relationOptions={globalRelationOptions}
+								/>
 
 								{#snippet pending()}
 									<p class="fs-admin__muted">Loading global...</p>
