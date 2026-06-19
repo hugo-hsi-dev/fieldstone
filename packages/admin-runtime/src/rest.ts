@@ -41,6 +41,25 @@ async function readBody(request: Request): Promise<Record<string, unknown>> {
  * normalizer would reset omitted optional/boolean/defaulted fields and reject
  * the request for any missing required field.
  */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function deepMerge(
+  base: Record<string, unknown>,
+  patch: Record<string, unknown>,
+): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...base };
+  for (const [key, value] of Object.entries(patch)) {
+    const existing = result[key];
+    result[key] =
+      isPlainObject(value) && isPlainObject(existing)
+        ? deepMerge(existing, value)
+        : value;
+  }
+  return result;
+}
+
 function mergePatch(
   content: { fields: ReadonlyArray<{ name: string }> },
   existing: Record<string, unknown>,
@@ -54,9 +73,17 @@ function mergePatch(
   }
   const merged: Record<string, unknown> = {};
   for (const { name } of content.fields) {
-    if (Object.prototype.hasOwnProperty.call(body, name)) merged[name] = body[name];
-    else if (Object.prototype.hasOwnProperty.call(existing, name))
+    if (Object.prototype.hasOwnProperty.call(body, name)) {
+      const bodyValue = body[name];
+      const existingValue = existing[name];
+      // Deep-merge group objects so a partial group payload keeps omitted siblings.
+      merged[name] =
+        isPlainObject(bodyValue) && isPlainObject(existingValue)
+          ? deepMerge(existingValue, bodyValue)
+          : bodyValue;
+    } else if (Object.prototype.hasOwnProperty.call(existing, name)) {
       merged[name] = existing[name];
+    }
   }
   return merged;
 }

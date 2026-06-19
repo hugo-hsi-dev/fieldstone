@@ -72,7 +72,15 @@ export function createDocumentRuntime(context: DatabaseContext) {
     search: string | undefined,
   ) {
     const conditions: unknown[] = [];
-    if (status && table._status) conditions.push(eq(table._status, status));
+    if (status) {
+      // Reject rather than silently drop the predicate, which would otherwise
+      // return every row (including ones that aren't drafts) on a non-draft collection.
+      if (!table._status)
+        throw new Error(
+          `Collection "${collectionSlug}" does not support a status filter (drafts are not enabled)`,
+        );
+      conditions.push(eq(table._status, status));
+    }
     const term = search?.trim();
     if (term) {
       const fields = compiledConfig.getCollection(collectionSlug)?.fields ?? [];
@@ -161,12 +169,14 @@ export function createDocumentRuntime(context: DatabaseContext) {
       updatedAt,
       user,
     }: CreateInput<TCollection>) => {
+      const hooks = getCollectionHooks(config, collectionSlug);
+      // Normalize before the access check so rules inspecting `data` see the trimmed
+      // values and applied defaults that will actually be stored.
+      let document = compiledConfig.normalizeDocumentData(collectionSlug, data) as Doc;
       await assertCollectionAccess(config, collectionSlug, "create", {
         user: user ?? null,
-        data: data as Record<string, unknown>,
+        data: document as Record<string, unknown>,
       });
-      const hooks = getCollectionHooks(config, collectionSlug);
-      let document = compiledConfig.normalizeDocumentData(collectionSlug, data) as Doc;
       document = await runBeforeChangeHooks(hooks, {
         collection: collectionSlug,
         data: document,
@@ -204,12 +214,20 @@ export function createDocumentRuntime(context: DatabaseContext) {
       const hooks = getCollectionHooks(config, collectionSlug);
       const table = getTable(collectionSlug);
       let originalDoc: Doc | null = null;
-      if (merge || hasChangeHooks(hooks)) {
+      const needExisting = merge || hasChangeHooks(hooks);
+      if (needExisting) {
         const [existing] = await database.select().from(table).where(eq(table.id, id)).limit(1);
         originalDoc = (existing ?? null) as Doc | null;
-        // Abort before running beforeChange so a failed update can't fire hook
-        // side effects (mirrors the delete path).
-        if (!originalDoc) throw new Error("Document not found");
+      }
+      if (needExisting && !originalDoc) {
+        // Run the access rule (against the body) before revealing absence, so a
+        // forbidden caller gets 403 rather than enumerating ids via 404-vs-403.
+        await assertCollectionAccess(config, collectionSlug, "update", {
+          user: user ?? null,
+          id,
+          data: data as Record<string, unknown>,
+        });
+        throw new Error("Document not found");
       }
       // PATCH/merge: overlay the provided fields onto the stored content so omitted
       // fields keep their values. Reads the raw row directly (no afterRead); unknown
@@ -221,14 +239,15 @@ export function createDocumentRuntime(context: DatabaseContext) {
               data as Record<string, unknown>,
             )
           : data;
-      // Check access against the final (merged) data, so a PATCH can't bypass a
-      // rule that depends on a persisted field by simply omitting it from the body.
+      // Check access against the normalized, merged document — so rules see the
+      // trimmed/defaulted values that will be stored and a PATCH can't bypass a rule
+      // on a persisted field by omitting it.
+      let document = compiledConfig.normalizeDocumentData(collectionSlug, inputData) as Doc;
       await assertCollectionAccess(config, collectionSlug, "update", {
         user: user ?? null,
         id,
-        data: inputData as Record<string, unknown>,
+        data: document as Record<string, unknown>,
       });
-      let document = compiledConfig.normalizeDocumentData(collectionSlug, inputData) as Doc;
       document = await runBeforeChangeHooks(hooks, {
         collection: collectionSlug,
         data: document,

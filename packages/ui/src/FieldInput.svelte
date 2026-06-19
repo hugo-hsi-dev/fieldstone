@@ -270,7 +270,13 @@
 					bind:innerHTML={richTextHtml}
 				></div>
 			{/if}
-			<input type="hidden" name={`data.${field.identifier}`} value={richTextHtml} />
+			<!-- Read-only submits the original stored value (only the display is
+			     sanitized), so saving another field can't overwrite it with stripped HTML. -->
+			<input
+				type="hidden"
+				name={`data.${field.identifier}`}
+				value={readOnly ? (typeof base === 'string' ? base : '') : richTextHtml}
+			/>
 		</div>
 	{:else if field.type === 'group'}
 		<fieldset class="fs-admin__nested">

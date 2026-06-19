@@ -261,12 +261,17 @@ type OptionalContentFieldName<
 
 // Mutation input reuses the generated document field types, but the runtime and
 // REST/admin paths also normalize strings: a `date` reads as `Date` yet accepts an
-// ISO string, and a `number` accepts a numeric string. Widen those on input.
+// ISO string, and a `number` accepts a numeric string. Widen those on input,
+// recursing through nested group/array shapes (normalization recurses too).
 type WidenInputValue<T> = T extends Date
   ? Date | string
   : T extends number
     ? number | string
-    : T;
+    : T extends readonly (infer TItem)[]
+      ? WidenInputValue<TItem>[]
+      : T extends object
+        ? { [TKey in keyof T]: WidenInputValue<T[TKey]> }
+        : T;
 
 type ContentDataValue<
   TGenerated extends object,

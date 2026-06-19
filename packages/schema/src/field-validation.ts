@@ -94,10 +94,10 @@ function validateFieldDefinition(field: FieldDefinition) {
         }
       }
       if (field.defaultValue !== undefined) {
-        const value = field.defaultValue;
-        // Normalization trims and treats an empty result as missing, so a blank
-        // default is unusable (and would mismatch the non-null generated type).
-        if (value.trim() === "")
+        // Validate the trimmed value — that's what normalization stores and what
+        // the min/max/pattern checks run against at mutation time.
+        const value = field.defaultValue.trim();
+        if (value === "")
           throw new Error(
             `Text field "${field.name}" has a blank defaultValue`,
           );
