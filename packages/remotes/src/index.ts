@@ -235,7 +235,9 @@ export function createFieldstoneAdminRemotes({
 
     listRelationOptions: query(collectionSchema, async ({ collection }) => {
       const fieldstoneAdmin = await getFieldstoneAdmin();
-      return fieldstoneAdmin.listRelationOptions(collection);
+      return fieldstoneAdmin
+        .listRelationOptions(collection, currentUser())
+        .catch(rethrowAsHttp);
     }),
 
     listGlobals: query(async () => {

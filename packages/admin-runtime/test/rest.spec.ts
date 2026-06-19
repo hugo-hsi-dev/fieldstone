@@ -108,6 +108,29 @@ describe("fieldstone REST handler", () => {
     expect((await call("GET", ["posts", id])).status).toBe(404);
   });
 
+  it("merges partial PATCH bodies instead of replacing the document", async () => {
+    const created = (await (
+      await call("POST", ["posts"], { title: "Original", views: 5 })
+    ).json()) as Record<string, unknown>;
+    const id = created.id as string;
+
+    // Omitting the required `title` must not fail or clear it.
+    const patched = (await (
+      await call("PATCH", ["posts", id], { views: 9 })
+    ).json()) as Record<string, unknown>;
+    expect(patched.title).toBe("Original");
+    expect(patched.views).toBe(9);
+
+    // Omitting the optional `views` must preserve it rather than reset to null.
+    const renamed = (await (
+      await call("PATCH", ["posts", id], { title: "Renamed" })
+    ).json()) as Record<string, unknown>;
+    expect(renamed.title).toBe("Renamed");
+    expect(renamed.views).toBe(9);
+
+    expect((await call("PATCH", ["posts", "missing"], { views: 1 })).status).toBe(404);
+  });
+
   it("handles globals, unknown routes, and method errors", async () => {
     expect(await (await call("GET", ["globals", "site-settings"])).json()).toBeNull();
 

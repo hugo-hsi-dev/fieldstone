@@ -36,6 +36,26 @@ async function readBody(request: Request): Promise<Record<string, unknown>> {
 }
 
 /**
+ * PATCH semantics: overlay only the provided fields onto the current document so
+ * omitted fields keep their stored values. Without this the full-replacement
+ * normalizer would reset omitted optional/boolean/defaulted fields and reject
+ * the request for any missing required field.
+ */
+function mergePatch(
+  content: { fields: ReadonlyArray<{ name: string }> },
+  existing: Record<string, unknown>,
+  body: Record<string, unknown>,
+): Record<string, unknown> {
+  const merged: Record<string, unknown> = {};
+  for (const { name } of content.fields) {
+    if (Object.prototype.hasOwnProperty.call(body, name)) merged[name] = body[name];
+    else if (Object.prototype.hasOwnProperty.call(existing, name))
+      merged[name] = existing[name];
+  }
+  return merged;
+}
+
+/**
  * A framework-agnostic REST handler over the Fieldstone runtime. Mount it from a
  * SvelteKit `+server.ts` (or any web-standard request handler) and forward the path
  * segments after the API base, e.g. `/api/posts`, `/api/posts/:id`, `/api/globals/:slug`.
@@ -75,7 +95,18 @@ export function createFieldstoneRest({
         return json(await admin.getGlobal({ global: slug as GlobalSlug }));
       }
       if (method === "POST" || method === "PUT" || method === "PATCH") {
-        const data = (await readBody(request)) as GlobalData<GlobalSlug>;
+        const body = await readBody(request);
+        let data = body as GlobalData<GlobalSlug>;
+        if (method === "PATCH") {
+          const existing = await admin.getGlobal({ global: slug as GlobalSlug });
+          const globalConfig = admin.getGlobalConfig(slug);
+          if (existing && globalConfig)
+            data = mergePatch(
+              globalConfig,
+              existing as Record<string, unknown>,
+              body,
+            ) as GlobalData<GlobalSlug>;
+        }
         return json(await admin.updateGlobal({ global: slug as GlobalSlug, data }));
       }
       return errorResponse(405, "Method not allowed");
@@ -143,7 +174,24 @@ export function createFieldstoneRest({
         return json(doc);
       }
       if (method === "PATCH" || method === "PUT") {
-        const data = (await readBody(request)) as CollectionData<CollectionSlug>;
+        const body = await readBody(request);
+        let data = body as CollectionData<CollectionSlug>;
+        if (method === "PATCH") {
+          // Merge onto the current document so a partial PATCH doesn't clear
+          // omitted fields or fail required-field validation. PUT stays a full
+          // replacement.
+          const existing = await admin.getDocument({
+            collection: collectionSlug as CollectionSlug,
+            id,
+            user,
+          });
+          if (!existing) return errorResponse(404, "Document not found");
+          data = mergePatch(
+            admin.getCollection(collectionSlug)!,
+            existing as Record<string, unknown>,
+            body,
+          ) as CollectionData<CollectionSlug>;
+        }
         const doc = await admin.updateDocument({
           collection: collectionSlug as CollectionSlug,
           id,

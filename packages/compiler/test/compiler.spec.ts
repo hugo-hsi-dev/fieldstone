@@ -612,6 +612,20 @@ describe("fieldstone compiler", () => {
     ).toThrow("Duplicate content slug: Posts");
   });
 
+  it("rejects a collection using the reserved 'globals' slug", () => {
+    expect(() =>
+      compileFieldstoneConfig({
+        db: { dialect: "sqlite", url: ":memory:" },
+        collections: {
+          globals: {
+            fields: [text({ name: "title", required: true })],
+            slug: "globals",
+          },
+        },
+      }).renderSchemaSource(),
+    ).toThrow('Reserved collection slug: "globals"');
+  });
+
   it("rejects reserved field names in direct config input", () => {
     const config: FieldstoneConfig = {
       db: { dialect: "sqlite", url: ":memory:" },

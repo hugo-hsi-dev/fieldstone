@@ -168,7 +168,6 @@ export function collection(config: {
 export function global(config: {
   fields: readonly FieldDefinition[];
   hooks?: CollectionHooks;
-  access?: CollectionAccess;
   drafts?: boolean;
 }): GlobalDefinition {
   validateCollectionFields(config.fields);
@@ -176,7 +175,6 @@ export function global(config: {
   return {
     fields: [...config.fields],
     ...(config.hooks ? { hooks: config.hooks } : {}),
-    ...(config.access ? { access: config.access } : {}),
     ...(config.drafts ? { drafts: true } : {}),
   };
 }

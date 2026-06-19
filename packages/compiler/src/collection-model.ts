@@ -108,6 +108,14 @@ function compareSlugs(left: string, right: string) {
 function validateContentSlugs(config: FieldstoneConfig) {
   const seen = new Set<string>();
 
+  for (const collection of Object.values(config.collections)) {
+    // `globals` is reserved for the REST global-singleton route (/api/globals/…);
+    // a collection with this slug would be shadowed by it and become unreachable.
+    if (collection.slug.toLowerCase() === "globals") {
+      throw new Error('Reserved collection slug: "globals"');
+    }
+  }
+
   for (const content of [
     ...Object.values(config.collections),
     ...Object.values(config.globals ?? {}),
@@ -150,6 +158,9 @@ function selectUnionType(field: Extract<FieldDefinition, { type: "select" }>) {
   return values.length > 0 ? values.join(" | ") : "string";
 }
 
+// Only used for nested (group/array) subfields, which are persisted inside a
+// JSON text column. A nested `date` is serialized to an ISO string and reads
+// back as a string, so its generated type must be `string`, not `Date`.
 function fieldTypeScript(field: FieldDefinition): string {
   switch (field.type) {
     case "boolean":
@@ -157,7 +168,7 @@ function fieldTypeScript(field: FieldDefinition): string {
     case "number":
       return "number";
     case "date":
-      return "Date";
+      return "string";
     case "select":
       return selectUnionType(field);
     case "relationship":

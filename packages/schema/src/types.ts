@@ -178,11 +178,15 @@ export const STATUS_FIELD_NAME = "_status";
 export type ContentDefinition = {
   fields: FieldDefinition[];
   hooks?: CollectionHooks;
-  access?: CollectionAccess;
   drafts?: boolean;
 };
 
-export type CollectionDefinition = ContentDefinition;
+// Access control is enforced per-collection only. Globals are singletons that
+// don't currently thread a user through getGlobal/updateGlobal, so they
+// deliberately don't accept `access` rather than expose an unenforced option.
+export type CollectionDefinition = ContentDefinition & {
+  access?: CollectionAccess;
+};
 export type GlobalDefinition = ContentDefinition;
 
 export type RuntimeConfig = {
@@ -295,12 +299,22 @@ export type GlobalDocument<TGlobal extends string> =
     ? GeneratedGlobals[TGlobal]
     : FallbackDocument;
 
+type FallbackDataValue =
+  | boolean
+  | number
+  | string
+  | string[]
+  | Date
+  | null
+  | { [key: string]: FallbackDataValue }
+  | { [key: string]: FallbackDataValue }[];
+
 export type CollectionData<TCollection extends string> =
   TCollection extends keyof GeneratedCollections
     ? GeneratedData<GeneratedCollections, TCollection>
-    : Record<string, boolean | number | string | string[] | Date | null>;
+    : Record<string, FallbackDataValue>;
 
 export type GlobalData<TGlobal extends string> =
   TGlobal extends keyof GeneratedGlobals
     ? GeneratedData<GeneratedGlobals, TGlobal>
-    : Record<string, boolean | number | string | string[] | Date | null>;
+    : Record<string, FallbackDataValue>;

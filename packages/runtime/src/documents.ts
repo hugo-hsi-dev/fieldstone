@@ -218,6 +218,9 @@ export function createDocumentRuntime(context: DatabaseContext) {
       if (hooks?.beforeDelete?.length || hooks?.afterDelete?.length) {
         const [existing] = await database.select().from(table).where(eq(table.id, id)).limit(1);
         deletedDoc = (existing ?? null) as Doc | null;
+        // Confirm the row exists before firing hooks, so beforeDelete/afterDelete
+        // never run (writing audit records, cleaning resources) for a no-op delete.
+        if (!deletedDoc) throw new Error("Document not found");
       }
       await runBeforeDeleteHooks(hooks, collectionSlug, id);
       const deletedRows = (await database

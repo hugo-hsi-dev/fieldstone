@@ -781,6 +781,13 @@ describe("fieldstone runtime", () => {
       await stone.delete({ collection: "notes", id: created.id });
       expect(events).toContain("beforeDelete");
       expect(events).toContain("afterDelete:New Title");
+
+      // Deleting a missing id must not fire delete hooks for a row that never existed.
+      events.length = 0;
+      await expect(
+        stone.delete({ collection: "notes", id: "missing" }),
+      ).rejects.toThrow("Document not found");
+      expect(events).not.toContain("beforeDelete");
     } finally {
       await rm(tempDir, { force: true, recursive: true });
     }

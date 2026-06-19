@@ -66,7 +66,26 @@
 	// Rich text: a contenteditable surface bound to local HTML state, submitted via a
 	// reactive hidden input (same approach as the checkbox — avoids form value tracking).
 	// svelte-ignore state_referenced_locally
-	let richTextHtml = $state(typeof base === 'string' ? base : '');
+	let richTextHtml = $state(sanitizeHtml(typeof base === 'string' ? base : ''));
+
+	// Stored rich-text HTML can originate from another user, an import, or the REST
+	// API, so it must be treated as untrusted before it reaches `innerHTML`. This
+	// denylist strips the common stored-XSS vectors (script/style blocks, inline
+	// event handlers, javascript:/data: URLs) and runs identically on the server
+	// and client to avoid a hydration mismatch. A production deployment should back
+	// this with a vetted sanitizer (e.g. DOMPurify) for full coverage.
+	function sanitizeHtml(html: string): string {
+		return html
+			.replace(
+				/<\/?(?:script|style|iframe|object|embed|svg|math|link|meta|base|form)\b[^>]*>/gi,
+				''
+			)
+			.replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, '')
+			.replace(/\son[a-z]+\s*=\s*'[^']*'/gi, '')
+			.replace(/\son[a-z]+\s*=\s*[^\s>]+/gi, '')
+			.replace(/\s(?:href|src)\s*=\s*"\s*(?:javascript|data|vbscript):[^"]*"/gi, '')
+			.replace(/\s(?:href|src)\s*=\s*'\s*(?:javascript|data|vbscript):[^']*'/gi, '');
+	}
 
 	function execCommand(command: string) {
 		document.execCommand(command);
@@ -115,6 +134,10 @@
 			{id}
 		/>
 	{:else if field.type === 'select'}
+		{#if readOnly}
+			<!-- A disabled control is omitted from submission, so carry its value explicitly. -->
+			<input type="hidden" name={`data.${field.identifier}`} value={stringValue} />
+		{/if}
 		<select
 			class="fs-admin__input"
 			{...formField.as('select', stringValue)}
@@ -129,6 +152,11 @@
 			{/each}
 		</select>
 	{:else if field.type === 'relationship' && field.hasMany}
+		{#if readOnly}
+			{#each relationValues as relationValue (relationValue)}
+				<input type="hidden" name={`data.${field.identifier}`} value={relationValue} />
+			{/each}
+		{/if}
 		<select
 			class="fs-admin__select-multiple"
 			multiple
@@ -143,6 +171,9 @@
 			{/each}
 		</select>
 	{:else if field.type === 'relationship'}
+		{#if readOnly}
+			<input type="hidden" name={`data.${field.identifier}`} value={stringValue} />
+		{/if}
 		<select
 			class="fs-admin__input"
 			{...formField.as('select', stringValue)}

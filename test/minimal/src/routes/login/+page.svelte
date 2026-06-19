@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 
 	import { authClient } from '$lib/auth-client';
@@ -11,7 +12,12 @@
 	let error = $state<string | null>(null);
 	let pending = $state(false);
 
-	const redirectTo = $derived(page.url.searchParams.get('redirect') ?? '/admin');
+	// Only honour same-origin absolute paths so `?redirect=` can't become an open
+	// redirect (e.g. `//evil.com` or `https://evil.com`).
+	const redirectTo = $derived.by(() => {
+		const target = page.url.searchParams.get('redirect');
+		return target && target.startsWith('/') && !target.startsWith('//') ? target : '/admin';
+	});
 
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
@@ -26,7 +32,7 @@
 				error = result.error.message ?? 'Authentication failed';
 				return;
 			}
-			await goto(redirectTo);
+			await goto(resolve(redirectTo as `/${string}`));
 		} finally {
 			pending = false;
 		}

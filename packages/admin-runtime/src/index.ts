@@ -1,4 +1,5 @@
 import type {
+  AccessUser,
   CollectionRuntimeConfig,
   CollectionSlug,
   FieldstoneConfig,
@@ -37,11 +38,15 @@ export async function createFieldstoneAdmin({
 
     async listRelationOptions(
       slug: string,
+      user: AccessUser = null,
     ): Promise<{ value: string; label: string }[]> {
       const collection = stone.getCollection(slug);
       if (!collection) return [];
+      // Pass the request user so relationship pickers honour the target
+      // collection's access.read instead of being treated as anonymous.
       const documents = (await stone.find({
         collection: slug as CollectionSlug,
+        user,
       })) as Record<string, unknown>[];
       const labelField =
         collection.fields.find(
