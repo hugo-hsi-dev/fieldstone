@@ -1,12 +1,29 @@
 import type { CollectionDocument, CollectionSlug } from "@fieldstone/schema";
 
+import { assertCollectionAccess } from "./access.ts";
 import type { createDatabase } from "./database.ts";
-import type { CollectionInput, CreateInput, DocumentInput, UpdateInput } from "./types.ts";
+import {
+  getCollectionHooks,
+  hasChangeHooks,
+  runAfterChangeHooks,
+  runAfterDeleteHooks,
+  runAfterReadHooks,
+  runBeforeChangeHooks,
+  runBeforeDeleteHooks,
+} from "./hooks.ts";
+import type {
+  CreateInput,
+  DocumentInput,
+  ListInput,
+  UpdateInput,
+} from "./types.ts";
 
 type DatabaseContext = Awaited<ReturnType<typeof createDatabase>>;
+type Doc = Record<string, unknown>;
 
 export function createDocumentRuntime(context: DatabaseContext) {
-  const { compiled, compiledConfig, database, desc, eq } = context;
+  const { compiled, compiledConfig, config, database, and, asc, count, desc, eq, like, or } =
+    context;
 
   function getTable(collectionSlug: string) {
     if (!compiledConfig.getCollection(collectionSlug)) {
@@ -15,23 +32,93 @@ export function createDocumentRuntime(context: DatabaseContext) {
     return compiled.tables[collectionSlug];
   }
 
+  function buildConditions(
+    collectionSlug: string,
+    table: Record<string, any>,
+    status: ListInput["status"],
+    search: string | undefined,
+  ) {
+    const conditions: unknown[] = [];
+    if (status && table._status) conditions.push(eq(table._status, status));
+    const term = search?.trim();
+    if (term) {
+      const fields = compiledConfig.getCollection(collectionSlug)?.fields ?? [];
+      const likes = fields
+        .filter(
+          (field) =>
+            field.type === "text" ||
+            field.type === "email" ||
+            field.type === "select",
+        )
+        .map((field) => table[field.name])
+        .filter(Boolean)
+        .map((column) => like(column, `%${term}%`));
+      if (likes.length === 1) conditions.push(likes[0]);
+      else if (likes.length > 1) conditions.push(or(...likes));
+    }
+    return conditions;
+  }
+
   return {
     find: async <TCollection extends CollectionSlug>({
       collection: collectionSlug,
-    }: CollectionInput<TCollection>) => {
+      status,
+      limit,
+      offset,
+      sort,
+      search,
+      user,
+    }: ListInput<TCollection>) => {
+      await assertCollectionAccess(config, collectionSlug, "read", { user: user ?? null });
       const table = getTable(collectionSlug);
-      return database.select().from(table).orderBy(desc(table.createdAt)) as unknown as Promise<
-        CollectionDocument<TCollection>[]
-      >;
+      const conditions = buildConditions(collectionSlug, table, status, search);
+      let query = database.select().from(table).$dynamic();
+      if (conditions.length === 1) query = query.where(conditions[0] as any);
+      else if (conditions.length > 1) query = query.where(and(...(conditions as any[])));
+      const sortColumn =
+        sort?.field && table[sort.field] ? table[sort.field] : table.createdAt;
+      query = query.orderBy(sort?.direction === "asc" ? asc(sortColumn) : desc(sortColumn));
+      if (typeof limit === "number") query = query.limit(limit);
+      if (typeof offset === "number") query = query.offset(offset);
+      const rows = (await query) as Doc[];
+      const hooks = getCollectionHooks(config, collectionSlug);
+      if (!hooks?.afterRead?.length) {
+        return rows as unknown as CollectionDocument<TCollection>[];
+      }
+      const read = await Promise.all(
+        rows.map((row) => runAfterReadHooks(hooks, collectionSlug, row)),
+      );
+      return read as unknown as CollectionDocument<TCollection>[];
+    },
+
+    count: async <TCollection extends CollectionSlug>({
+      collection: collectionSlug,
+      status,
+      search,
+      user,
+    }: ListInput<TCollection>) => {
+      await assertCollectionAccess(config, collectionSlug, "read", { user: user ?? null });
+      const table = getTable(collectionSlug);
+      const conditions = buildConditions(collectionSlug, table, status, search);
+      let query = database.select({ value: count() }).from(table).$dynamic();
+      if (conditions.length === 1) query = query.where(conditions[0] as any);
+      else if (conditions.length > 1) query = query.where(and(...(conditions as any[])));
+      const [row] = (await query) as { value: number }[];
+      return Number(row?.value ?? 0);
     },
 
     findById: async <TCollection extends CollectionSlug>({
       collection: collectionSlug,
       id,
+      user,
     }: DocumentInput<TCollection>) => {
+      await assertCollectionAccess(config, collectionSlug, "read", { user: user ?? null, id });
       const table = getTable(collectionSlug);
       const [document] = await database.select().from(table).where(eq(table.id, id)).limit(1);
-      return (document ?? null) as CollectionDocument<TCollection> | null;
+      if (!document) return null;
+      const hooks = getCollectionHooks(config, collectionSlug);
+      const read = await runAfterReadHooks(hooks, collectionSlug, document as Doc);
+      return read as unknown as CollectionDocument<TCollection>;
     },
 
     create: async <TCollection extends CollectionSlug>({
@@ -39,8 +126,20 @@ export function createDocumentRuntime(context: DatabaseContext) {
       createdAt,
       data,
       updatedAt,
+      user,
     }: CreateInput<TCollection>) => {
-      const document = compiledConfig.normalizeDocumentData(collectionSlug, data);
+      await assertCollectionAccess(config, collectionSlug, "create", {
+        user: user ?? null,
+        data: data as Record<string, unknown>,
+      });
+      const hooks = getCollectionHooks(config, collectionSlug);
+      let document = compiledConfig.normalizeDocumentData(collectionSlug, data) as Doc;
+      document = await runBeforeChangeHooks(hooks, {
+        collection: collectionSlug,
+        data: document,
+        operation: "create",
+        originalDoc: null,
+      });
       const table = compiled.tables[collectionSlug];
       const now = new Date();
       const createdRows = (await database
@@ -50,10 +149,15 @@ export function createDocumentRuntime(context: DatabaseContext) {
           createdAt: createdAt ?? now,
           updatedAt: updatedAt ?? now,
         })
-        .returning()) as unknown[];
-      const [created] = createdRows;
+        .returning()) as Doc[];
+      const created = await runAfterChangeHooks(hooks, {
+        collection: collectionSlug,
+        doc: createdRows[0] as Doc,
+        operation: "create",
+        previousDoc: null,
+      });
 
-      return created as CollectionDocument<TCollection>;
+      return created as unknown as CollectionDocument<TCollection>;
     },
 
     update: async <TCollection extends CollectionSlug>({
@@ -61,9 +165,27 @@ export function createDocumentRuntime(context: DatabaseContext) {
       data,
       id,
       updatedAt,
+      user,
     }: UpdateInput<TCollection>) => {
-      const document = compiledConfig.normalizeDocumentData(collectionSlug, data);
-      const table = compiled.tables[collectionSlug];
+      await assertCollectionAccess(config, collectionSlug, "update", {
+        user: user ?? null,
+        id,
+        data: data as Record<string, unknown>,
+      });
+      const hooks = getCollectionHooks(config, collectionSlug);
+      const table = getTable(collectionSlug);
+      let document = compiledConfig.normalizeDocumentData(collectionSlug, data) as Doc;
+      let originalDoc: Doc | null = null;
+      if (hasChangeHooks(hooks)) {
+        const [existing] = await database.select().from(table).where(eq(table.id, id)).limit(1);
+        originalDoc = (existing ?? null) as Doc | null;
+      }
+      document = await runBeforeChangeHooks(hooks, {
+        collection: collectionSlug,
+        data: document,
+        operation: "update",
+        originalDoc,
+      });
       const updatedRows = (await database
         .update(table)
         .set({
@@ -71,18 +193,33 @@ export function createDocumentRuntime(context: DatabaseContext) {
           updatedAt: updatedAt ?? new Date(),
         })
         .where(eq(table.id, id))
-        .returning()) as unknown[];
-      const [updated] = updatedRows;
+        .returning()) as Doc[];
+      const updated = updatedRows[0];
 
       if (!updated) throw new Error("Document not found");
-      return updated as CollectionDocument<TCollection>;
+      const afterChange = await runAfterChangeHooks(hooks, {
+        collection: collectionSlug,
+        doc: updated,
+        operation: "update",
+        previousDoc: originalDoc,
+      });
+      return afterChange as unknown as CollectionDocument<TCollection>;
     },
 
     delete: async <TCollection extends CollectionSlug>({
       collection: collectionSlug,
       id,
+      user,
     }: DocumentInput<TCollection>) => {
+      await assertCollectionAccess(config, collectionSlug, "delete", { user: user ?? null, id });
+      const hooks = getCollectionHooks(config, collectionSlug);
       const table = getTable(collectionSlug);
+      let deletedDoc: Doc | null = null;
+      if (hooks?.beforeDelete?.length || hooks?.afterDelete?.length) {
+        const [existing] = await database.select().from(table).where(eq(table.id, id)).limit(1);
+        deletedDoc = (existing ?? null) as Doc | null;
+      }
+      await runBeforeDeleteHooks(hooks, collectionSlug, id);
       const deletedRows = (await database
         .delete(table)
         .where(eq(table.id, id))
@@ -90,7 +227,8 @@ export function createDocumentRuntime(context: DatabaseContext) {
       const [deleted] = deletedRows;
 
       if (!deleted) throw new Error("Document not found");
-      return deleted;
+      if (deletedDoc) await runAfterDeleteHooks(hooks, collectionSlug, id, deletedDoc);
+      return deleted as { id: string };
     },
   };
 }

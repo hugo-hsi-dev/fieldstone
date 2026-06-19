@@ -8,7 +8,11 @@ import type {
   FieldstoneConfig,
   GlobalRuntimeConfig,
 } from "@fieldstone/schema";
-import { validateCollectionFields } from "@fieldstone/schema";
+import {
+  normalizeSelectOptions,
+  STATUS_FIELD_NAME,
+  validateCollectionFields,
+} from "@fieldstone/schema";
 import { toUniqueIdentifier } from "./identifiers.ts";
 
 export type CompiledCollectionField = Readonly<
@@ -28,25 +32,36 @@ export type CompiledSystemField = (typeof systemFields)[number];
 
 export type CompiledColumn = Readonly<{
   columnName: string;
-  drizzleType: "boolean" | "text" | "timestamp";
+  drizzleType: "boolean" | "number" | "text" | "timestamp";
   fingerprint: boolean;
   identifier: string;
   name: string;
   origin: "field" | "system";
   required: boolean;
   runtimeKey: string;
-  sourceExpression: "boolean" | "text" | "timestampNow" | "uuidTextPrimaryKey";
+  sourceExpression:
+    | "boolean"
+    | "number"
+    | "text"
+    | "json"
+    | "dateValue"
+    | "timestampNow"
+    | "uuidTextPrimaryKey";
   typeScriptName: string;
   typeScriptProperty: string;
-  typeScriptType: "Date" | "boolean" | "string";
+  typeScriptType: string;
+  unique: boolean;
 }>;
 
 export type CollectionFingerprint = Readonly<{
   fields: readonly Readonly<{
     multiline?: boolean;
     name: string;
+    relationTo?: string;
+    hasMany?: boolean;
     required: boolean;
     type: FieldDefinition["type"];
+    unique: boolean;
   }>[];
   slug: string;
 }>;
@@ -124,46 +139,194 @@ function createSystemColumn(field: CompiledSystemField): CompiledColumn {
     typeScriptName: field.identifier,
     typeScriptProperty: field.identifier,
     typeScriptType: isId ? "string" : "Date",
+    unique: false,
   };
 }
 
-function createFieldColumn(field: CompiledCollectionField): CompiledColumn {
-  const isBoolean = field.type === "boolean";
+function selectUnionType(field: Extract<FieldDefinition, { type: "select" }>) {
+  const values = normalizeSelectOptions(field.options ?? []).map((option) =>
+    JSON.stringify(option.value),
+  );
+  return values.length > 0 ? values.join(" | ") : "string";
+}
 
-  return {
+function fieldTypeScript(field: FieldDefinition): string {
+  switch (field.type) {
+    case "boolean":
+      return "boolean";
+    case "number":
+      return "number";
+    case "date":
+      return "Date";
+    case "select":
+      return selectUnionType(field);
+    case "relationship":
+      return field.hasMany ? "string[]" : "string";
+    case "group":
+      return objectTypeScript(field.fields);
+    case "array":
+      return `${objectTypeScript(field.fields)}[]`;
+    default:
+      return "string";
+  }
+}
+
+function fieldNullable(field: FieldDefinition): boolean {
+  if (
+    field.type === "boolean" ||
+    field.type === "group" ||
+    field.type === "array"
+  )
+    return false;
+  return !field.required;
+}
+
+function objectTypeScript(fields: FieldDefinition[]): string {
+  if (fields.length === 0) return "Record<string, never>";
+  const entries = fields
+    .map(
+      (field) =>
+        `${JSON.stringify(field.name)}: ${fieldTypeScript(field)}${fieldNullable(field) ? " | null" : ""}`,
+    )
+    .join("; ");
+  return `{ ${entries} }`;
+}
+
+function fieldUnique(field: CompiledCollectionField): boolean {
+  return "unique" in field ? Boolean(field.unique) : false;
+}
+
+function createFieldColumn(field: CompiledCollectionField): CompiledColumn {
+  const base = {
     columnName: field.name,
-    drizzleType: isBoolean ? "boolean" : "text",
     fingerprint: true,
     identifier: field.identifier,
     name: field.name,
     origin: "field",
     required: field.required,
     runtimeKey: field.name,
-    sourceExpression: isBoolean ? "boolean" : "text",
     typeScriptName: field.name,
     typeScriptProperty: JSON.stringify(field.name),
-    typeScriptType: isBoolean ? "boolean" : "string",
+    unique: fieldUnique(field),
+  } as const;
+
+  switch (field.type) {
+    case "boolean":
+      return {
+        ...base,
+        drizzleType: "boolean",
+        sourceExpression: "boolean",
+        typeScriptType: "boolean",
+      };
+    case "number":
+      return {
+        ...base,
+        drizzleType: "number",
+        sourceExpression: "number",
+        typeScriptType: "number",
+      };
+    case "date":
+      return {
+        ...base,
+        drizzleType: "timestamp",
+        sourceExpression: "dateValue",
+        typeScriptType: "Date",
+      };
+    case "select":
+      return {
+        ...base,
+        drizzleType: "text",
+        sourceExpression: "text",
+        typeScriptType: selectUnionType(field),
+      };
+    case "relationship":
+      return field.hasMany
+        ? {
+            ...base,
+            drizzleType: "text",
+            sourceExpression: "json",
+            typeScriptType: "string[]",
+          }
+        : {
+            ...base,
+            drizzleType: "text",
+            sourceExpression: "text",
+            typeScriptType: "string",
+          };
+    case "group":
+      return {
+        ...base,
+        drizzleType: "text",
+        sourceExpression: "json",
+        typeScriptType: objectTypeScript(field.fields),
+      };
+    case "array":
+      return {
+        ...base,
+        drizzleType: "text",
+        sourceExpression: "json",
+        typeScriptType: `${objectTypeScript(field.fields)}[]`,
+      };
+    default:
+      return {
+        ...base,
+        drizzleType: "text",
+        sourceExpression: "text",
+        typeScriptType: "string",
+      };
+  }
+}
+
+function withDraftStatusField(content: {
+  fields: FieldDefinition[];
+  drafts?: boolean;
+}): FieldDefinition[] {
+  if (
+    !content.drafts ||
+    content.fields.some((field) => field.name === STATUS_FIELD_NAME)
+  )
+    return content.fields;
+  const statusField: FieldDefinition = {
+    name: STATUS_FIELD_NAME,
+    type: "select",
+    options: normalizeSelectOptions(["draft", "published"]),
+    defaultValue: "draft",
+    required: true,
   };
+  return [...content.fields, statusField];
 }
 
 function compileContent(
-  content: { fields: FieldDefinition[]; slug: string },
+  content: { fields: FieldDefinition[]; slug: string; drafts?: boolean },
   kind: "collection" | "global",
   tableIdentifiers: Set<string>,
 ): CompiledContent {
-  validateCollectionFields(content.fields);
+  const sourceFields = withDraftStatusField(content);
+  validateCollectionFields(sourceFields);
   const fieldIdentifiers = new Set<string>();
-  const fields = content.fields.map((field) => ({
+  const fields = sourceFields.map((field) => ({
     ...field,
+    ...(field.type === "select"
+      ? { options: normalizeSelectOptions(field.options ?? []) }
+      : {}),
     identifier: toUniqueIdentifier(field.name, fieldIdentifiers),
-    required: field.type === "boolean" ? true : Boolean(field.required),
+    required:
+      field.type === "boolean"
+        ? true
+        : "required" in field
+          ? Boolean(field.required)
+          : false,
   }));
   const fingerprint = {
     fields: fields.map((field) => ({
       name: field.name,
       ...(field.type === "text" ? { multiline: Boolean(field.multiline) } : {}),
+      ...(field.type === "relationship"
+        ? { relationTo: field.relationTo, hasMany: Boolean(field.hasMany) }
+        : {}),
       required: field.required,
       type: field.type,
+      unique: "unique" in field ? Boolean(field.unique) : false,
     })),
     slug: content.slug,
   };
@@ -217,15 +380,9 @@ export function getGlobalConfig(
   return createRuntimeConfig(global);
 }
 
-function createRuntimeConfig(content: CompiledContent) {
+function createRuntimeConfig(content: CompiledContent): CollectionRuntimeConfig {
   return {
-    fields: content.fields.map((field) => ({
-      identifier: field.identifier,
-      ...(field.type === "text" ? { multiline: field.multiline } : {}),
-      name: field.name,
-      required: field.required,
-      type: field.type,
-    })),
+    fields: content.fields.map((field) => ({ ...field })),
     slug: content.slug,
   };
 }
@@ -285,6 +442,16 @@ export function buildSchemaPlan(config: FieldstoneConfig): SchemaPlan {
       (global) =>
         compileContent(global, "global", tableIdentifiers) as CompiledGlobal,
     );
+
+  const collectionSlugs = new Set(collections.map((collection) => collection.slug));
+  for (const content of [...collections, ...globals]) {
+    for (const field of content.fields) {
+      if (field.type === "relationship" && !collectionSlugs.has(field.relationTo))
+        throw new Error(
+          `Relationship field "${field.name}" points to unknown collection: ${field.relationTo}`,
+        );
+    }
+  }
 
   return {
     collectionBySlug: new Map(

@@ -1,45 +1,254 @@
 <script lang="ts">
-	import type { CollectionRuntimeConfig } from '@fieldstone/schema';
+	import type { CollectionRuntimeConfig, DocumentDataValue } from '@fieldstone/schema';
 
-	import { getFieldLabel, shouldUseTextarea } from './labels';
+	import { getFieldLabel, shouldUseTextarea, toDatetimeLocalValue, toInputValue } from './labels';
 	import Label from './primitives/Label.svelte';
+	import NestedFields from './NestedFields.svelte';
+	import Button from './primitives/Button.svelte';
+
+	type Field = CollectionRuntimeConfig['fields'][number];
 
 	let {
 		field,
 		id,
 		value = undefined,
 		compact = false,
+		options = [],
 		formField
 	}: {
-		field: CollectionRuntimeConfig['fields'][number];
+		field: Field;
 		formField: {
-			as: (type: 'checkbox' | 'hidden' | 'text', value?: string) => Record<string, unknown>;
+			as: (
+				type:
+					| 'checkbox'
+					| 'hidden'
+					| 'text'
+					| 'email'
+					| 'number'
+					| 'date'
+					| 'datetime-local'
+					| 'select'
+					| 'select multiple',
+				value?: string | boolean
+			) => Record<string, unknown>;
 			issues: () => { message: string }[] | undefined;
 		};
 		id: string;
-		value?: boolean | string | null;
+		value?: DocumentDataValue | undefined;
 		compact?: boolean;
+		options?: { value: string; label: string }[];
 	} = $props();
+
+	function defaultOf(target: Field): DocumentDataValue {
+		return 'defaultValue' in target && target.defaultValue !== undefined
+			? (target.defaultValue as DocumentDataValue)
+			: null;
+	}
+
+	const base = $derived<DocumentDataValue>(value === undefined ? defaultOf(field) : value);
+	const stringValue = $derived(
+		field.type === 'date' ? toDatetimeLocalValue(base) : toInputValue(base)
+	);
+	const placeholder = $derived(field.admin?.placeholder);
+	const readOnly = $derived(field.admin?.readOnly ?? false);
+
+	// Drive boolean submission through a reactive hidden input (string "true"/"false")
+	// and keep the checkbox as pure UI. This avoids SvelteKit's checkbox value tracking,
+	// which does not reflect a document value on the edit form. Seeded identically on the
+	// server and client, so there is no hydration mismatch.
+	// svelte-ignore state_referenced_locally
+	let booleanState = $state(value === undefined ? Boolean(defaultOf(field)) : value === true);
+
+	const relationValues = $derived<string[]>(
+		Array.isArray(value) ? value.map(String) : value == null ? [] : [String(value)]
+	);
+
+	// Rich text: a contenteditable surface bound to local HTML state, submitted via a
+	// reactive hidden input (same approach as the checkbox — avoids form value tracking).
+	// svelte-ignore state_referenced_locally
+	let richTextHtml = $state(typeof base === 'string' ? base : '');
+
+	function execCommand(command: string) {
+		document.execCommand(command);
+	}
+
+	// Nested fields (group/array) are edited as local state and submitted as JSON via a
+	// reactive hidden input.
+	// svelte-ignore state_referenced_locally
+	let groupState = $state<Record<string, unknown>>(
+		field.type === 'group' && base && typeof base === 'object' && !Array.isArray(base)
+			? { ...(base as Record<string, unknown>) }
+			: {}
+	);
+	// svelte-ignore state_referenced_locally
+	let arrayState = $state<Record<string, unknown>[]>(
+		field.type === 'array' && Array.isArray(base)
+			? (base as Record<string, unknown>[]).map((entry) => ({ ...entry }))
+			: []
+	);
+
+	function addArrayRow() {
+		arrayState = [...arrayState, {}];
+	}
+
+	function removeArrayRow(index: number) {
+		arrayState = arrayState.filter((_, current) => current !== index);
+	}
 </script>
 
 <div class="fs-admin__field">
 	<Label for={id}>{getFieldLabel(field)}</Label>
+	{#if field.admin?.description}
+		<p class="fs-admin__field-description">{field.admin.description}</p>
+	{/if}
 	{#if field.type === 'boolean'}
-		<input {...formField.as('hidden', 'false')} />
+		<input
+			type="hidden"
+			name={`data.${field.identifier}`}
+			value={booleanState ? 'true' : 'false'}
+		/>
 		<input
 			class="fs-admin__checkbox"
-			checked={value === true}
-			{...formField.as('checkbox', 'true')}
+			type="checkbox"
+			bind:checked={booleanState}
+			disabled={readOnly}
+			{id}
+		/>
+	{:else if field.type === 'select'}
+		<select
+			class="fs-admin__input"
+			{...formField.as('select', stringValue)}
+			{id}
+			disabled={readOnly}
+		>
+			{#if !field.required}
+				<option value="">—</option>
+			{/if}
+			{#each field.options as option (option.value)}
+				<option value={option.value} selected={option.value === stringValue}>{option.label}</option>
+			{/each}
+		</select>
+	{:else if field.type === 'relationship' && field.hasMany}
+		<select
+			class="fs-admin__select-multiple"
+			multiple
+			{...formField.as('select multiple')}
+			{id}
+			disabled={readOnly}
+		>
+			{#each options as option (option.value)}
+				<option value={option.value} selected={relationValues.includes(option.value)}
+					>{option.label}</option
+				>
+			{/each}
+		</select>
+	{:else if field.type === 'relationship'}
+		<select
+			class="fs-admin__input"
+			{...formField.as('select', stringValue)}
+			{id}
+			disabled={readOnly}
+		>
+			{#if !field.required}
+				<option value="">—</option>
+			{/if}
+			{#each options as option (option.value)}
+				<option value={option.value} selected={option.value === stringValue}>{option.label}</option>
+			{/each}
+		</select>
+	{:else if field.type === 'richText'}
+		<div class="fs-admin__richtext">
+			<div class="fs-admin__richtext-toolbar">
+				<button
+					type="button"
+					class="fs-admin__richtext-btn"
+					aria-label="Bold"
+					onmousedown={(event) => event.preventDefault()}
+					onclick={() => execCommand('bold')}><strong>B</strong></button
+				>
+				<button
+					type="button"
+					class="fs-admin__richtext-btn"
+					aria-label="Italic"
+					onmousedown={(event) => event.preventDefault()}
+					onclick={() => execCommand('italic')}><em>I</em></button
+				>
+			</div>
+			<div
+				{id}
+				class="fs-admin__richtext-editor"
+				contenteditable="true"
+				role="textbox"
+				aria-multiline="true"
+				aria-label={getFieldLabel(field)}
+				bind:innerHTML={richTextHtml}
+			></div>
+			<input type="hidden" name={`data.${field.identifier}`} value={richTextHtml} />
+		</div>
+	{:else if field.type === 'group'}
+		<fieldset class="fs-admin__nested">
+			<legend class="fs-admin__nested-legend">{getFieldLabel(field)}</legend>
+			<NestedFields fields={field.fields} bind:value={groupState} idPrefix={id} />
+		</fieldset>
+		<input type="hidden" name={`data.${field.identifier}`} value={JSON.stringify(groupState)} />
+	{:else if field.type === 'array'}
+		<fieldset class="fs-admin__nested">
+			<legend class="fs-admin__nested-legend">{getFieldLabel(field)}</legend>
+			{#each arrayState as entry, index (entry)}
+				<div class="fs-admin__array-row">
+					<NestedFields
+						fields={field.fields}
+						bind:value={arrayState[index]}
+						idPrefix={`${id}-${index}`}
+					/>
+					<Button type="button" onclick={() => removeArrayRow(index)}>Remove</Button>
+				</div>
+			{/each}
+			<Button type="button" onclick={addArrayRow}>Add item</Button>
+		</fieldset>
+		<input type="hidden" name={`data.${field.identifier}`} value={JSON.stringify(arrayState)} />
+	{:else if field.type === 'number'}
+		<input
+			class="fs-admin__input"
+			{placeholder}
+			readonly={readOnly}
+			min={field.min}
+			max={field.max}
+			step={field.integer ? 1 : 'any'}
+			{...formField.as('number', stringValue)}
+			{id}
+		/>
+	{:else if field.type === 'date'}
+		<input
+			class="fs-admin__input"
+			readonly={readOnly}
+			{...formField.as('datetime-local', stringValue)}
+			{id}
+		/>
+	{:else if field.type === 'email'}
+		<input
+			class="fs-admin__input"
+			{placeholder}
+			readonly={readOnly}
+			{...formField.as('email', stringValue)}
 			{id}
 		/>
 	{:else if shouldUseTextarea(field)}
 		<textarea
 			class={['fs-admin__textarea', compact && 'fs-admin__textarea--compact']}
-			{...formField.as('text', String(value ?? ''))}
+			{placeholder}
+			readonly={readOnly}
+			{...formField.as('text', stringValue)}
 			{id}
 		></textarea>
 	{:else}
-		<input class="fs-admin__input" {...formField.as('text', String(value ?? ''))} {id} />
+		<input
+			class="fs-admin__input"
+			{placeholder}
+			readonly={readOnly}
+			{...formField.as('text', stringValue)}
+			{id}
+		/>
 	{/if}
 	{#each formField.issues() ?? [] as issue, index (`${issue.message}-${index}`)}
 		<p class="fs-admin__field-error">{issue.message}</p>
@@ -84,6 +293,86 @@
 		width: 1rem;
 		height: 1rem;
 		accent-color: var(--fs-admin-primary);
+	}
+
+	.fs-admin__nested {
+		display: grid;
+		gap: 0.75rem;
+		border: 1px solid var(--fs-admin-border);
+		border-radius: 0.5rem;
+		padding: 0.75rem;
+		margin: 0;
+	}
+
+	.fs-admin__nested-legend {
+		padding: 0 0.375rem;
+		font-size: 0.8125rem;
+		font-weight: 600;
+		color: var(--fs-admin-muted);
+	}
+
+	.fs-admin__array-row {
+		display: grid;
+		gap: 0.5rem;
+		border-top: 1px solid var(--fs-admin-border);
+		padding-top: 0.75rem;
+	}
+
+	.fs-admin__richtext {
+		display: grid;
+		gap: 0.25rem;
+	}
+
+	.fs-admin__richtext-toolbar {
+		display: flex;
+		gap: 0.25rem;
+	}
+
+	.fs-admin__richtext-btn {
+		min-width: 2rem;
+		border: 1px solid var(--fs-admin-border-strong);
+		border-radius: 0.25rem;
+		background: var(--fs-admin-panel);
+		color: var(--fs-admin-text);
+		padding: 0.25rem 0.5rem;
+		font-size: 0.875rem;
+		cursor: pointer;
+	}
+
+	.fs-admin__richtext-editor {
+		min-height: 6rem;
+		box-sizing: border-box;
+		border: 1px solid var(--fs-admin-border-strong);
+		border-radius: 0.375rem;
+		padding: 0.5rem 0.75rem;
+		font: inherit;
+		font-size: 0.875rem;
+		color: var(--fs-admin-text);
+		background: var(--fs-admin-panel);
+	}
+
+	.fs-admin__richtext-editor:focus {
+		border-color: var(--fs-admin-primary);
+		outline: none;
+	}
+
+	.fs-admin__select-multiple {
+		width: 100%;
+		box-sizing: border-box;
+		min-height: 6rem;
+		border: 1px solid var(--fs-admin-border-strong);
+		border-radius: 0.375rem;
+		padding: 0.25rem;
+		font: inherit;
+		font-size: 0.875rem;
+		color: var(--fs-admin-text);
+		background: var(--fs-admin-panel);
+	}
+
+	.fs-admin__field-description {
+		margin: 0;
+		color: var(--fs-admin-muted);
+		font-size: 0.8125rem;
 	}
 
 	.fs-admin__field-error {

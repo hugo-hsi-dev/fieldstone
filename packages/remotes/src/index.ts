@@ -1,13 +1,14 @@
 // oxlint-disable-next-line typescript/triple-slash-reference
 /// <reference path="./fieldstone-config.d.ts" />
 
-import { form, query } from "$app/server";
+import { form, getRequestEvent, query } from "$app/server";
 import { resolve } from "$app/paths";
 import { error, invalid, redirect } from "@sveltejs/kit";
 import * as v from "valibot";
 
-import { createFieldstoneAdmin } from "@fieldstone/admin-runtime";
+import { createFieldstoneAdmin, isForbiddenError } from "@fieldstone/admin-runtime";
 import type {
+  AccessUser,
   CollectionData,
   CollectionDocument,
   CollectionRuntimeConfig,
@@ -20,7 +21,7 @@ import type {
   GlobalSlug,
   NormalizedDocumentData,
 } from "@fieldstone/schema";
-import { normalizeBooleanFieldValue } from "@fieldstone/schema";
+import { normalizeBooleanFieldValue, normalizeFieldValue } from "@fieldstone/schema";
 import { compileFieldstoneConfig } from "@fieldstone/compiler";
 
 import {
@@ -31,12 +32,32 @@ import {
   adminRouteSegments,
 } from "@fieldstone/routes";
 
+function currentUser(): AccessUser {
+  try {
+    return (getRequestEvent().locals as { user?: AccessUser }).user ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function rethrowAsHttp(caught: unknown): never {
+  if (isForbiddenError(caught)) error(403, "Forbidden");
+  throw caught;
+}
+
 function resolveAdminPath(path: string) {
   return resolve(adminRouteId, { segments: adminRouteSegments(path) });
 }
 
 const collectionSchema = v.object({
   collection: v.string(),
+});
+
+const listSchema = v.object({
+  collection: v.string(),
+  limit: v.optional(v.number()),
+  offset: v.optional(v.number()),
+  search: v.optional(v.string()),
 });
 
 const findByIdSchema = v.object({
@@ -48,33 +69,32 @@ const globalSchema = v.object({
   global: v.string(),
 });
 
-function createTextFieldSchema(field: CollectionRuntimeField) {
-  const text = v.pipe(v.string(), v.trim());
-  if (field.required)
-    return v.pipe(text, v.nonEmpty(`${field.name} is required`));
+function createValueFieldSchema(field: CollectionRuntimeField) {
   return v.pipe(
-    text,
-    v.transform((value) => value || null),
+    v.unknown(),
+    v.rawTransform(({ dataset, addIssue, NEVER }) => {
+      try {
+        return normalizeFieldValue(field, dataset.value);
+      } catch (caught) {
+        addIssue({
+          message: caught instanceof Error ? caught.message : `${field.name} is invalid`,
+        });
+        return NEVER;
+      }
+    }),
   );
 }
 
 function createBooleanFieldSchema() {
-  const booleanValue = v.union([
-    v.boolean(),
-    v.literal("false"),
-    v.literal("true"),
-    v.literal("0"),
-    v.literal("1"),
-    v.literal("on"),
-  ]);
-
-  return v.pipe(
-    v.union([booleanValue, v.array(booleanValue)]),
-    v.transform((value) =>
-      Array.isArray(value)
-        ? value.some((entry) => normalizeBooleanFieldValue(entry))
-        : normalizeBooleanFieldValue(value),
+  // SvelteKit's `as('checkbox', boolean)` emits a `b:`-prefixed field that the
+  // form runtime coerces to a real boolean (checked → true). An unchecked box is
+  // omitted entirely, so default a missing value to false.
+  return v.optional(
+    v.pipe(
+      v.unknown(),
+      v.transform((value) => normalizeBooleanFieldValue(value)),
     ),
+    false,
   );
 }
 
@@ -84,15 +104,13 @@ function createCollectionDataSchema(
   const entries: Record<string, any> = {};
 
   for (const field of collection.fields) {
-    switch (field.type) {
-      case "text":
-        entries[field.identifier] = createTextFieldSchema(field);
-        break;
-      case "boolean":
-        entries[field.identifier] = createBooleanFieldSchema();
-        break;
-      default:
-        throw new Error("Unsupported field type");
+    if (field.type === "boolean") {
+      entries[field.identifier] = createBooleanFieldSchema();
+    } else if (field.type === "relationship" && field.hasMany) {
+      // An empty multi-select submits no key at all, so make it optional.
+      entries[field.identifier] = v.optional(createValueFieldSchema(field));
+    } else {
+      entries[field.identifier] = createValueFieldSchema(field);
     }
   }
 
@@ -215,6 +233,11 @@ export function createFieldstoneAdminRemotes({
       return (await getAdminCollection(collection)).collection;
     }),
 
+    listRelationOptions: query(collectionSchema, async ({ collection }) => {
+      const fieldstoneAdmin = await getFieldstoneAdmin();
+      return fieldstoneAdmin.listRelationOptions(collection);
+    }),
+
     listGlobals: query(async () => {
       const fieldstoneAdmin = await getFieldstoneAdmin();
       return fieldstoneAdmin.globals;
@@ -232,16 +255,32 @@ export function createFieldstoneAdminRemotes({
       }) as Promise<GlobalDocument<GlobalSlug> | null>;
     }),
 
-    listDocuments: query(collectionSchema, async ({ collection }) => {
-      const { collection: collectionSlug, fieldstoneAdmin } =
-        await getAdminCollection(collection);
-      return fieldstoneAdmin.listDocuments({
-        collection: collectionSlug.slug as CollectionSlug,
-      }) as Promise<CollectionDocument<CollectionSlug>[]>;
-    }),
+    listDocuments: query(
+      listSchema,
+      async ({ collection, limit, offset, search }) => {
+        const { collection: collectionConfig, fieldstoneAdmin } =
+          await getAdminCollection(collection);
+        const input = {
+          collection: collectionConfig.slug as CollectionSlug,
+          user: currentUser(),
+          ...(typeof limit === "number" ? { limit } : {}),
+          ...(typeof offset === "number" ? { offset } : {}),
+          ...(search ? { search } : {}),
+        };
+        const [docs, total] = await Promise.all([
+          fieldstoneAdmin.listDocuments(input),
+          fieldstoneAdmin.countDocuments(input),
+        ]).catch(rethrowAsHttp);
+        return {
+          docs: docs as CollectionDocument<CollectionSlug>[],
+          total,
+        };
+      },
+    ),
 
     getDocument: query.batch(findByIdSchema, async (inputs) => {
       const fieldstoneAdmin = await getFieldstoneAdmin();
+      const user = currentUser();
       const documents = await Promise.all(
         inputs.map(async (input) => {
           const collection = fieldstoneAdmin.getCollection(input.collection);
@@ -249,9 +288,10 @@ export function createFieldstoneAdminRemotes({
           return fieldstoneAdmin.getDocument({
             collection: collection.slug as CollectionSlug,
             id: input.id,
+            user,
           });
         }),
-      );
+      ).catch(rethrowAsHttp);
 
       return (_input, index) => {
         const document = documents[index];
@@ -270,10 +310,13 @@ export function createFieldstoneAdminRemotes({
         const { collection, fieldstoneAdmin } = await getAdminCollection(
           input.collection,
         );
-        const document = await fieldstoneAdmin.createDocument({
-          collection: collection.slug as CollectionSlug,
-          data: input.data as CollectionData<CollectionSlug>,
-        });
+        const document = await fieldstoneAdmin
+          .createDocument({
+            collection: collection.slug as CollectionSlug,
+            data: input.data as CollectionData<CollectionSlug>,
+            user: currentUser(),
+          })
+          .catch(rethrowAsHttp);
 
         redirect(
           303,
@@ -298,6 +341,7 @@ export function createFieldstoneAdminRemotes({
             collection: collection.slug as CollectionSlug,
             data: input.data as CollectionData<CollectionSlug>,
             id: input.id,
+            user: currentUser(),
           });
 
           redirect(
@@ -305,6 +349,7 @@ export function createFieldstoneAdminRemotes({
             resolveAdminPath(adminDocumentPath(collection.slug, document.id)),
           );
         } catch (caught) {
+          if (isForbiddenError(caught)) error(403, "Forbidden");
           if (isDocumentNotFound(caught))
             invalid("Could not find requested document");
           throw caught;
@@ -334,10 +379,12 @@ export function createFieldstoneAdminRemotes({
         await fieldstoneAdmin.deleteDocument({
           collection: collection.slug as CollectionSlug,
           id: input.id,
+          user: currentUser(),
         });
 
         redirect(303, resolveAdminPath(adminCollectionPath(collection.slug)));
       } catch (caught) {
+        if (isForbiddenError(caught)) error(403, "Forbidden");
         if (isDocumentNotFound(caught))
           invalid("Could not find requested document");
         throw caught;

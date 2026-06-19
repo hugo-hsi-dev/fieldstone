@@ -1,7 +1,9 @@
 import type {
+  AccessUser,
   CollectionData,
   CollectionDocument,
   CollectionSlug,
+  DocumentStatus,
   GlobalData,
   GlobalDocument,
   GlobalSlug,
@@ -23,6 +25,28 @@ export type CollectionInput<
   TCollection extends CollectionSlug = CollectionSlug,
 > = {
   collection: TCollection;
+  status?: DocumentStatus;
+  user?: AccessUser;
+};
+
+export type ListSort = {
+  field: string;
+  direction?: "asc" | "desc";
+};
+
+export type ListInput<TCollection extends CollectionSlug = CollectionSlug> =
+  CollectionInput<TCollection> & {
+    limit?: number;
+    offset?: number;
+    sort?: ListSort;
+    search?: string;
+  };
+
+export type ListResult<TCollection extends CollectionSlug = CollectionSlug> = {
+  docs: CollectionDocument<TCollection>[];
+  total: number;
+  limit: number;
+  offset: number;
 };
 
 export type DocumentInput<TCollection extends CollectionSlug = CollectionSlug> =
@@ -49,6 +73,7 @@ export type UpdateInput<TCollection extends CollectionSlug = CollectionSlug> =
 
 export type GlobalInput<TGlobal extends GlobalSlug = GlobalSlug> = {
   global: TGlobal;
+  user?: AccessUser;
 };
 
 export type UpdateGlobalInput<TGlobal extends GlobalSlug = GlobalSlug> =

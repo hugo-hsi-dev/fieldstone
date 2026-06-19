@@ -7,11 +7,12 @@ export function normalizeSqliteUrl(url: string) {
 }
 
 export async function createDatabase(config: FieldstoneConfig) {
-  const [{ createClient }, { desc, eq }, { drizzle }] = await Promise.all([
-    import("@libsql/client"),
-    import("drizzle-orm"),
-    import("drizzle-orm/libsql"),
-  ]);
+  const [{ createClient }, { and, asc, count, desc, eq, like, or }, { drizzle }] =
+    await Promise.all([
+      import("@libsql/client"),
+      import("drizzle-orm"),
+      import("drizzle-orm/libsql"),
+    ]);
   const compiledConfig = compileFieldstoneConfig(config);
   const compiled = compiledConfig.renderRuntimeSchema();
   const client = createClient({ url: normalizeSqliteUrl(config.db.url) });
@@ -22,8 +23,14 @@ export async function createDatabase(config: FieldstoneConfig) {
     globals: compiledConfig.createGlobalRuntimeConfigs(),
     compiled,
     compiledConfig,
+    config,
     database,
+    and,
+    asc,
+    count,
     desc,
     eq,
+    like,
+    or,
   };
 }

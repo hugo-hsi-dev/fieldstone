@@ -1,16 +1,106 @@
-export type TextFieldDefinition = {
-  multiline?: boolean;
+export type FieldAdminOptions = {
+  description?: string;
+  placeholder?: string;
+  readOnly?: boolean;
+};
+
+type CommonFieldOptions = {
   name: string;
+  label?: string;
   required?: boolean;
+  unique?: boolean;
+  admin?: FieldAdminOptions;
+};
+
+export type TextFieldDefinition = CommonFieldOptions & {
   type: "text";
+  multiline?: boolean;
+  defaultValue?: string;
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
+};
+
+export type EmailFieldDefinition = CommonFieldOptions & {
+  type: "email";
+  defaultValue?: string;
+};
+
+export type NumberFieldDefinition = CommonFieldOptions & {
+  type: "number";
+  defaultValue?: number;
+  min?: number;
+  max?: number;
+  integer?: boolean;
+};
+
+export type DateFieldDefinition = CommonFieldOptions & {
+  type: "date";
+  defaultValue?: string;
+};
+
+export type SelectOption = {
+  label: string;
+  value: string;
+};
+
+export type SelectOptionInput = string | SelectOption;
+
+export type SelectFieldDefinition = CommonFieldOptions & {
+  type: "select";
+  options: SelectOption[];
+  defaultValue?: string;
 };
 
 export type BooleanFieldDefinition = {
   name: string;
+  label?: string;
   type: "boolean";
+  defaultValue?: boolean;
+  admin?: FieldAdminOptions;
 };
 
-export type FieldDefinition = TextFieldDefinition | BooleanFieldDefinition;
+export type RelationshipFieldDefinition = CommonFieldOptions & {
+  type: "relationship";
+  relationTo: string;
+  hasMany?: boolean;
+};
+
+export type RichTextFieldDefinition = CommonFieldOptions & {
+  type: "richText";
+  defaultValue?: string;
+};
+
+export type GroupFieldDefinition = {
+  type: "group";
+  name: string;
+  label?: string;
+  fields: FieldDefinition[];
+  admin?: FieldAdminOptions;
+};
+
+export type ArrayFieldDefinition = {
+  type: "array";
+  name: string;
+  label?: string;
+  fields: FieldDefinition[];
+  required?: boolean;
+  admin?: FieldAdminOptions;
+};
+
+export type FieldDefinition =
+  | TextFieldDefinition
+  | EmailFieldDefinition
+  | NumberFieldDefinition
+  | DateFieldDefinition
+  | SelectFieldDefinition
+  | BooleanFieldDefinition
+  | RelationshipFieldDefinition
+  | RichTextFieldDefinition
+  | GroupFieldDefinition
+  | ArrayFieldDefinition;
+
+export type FieldType = FieldDefinition["type"];
 
 export type RuntimeField = FieldDefinition & {
   identifier: string;
@@ -20,8 +110,76 @@ export type RuntimeField = FieldDefinition & {
 export type CollectionRuntimeField = RuntimeField;
 export type GlobalRuntimeField = RuntimeField;
 
+export type HookOperation = "create" | "update";
+
+export type CollectionBeforeChangeHook = (args: {
+  collection: string;
+  data: Record<string, unknown>;
+  operation: HookOperation;
+  originalDoc: Record<string, unknown> | null;
+}) => Record<string, unknown> | void | Promise<Record<string, unknown> | void>;
+
+export type CollectionAfterChangeHook = (args: {
+  collection: string;
+  doc: Record<string, unknown>;
+  operation: HookOperation;
+  previousDoc: Record<string, unknown> | null;
+}) => Record<string, unknown> | void | Promise<Record<string, unknown> | void>;
+
+export type CollectionAfterReadHook = (args: {
+  collection: string;
+  doc: Record<string, unknown>;
+}) => Record<string, unknown> | void | Promise<Record<string, unknown> | void>;
+
+export type CollectionBeforeDeleteHook = (args: {
+  collection: string;
+  id: string;
+}) => void | Promise<void>;
+
+export type CollectionAfterDeleteHook = (args: {
+  collection: string;
+  id: string;
+  doc: Record<string, unknown>;
+}) => void | Promise<void>;
+
+export type CollectionHooks = {
+  beforeChange?: CollectionBeforeChangeHook[];
+  afterChange?: CollectionAfterChangeHook[];
+  afterRead?: CollectionAfterReadHook[];
+  beforeDelete?: CollectionBeforeDeleteHook[];
+  afterDelete?: CollectionAfterDeleteHook[];
+};
+
+export type AccessOperation = "create" | "read" | "update" | "delete";
+
+export type AccessUser = Record<string, unknown> | null;
+
+export type AccessArgs = {
+  collection: string;
+  operation: AccessOperation;
+  user: AccessUser;
+  id?: string;
+  data?: Record<string, unknown>;
+};
+
+export type AccessFn = (args: AccessArgs) => boolean | Promise<boolean>;
+
+export type CollectionAccess = {
+  read?: AccessFn;
+  create?: AccessFn;
+  update?: AccessFn;
+  delete?: AccessFn;
+};
+
+export type DocumentStatus = "draft" | "published";
+
+export const STATUS_FIELD_NAME = "_status";
+
 export type ContentDefinition = {
   fields: FieldDefinition[];
+  hooks?: CollectionHooks;
+  access?: CollectionAccess;
+  drafts?: boolean;
 };
 
 export type CollectionDefinition = ContentDefinition;
@@ -102,10 +260,7 @@ type ContentDataValue<
   TGenerated extends object,
   TSlug extends keyof TGenerated,
   TField extends ContentFieldName<TGenerated, TSlug>,
-> =
-  Exclude<TGenerated[TSlug][TField], undefined> extends string | null
-    ? Exclude<TGenerated[TSlug][TField], undefined>
-    : Exclude<TGenerated[TSlug][TField], undefined>;
+> = Exclude<TGenerated[TSlug][TField], undefined>;
 
 type GeneratedData<
   TGenerated extends object,
@@ -143,9 +298,9 @@ export type GlobalDocument<TGlobal extends string> =
 export type CollectionData<TCollection extends string> =
   TCollection extends keyof GeneratedCollections
     ? GeneratedData<GeneratedCollections, TCollection>
-    : Record<string, boolean | string | null>;
+    : Record<string, boolean | number | string | string[] | Date | null>;
 
 export type GlobalData<TGlobal extends string> =
   TGlobal extends keyof GeneratedGlobals
     ? GeneratedData<GeneratedGlobals, TGlobal>
-    : Record<string, boolean | string | null>;
+    : Record<string, boolean | number | string | string[] | Date | null>;

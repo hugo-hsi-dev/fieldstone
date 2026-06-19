@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  array,
   boolean,
   collection,
+  date,
+  email,
   global,
+  group,
+  number,
+  relationship,
+  select,
   text,
   type FieldstoneConfig,
 } from "@fieldstone/schema";
@@ -112,8 +119,20 @@ describe("fieldstone compiler", () => {
     });
     expect(schemaPlan.fingerprintPayload.collections[0]).toEqual({
       fields: [
-        { multiline: false, name: "seo-title", required: true, type: "text" },
-        { multiline: false, name: "seo_title", required: false, type: "text" },
+        {
+          multiline: false,
+          name: "seo-title",
+          required: true,
+          type: "text",
+          unique: false,
+        },
+        {
+          multiline: false,
+          name: "seo_title",
+          required: false,
+          type: "text",
+          unique: false,
+        },
       ],
       slug: "blog-posts",
     });
@@ -136,14 +155,12 @@ describe("fieldstone compiler", () => {
         fields: [
           {
             identifier: "seo_title",
-            multiline: undefined,
             name: "seo-title",
             required: true,
             type: "text",
           },
           {
             identifier: "seo_title_2",
-            multiline: undefined,
             name: "seo_title",
             required: false,
             type: "text",
@@ -283,6 +300,208 @@ describe("fieldstone compiler", () => {
     expect(output).toContain('seo_title_2: text("seo_title")');
   });
 
+  it("compiles columns, drizzle source, and types for all field types", () => {
+    const compiled = compileFieldstoneConfig({
+      db: { dialect: "sqlite", url: ":memory:" },
+      collections: {
+        products: {
+          fields: [
+            text({ name: "name", required: true }),
+            number({ name: "price", required: true }),
+            date({ name: "launchDate" }),
+            email({ name: "contact" }),
+            select({
+              name: "status",
+              options: ["draft", "active"],
+              defaultValue: "draft",
+            }),
+            text({ name: "sku", unique: true }),
+          ],
+          slug: "products",
+        },
+      },
+    });
+
+    const collection = compiled.schemaPlan.collectionBySlug.get("products")!;
+    const byName = Object.fromEntries(
+      collection.columns.map((column) => [column.name, column]),
+    );
+    expect(byName.price).toMatchObject({
+      sourceExpression: "number",
+      drizzleType: "number",
+      typeScriptType: "number",
+      required: true,
+    });
+    expect(byName.launchDate).toMatchObject({
+      sourceExpression: "dateValue",
+      typeScriptType: "Date",
+      required: false,
+    });
+    expect(byName.status).toMatchObject({
+      sourceExpression: "text",
+      typeScriptType: '"draft" | "active"',
+    });
+    expect(byName.sku).toMatchObject({ unique: true });
+
+    const source = compiled.renderSchemaSource();
+    expect(source).toContain('price: real("price").notNull()');
+    expect(source).toContain(
+      "launchDate: integer(\"launchDate\", { mode: 'timestamp' })",
+    );
+    expect(source).toContain('sku: text("sku").unique()');
+    expect(source).toContain("import { integer, real, sqliteTable, text }");
+
+    const types = compiled.renderTypesDeclaration();
+    expect(types).toContain('"price": number');
+    expect(types).toContain('"launchDate": Date | null');
+    expect(types).toContain('"contact": string | null');
+    expect(types).toContain('"status": "draft" | "active" | null');
+
+    expect(compiled.renderRuntimeSchema().tables.products.price).toBeDefined();
+  });
+
+  it("compiles relationship fields to text and json columns", () => {
+    const compiled = compileFieldstoneConfig({
+      db: { dialect: "sqlite", url: ":memory:" },
+      collections: {
+        authors: {
+          fields: [text({ name: "name", required: true })],
+          slug: "authors",
+        },
+        posts: {
+          fields: [
+            relationship({ name: "author", relationTo: "authors", required: true }),
+            relationship({ name: "editors", relationTo: "authors", hasMany: true }),
+          ],
+          slug: "posts",
+        },
+      },
+    });
+
+    const posts = compiled.schemaPlan.collectionBySlug.get("posts")!;
+    const byName = Object.fromEntries(
+      posts.columns.map((column) => [column.name, column]),
+    );
+    expect(byName.author).toMatchObject({
+      sourceExpression: "text",
+      typeScriptType: "string",
+      required: true,
+    });
+    expect(byName.editors).toMatchObject({
+      sourceExpression: "json",
+      typeScriptType: "string[]",
+      required: false,
+    });
+
+    const source = compiled.renderSchemaSource();
+    expect(source).toContain('author: text("author").notNull()');
+    expect(source).toContain("editors: text(\"editors\", { mode: 'json' })");
+
+    const types = compiled.renderTypesDeclaration();
+    expect(types).toContain('"author": string');
+    expect(types).toContain('"editors": string[] | null');
+
+    expect(compiled.renderRuntimeSchema().tables.posts.editors).toBeDefined();
+  });
+
+  it("injects a _status select field for draft-enabled collections", () => {
+    const compiled = compileFieldstoneConfig({
+      db: { dialect: "sqlite", url: ":memory:" },
+      collections: {
+        posts: {
+          fields: [text({ name: "title", required: true })],
+          drafts: true,
+          slug: "posts",
+        },
+      },
+    });
+
+    const posts = compiled.schemaPlan.collectionBySlug.get("posts")!;
+    const status = posts.columns.find((column) => column.name === "_status")!;
+    expect(status).toMatchObject({
+      sourceExpression: "text",
+      typeScriptType: '"draft" | "published"',
+      required: true,
+    });
+    expect(compiled.renderTypesDeclaration()).toContain(
+      '"_status": "draft" | "published"',
+    );
+    // The column keeps its `_status` name; the generated Drizzle identifier drops the
+    // leading underscore.
+    expect(compiled.renderSchemaSource()).toContain(
+      'status: text("_status").notNull()',
+    );
+  });
+
+  it("does not inject _status without drafts enabled", () => {
+    const compiled = compileFieldstoneConfig({
+      db: { dialect: "sqlite", url: ":memory:" },
+      collections: {
+        posts: {
+          fields: [text({ name: "title", required: true })],
+          slug: "posts",
+        },
+      },
+    });
+    const posts = compiled.schemaPlan.collectionBySlug.get("posts")!;
+    expect(posts.columns.some((column) => column.name === "_status")).toBe(false);
+  });
+
+  it("compiles group and array fields to json columns with nested types", () => {
+    const compiled = compileFieldstoneConfig({
+      db: { dialect: "sqlite", url: ":memory:" },
+      collections: {
+        posts: {
+          fields: [
+            group({
+              name: "seo",
+              fields: [
+                text({ name: "title", required: true }),
+                text({ name: "description" }),
+              ],
+            }),
+            array({
+              name: "links",
+              fields: [text({ name: "url", required: true })],
+            }),
+          ],
+          slug: "posts",
+        },
+      },
+    });
+
+    const posts = compiled.schemaPlan.collectionBySlug.get("posts")!;
+    const byName = Object.fromEntries(
+      posts.columns.map((column) => [column.name, column]),
+    );
+    expect(byName.seo.sourceExpression).toBe("json");
+    expect(byName.links.sourceExpression).toBe("json");
+
+    const types = compiled.renderTypesDeclaration();
+    expect(types).toContain(
+      '"seo": { "title": string; "description": string | null }',
+    );
+    expect(types).toContain('"links": { "url": string }[]');
+
+    expect(compiled.renderSchemaSource()).toContain(
+      "seo: text(\"seo\", { mode: 'json' })",
+    );
+  });
+
+  it("rejects relationships pointing to unknown collections", () => {
+    expect(() =>
+      compileFieldstoneConfig({
+        db: { dialect: "sqlite", url: ":memory:" },
+        collections: {
+          posts: {
+            fields: [relationship({ name: "author", relationTo: "missing" })],
+            slug: "posts",
+          },
+        },
+      }),
+    ).toThrow("points to unknown collection: missing");
+  });
+
   it("compiles global runtime configs and tables", () => {
     const compiled = compileFieldstoneConfig({
       db: { dialect: "sqlite", url: ":memory:" },
@@ -305,7 +524,6 @@ describe("fieldstone compiler", () => {
         fields: [
           {
             identifier: "siteTitle",
-            multiline: undefined,
             name: "siteTitle",
             required: true,
             type: "text",

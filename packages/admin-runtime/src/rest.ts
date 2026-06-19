@@ -1,0 +1,185 @@
+import type {
+  AccessUser,
+  CollectionData,
+  CollectionSlug,
+  DocumentStatus,
+  FieldstoneConfig,
+  GlobalData,
+  GlobalSlug,
+} from "@fieldstone/schema";
+import { isForbiddenError } from "@fieldstone/runtime";
+
+import { createFieldstoneAdmin } from "./index.ts";
+
+function json(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data ?? null), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
+}
+
+function errorResponse(status: number, message: string): Response {
+  return json({ error: message }, status);
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function readBody(request: Request): Promise<Record<string, unknown>> {
+  const text = await request.text();
+  if (!text) return {};
+  const parsed = JSON.parse(text);
+  if (parsed && typeof parsed === "object" && !Array.isArray(parsed))
+    return parsed as Record<string, unknown>;
+  throw new Error("Request body must be a JSON object");
+}
+
+/**
+ * A framework-agnostic REST handler over the Fieldstone runtime. Mount it from a
+ * SvelteKit `+server.ts` (or any web-standard request handler) and forward the path
+ * segments after the API base, e.g. `/api/posts`, `/api/posts/:id`, `/api/globals/:slug`.
+ */
+export function createFieldstoneRest({
+  config,
+  getUser,
+}: {
+  config: FieldstoneConfig;
+  /** Resolve the requesting user from the request (e.g. from a session) for access control. */
+  getUser?: (request: Request) => AccessUser | Promise<AccessUser>;
+}) {
+  const adminPromise = createFieldstoneAdmin({ config });
+
+  async function route(
+    request: Request,
+    segments: string[],
+    user: AccessUser,
+  ): Promise<Response> {
+    const admin = await adminPromise;
+    const method = request.method.toUpperCase();
+    const url = new URL(request.url);
+    const path = segments.filter(Boolean);
+
+    if (path.length === 0) {
+      if (method !== "GET") return errorResponse(405, "Method not allowed");
+      return json({ collections: admin.collections, globals: admin.globals });
+    }
+
+    if (path[0] === "globals") {
+      const slug = path[1];
+      if (!slug || path.length !== 2) return errorResponse(404, "Not found");
+      if (!admin.getGlobalConfig(slug))
+        return errorResponse(404, "Global not found");
+
+      if (method === "GET") {
+        return json(await admin.getGlobal({ global: slug as GlobalSlug }));
+      }
+      if (method === "POST" || method === "PUT" || method === "PATCH") {
+        const data = (await readBody(request)) as GlobalData<GlobalSlug>;
+        return json(await admin.updateGlobal({ global: slug as GlobalSlug, data }));
+      }
+      return errorResponse(405, "Method not allowed");
+    }
+
+    const collectionSlug = path[0];
+    if (!admin.getCollection(collectionSlug))
+      return errorResponse(404, "Collection not found");
+
+    if (path.length === 1) {
+      if (method === "GET") {
+        const params = url.searchParams;
+        const statusParam = params.get("status");
+        const status: DocumentStatus | undefined =
+          statusParam === "draft" || statusParam === "published"
+            ? statusParam
+            : undefined;
+        const search = params.get("search") ?? undefined;
+        const limitParam = params.has("limit") ? Number(params.get("limit")) : undefined;
+        const limit =
+          limitParam !== undefined && !Number.isNaN(limitParam) ? limitParam : undefined;
+        const offsetParam = params.has("offset") ? Number(params.get("offset")) : undefined;
+        const offset =
+          offsetParam !== undefined && !Number.isNaN(offsetParam) ? offsetParam : undefined;
+        const sortField = params.get("sort") ?? undefined;
+        const sort = sortField
+          ? { field: sortField, direction: params.get("order") === "asc" ? ("asc" as const) : ("desc" as const) }
+          : undefined;
+        const input = {
+          collection: collectionSlug as CollectionSlug,
+          user,
+          ...(status ? { status } : {}),
+          ...(search ? { search } : {}),
+          ...(limit !== undefined ? { limit } : {}),
+          ...(offset !== undefined ? { offset } : {}),
+          ...(sort ? { sort } : {}),
+        };
+        const [docs, total] = await Promise.all([
+          admin.listDocuments(input),
+          admin.countDocuments(input),
+        ]);
+        return json({ docs, total, limit: limit ?? docs.length, offset: offset ?? 0 });
+      }
+      if (method === "POST") {
+        const data = (await readBody(request)) as CollectionData<CollectionSlug>;
+        const doc = await admin.createDocument({
+          collection: collectionSlug as CollectionSlug,
+          data,
+          user,
+        });
+        return json(doc, 201);
+      }
+      return errorResponse(405, "Method not allowed");
+    }
+
+    if (path.length === 2) {
+      const id = path[1]!;
+      if (method === "GET") {
+        const doc = await admin.getDocument({
+          collection: collectionSlug as CollectionSlug,
+          id,
+          user,
+        });
+        if (!doc) return errorResponse(404, "Document not found");
+        return json(doc);
+      }
+      if (method === "PATCH" || method === "PUT") {
+        const data = (await readBody(request)) as CollectionData<CollectionSlug>;
+        const doc = await admin.updateDocument({
+          collection: collectionSlug as CollectionSlug,
+          id,
+          data,
+          user,
+        });
+        return json(doc);
+      }
+      if (method === "DELETE") {
+        await admin.deleteDocument({
+          collection: collectionSlug as CollectionSlug,
+          id,
+          user,
+        });
+        return json({ id });
+      }
+      return errorResponse(405, "Method not allowed");
+    }
+
+    return errorResponse(404, "Not found");
+  }
+
+  async function handle(
+    request: Request,
+    segments: string[],
+  ): Promise<Response> {
+    const user = getUser ? await getUser(request) : null;
+    try {
+      return await route(request, segments, user);
+    } catch (error) {
+      if (isForbiddenError(error)) return errorResponse(403, errorMessage(error));
+      const message = errorMessage(error);
+      if (message === "Document not found") return errorResponse(404, message);
+      return errorResponse(400, message);
+    }
+  }
+
+  return { handle };
+}

@@ -6,7 +6,19 @@
 	import Button from './primitives/Button.svelte';
 
 	type RemoteFormField = {
-		as: (type: 'checkbox' | 'hidden' | 'text', value?: string) => Record<string, unknown>;
+		as: (
+			type:
+				| 'checkbox'
+				| 'hidden'
+				| 'text'
+				| 'email'
+				| 'number'
+				| 'date'
+				| 'datetime-local'
+				| 'select'
+				| 'select multiple',
+			value?: string | boolean
+		) => Record<string, unknown>;
 		issues: () => { message: string }[] | undefined;
 	};
 
@@ -23,10 +35,12 @@
 
 	let {
 		collection,
-		form
+		form,
+		relationOptions = {}
 	}: {
 		collection: CollectionRuntimeConfig;
 		form: RemoteForm;
+		relationOptions?: Record<string, { value: string; label: string }[]>;
 	} = $props();
 
 	const formFields = $derived(form.fields as RemoteFormFields);
@@ -52,6 +66,7 @@
 			{field}
 			formField={formFields.data[field.identifier]}
 			id={`create-${collection.slug}-${field.identifier}`}
+			options={relationOptions[field.identifier] ?? []}
 		/>
 	{/each}
 

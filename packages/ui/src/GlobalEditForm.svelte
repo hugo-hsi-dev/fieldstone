@@ -6,7 +6,19 @@
 	import Button from './primitives/Button.svelte';
 
 	type RemoteFormField = {
-		as: (type: 'checkbox' | 'hidden' | 'text', value?: string) => Record<string, unknown>;
+		as: (
+			type:
+				| 'checkbox'
+				| 'hidden'
+				| 'text'
+				| 'email'
+				| 'number'
+				| 'date'
+				| 'datetime-local'
+				| 'select'
+				| 'select multiple',
+			value?: string | boolean
+		) => Record<string, unknown>;
 		issues: () => { message: string }[] | undefined;
 	};
 

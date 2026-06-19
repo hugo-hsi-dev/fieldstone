@@ -8,10 +8,10 @@ import type {
 
 import {
   getFieldstone,
-  type CollectionInput,
   type CreateInput,
   type DocumentInput,
   type GlobalInput,
+  type ListInput,
   type UpdateGlobalInput,
   type UpdateInput,
 } from "@fieldstone/runtime";
@@ -35,10 +35,39 @@ export async function createFieldstoneAdmin({
       return stone.getGlobalConfig(slug);
     },
 
+    async listRelationOptions(
+      slug: string,
+    ): Promise<{ value: string; label: string }[]> {
+      const collection = stone.getCollection(slug);
+      if (!collection) return [];
+      const documents = (await stone.find({
+        collection: slug as CollectionSlug,
+      })) as Record<string, unknown>[];
+      const labelField =
+        collection.fields.find(
+          (field) =>
+            field.type === "text" ||
+            field.type === "email" ||
+            field.type === "select",
+        )?.name ??
+        collection.fields[0]?.name ??
+        "id";
+      return documents.map((document) => ({
+        value: String(document.id),
+        label: String(document[labelField] ?? document.id),
+      }));
+    },
+
     listDocuments<TCollection extends CollectionSlug>(
-      input: CollectionInput<TCollection>,
+      input: ListInput<TCollection>,
     ) {
       return stone.find(input);
+    },
+
+    countDocuments<TCollection extends CollectionSlug>(
+      input: ListInput<TCollection>,
+    ) {
+      return stone.count(input);
     },
 
     getDocument<TCollection extends CollectionSlug>(
@@ -76,3 +105,6 @@ export async function createFieldstoneAdmin({
     },
   };
 }
+
+export { createFieldstoneRest } from "./rest.ts";
+export { ForbiddenError, isForbiddenError } from "@fieldstone/runtime";
