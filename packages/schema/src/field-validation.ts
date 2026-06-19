@@ -29,6 +29,14 @@ function validateFieldDefinition(field: FieldDefinition) {
         throw new Error(`Select field "${field.name}" requires at least one option`);
       const seen = new Set<string>();
       for (const option of options) {
+        if (option.value.trim() === "")
+          throw new Error(
+            `Select field "${field.name}" has a blank option value`,
+          );
+        if (option.value !== option.value.trim())
+          throw new Error(
+            `Select field "${field.name}" has a whitespace-padded option value: ${JSON.stringify(option.value)}`,
+          );
         if (seen.has(option.value))
           throw new Error(
             `Select field "${field.name}" has duplicate option value: ${option.value}`,
@@ -96,6 +104,26 @@ function validateFieldDefinition(field: FieldDefinition) {
             `Text field "${field.name}" has a defaultValue that does not match its pattern`,
           );
       }
+      break;
+    }
+    case "email": {
+      if (
+        field.defaultValue !== undefined &&
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(field.defaultValue)
+      )
+        throw new Error(
+          `Email field "${field.name}" has an invalid defaultValue: ${field.defaultValue}`,
+        );
+      break;
+    }
+    case "date": {
+      if (
+        field.defaultValue !== undefined &&
+        Number.isNaN(new Date(field.defaultValue).getTime())
+      )
+        throw new Error(
+          `Date field "${field.name}" has an invalid defaultValue: ${field.defaultValue}`,
+        );
       break;
     }
     case "relationship": {

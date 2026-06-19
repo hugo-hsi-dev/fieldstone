@@ -34,6 +34,18 @@
 		return raw == null ? [] : [String(raw)];
 	}
 
+	// Loaded options plus fallback entries for current ids missing from them (hidden
+	// by access or deleted), so a nested relationship stays a constrained select and
+	// never drops stored ids on save.
+	function mergeRelationOptions(relationTo: string, ids: string[]) {
+		const opts = relationOptions[relationTo] ?? [];
+		const present = new Set(opts.map((option) => option.value));
+		const missing = ids
+			.filter((id) => id && !present.has(id))
+			.map((id) => ({ value: id, label: id }));
+		return [...opts, ...missing];
+	}
+
 	function setValue(name: string, next: unknown) {
 		value = { ...value, [name]: next };
 		onUpdate?.(value);
@@ -101,8 +113,7 @@
 				</select>
 			{:else if field.type === 'relationship' && field.hasMany}
 				{@const selected = relationValuesOf(value[field.name])}
-				{@const opts =
-					relationOptions[field.relationTo] ?? selected.map((id) => ({ value: id, label: id }))}
+				{@const opts = mergeRelationOptions(field.relationTo, selected)}
 				<select
 					id={fieldId}
 					class="fs-admin__input"
@@ -122,29 +133,21 @@
 				</select>
 			{:else if field.type === 'relationship'}
 				{@const current = value[field.name] == null ? '' : String(value[field.name])}
-				{@const opts = relationOptions[field.relationTo] ?? []}
-				{#if opts.length > 0}
-					<select
-						id={fieldId}
-						class="fs-admin__input"
-						value={current}
-						disabled={readOnly}
-						onchange={(event) => setValue(field.name, event.currentTarget.value || null)}
-					>
-						<option value="">—</option>
-						{#each opts as option (option.value)}
-							<option value={option.value}>{option.label}</option>
-						{/each}
-					</select>
-				{:else}
-					<input
-						id={fieldId}
-						class="fs-admin__input"
-						value={current}
-						readonly={readOnly}
-						oninput={(event) => setValue(field.name, event.currentTarget.value || null)}
-					/>
-				{/if}
+				{@const opts = mergeRelationOptions(field.relationTo, current ? [current] : [])}
+				<!-- Always a constrained select (never free text), so only known/fallback
+				     ids can be entered. -->
+				<select
+					id={fieldId}
+					class="fs-admin__input"
+					value={current}
+					disabled={readOnly}
+					onchange={(event) => setValue(field.name, event.currentTarget.value || null)}
+				>
+					<option value="">—</option>
+					{#each opts as option (option.value)}
+						<option value={option.value}>{option.label}</option>
+					{/each}
+				</select>
 			{:else if field.type === 'group'}
 				<fieldset class="fs-admin__nested">
 					<NestedFields

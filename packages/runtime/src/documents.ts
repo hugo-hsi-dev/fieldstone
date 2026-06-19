@@ -179,11 +179,6 @@ export function createDocumentRuntime(context: DatabaseContext) {
       updatedAt,
       user,
     }: UpdateInput<TCollection>) => {
-      await assertCollectionAccess(config, collectionSlug, "update", {
-        user: user ?? null,
-        id,
-        data: data as Record<string, unknown>,
-      });
       const hooks = getCollectionHooks(config, collectionSlug);
       const table = getTable(collectionSlug);
       let originalDoc: Doc | null = null;
@@ -195,13 +190,19 @@ export function createDocumentRuntime(context: DatabaseContext) {
         if (!originalDoc) throw new Error("Document not found");
       }
       // PATCH/merge: overlay the provided fields onto the stored content so omitted
-      // fields keep their values. This runs under the update access already checked
-      // above and reads the raw row directly (no afterRead). Unknown keys still flow
-      // to the normalizer, which rejects them.
+      // fields keep their values. Reads the raw row directly (no afterRead); unknown
+      // keys still flow to the normalizer, which rejects them.
       const inputData =
         merge && originalDoc
           ? { ...stripSystemFields(originalDoc), ...(data as Record<string, unknown>) }
           : data;
+      // Check access against the final (merged) data, so a PATCH can't bypass a
+      // rule that depends on a persisted field by simply omitting it from the body.
+      await assertCollectionAccess(config, collectionSlug, "update", {
+        user: user ?? null,
+        id,
+        data: inputData as Record<string, unknown>,
+      });
       let document = compiledConfig.normalizeDocumentData(collectionSlug, inputData) as Doc;
       document = await runBeforeChangeHooks(hooks, {
         collection: collectionSlug,
