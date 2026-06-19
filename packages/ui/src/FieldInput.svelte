@@ -138,13 +138,21 @@
 			? (base as Record<string, unknown>[]).map((entry) => ({ ...entry }))
 			: []
 	);
+	// Stable per-row keys: NestedFields replaces arrayState[index] with a new object
+	// on every keystroke, so keying the {#each} by the row object would destroy and
+	// recreate the row (dropping focus/caret). These survive object replacement.
+	let arrayKeyCounter = 0;
+	// svelte-ignore state_referenced_locally
+	let arrayKeys = $state<number[]>(arrayState.map(() => arrayKeyCounter++));
 
 	function addArrayRow() {
 		arrayState = [...arrayState, {}];
+		arrayKeys = [...arrayKeys, arrayKeyCounter++];
 	}
 
 	function removeArrayRow(index: number) {
 		arrayState = arrayState.filter((_, current) => current !== index);
+		arrayKeys = arrayKeys.filter((_, current) => current !== index);
 	}
 </script>
 
@@ -279,7 +287,8 @@
 	{:else if field.type === 'array'}
 		<fieldset class="fs-admin__nested">
 			<legend class="fs-admin__nested-legend">{getFieldLabel(field)}</legend>
-			{#each arrayState as entry, index (entry)}
+			<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -- keyed by arrayKeys, bound by index -->
+			{#each arrayState as entry, index (arrayKeys[index])}
 				<div class="fs-admin__array-row">
 					<NestedFields
 						fields={field.fields}

@@ -259,10 +259,14 @@ type OptionalContentFieldName<
   RequiredContentFieldName<TGenerated, TSlug>
 >;
 
-// Mutation input reuses the generated document field types, but a `date` field
-// reads as `Date` while create/update also accept an ISO string (the runtime and
-// REST/admin paths both normalize strings), so widen Date → Date | string on input.
-type WidenInputValue<T> = T extends Date ? Date | string : T;
+// Mutation input reuses the generated document field types, but the runtime and
+// REST/admin paths also normalize strings: a `date` reads as `Date` yet accepts an
+// ISO string, and a `number` accepts a numeric string. Widen those on input.
+type WidenInputValue<T> = T extends Date
+  ? Date | string
+  : T extends number
+    ? number | string
+    : T;
 
 type ContentDataValue<
   TGenerated extends object,

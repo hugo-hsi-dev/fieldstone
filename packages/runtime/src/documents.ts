@@ -32,6 +32,28 @@ function stripSystemFields(doc: Doc): Record<string, unknown> {
   return rest;
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+// Recursively overlay a PATCH body onto the stored row so partial group payloads
+// (e.g. { seo: { description } }) keep their omitted siblings instead of replacing
+// the whole group. Arrays and scalars are replaced wholesale.
+function deepMergePatch(
+  base: Record<string, unknown>,
+  patch: Record<string, unknown>,
+): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...base };
+  for (const [key, value] of Object.entries(patch)) {
+    const existing = result[key];
+    result[key] =
+      isPlainObject(value) && isPlainObject(existing)
+        ? deepMergePatch(existing, value)
+        : value;
+  }
+  return result;
+}
+
 export function createDocumentRuntime(context: DatabaseContext) {
   const { compiled, compiledConfig, config, database, and, asc, count, desc, eq, like, or } =
     context;
@@ -194,7 +216,10 @@ export function createDocumentRuntime(context: DatabaseContext) {
       // keys still flow to the normalizer, which rejects them.
       const inputData =
         merge && originalDoc
-          ? { ...stripSystemFields(originalDoc), ...(data as Record<string, unknown>) }
+          ? deepMergePatch(
+              stripSystemFields(originalDoc),
+              data as Record<string, unknown>,
+            )
           : data;
       // Check access against the final (merged) data, so a PATCH can't bypass a
       // rule that depends on a persisted field by simply omitting it from the body.

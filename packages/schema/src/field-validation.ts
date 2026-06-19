@@ -58,6 +58,10 @@ function validateFieldDefinition(field: FieldDefinition) {
         throw new Error(`Number field "${field.name}" has min greater than max`);
       if (field.defaultValue !== undefined) {
         const value = field.defaultValue;
+        if (!Number.isFinite(value))
+          throw new Error(
+            `Number field "${field.name}" has a non-finite defaultValue: ${value}`,
+          );
         if (field.integer && !Number.isInteger(value))
           throw new Error(
             `Number field "${field.name}" has a non-integer defaultValue: ${value}`,
@@ -91,6 +95,12 @@ function validateFieldDefinition(field: FieldDefinition) {
       }
       if (field.defaultValue !== undefined) {
         const value = field.defaultValue;
+        // Normalization trims and treats an empty result as missing, so a blank
+        // default is unusable (and would mismatch the non-null generated type).
+        if (value.trim() === "")
+          throw new Error(
+            `Text field "${field.name}" has a blank defaultValue`,
+          );
         if (typeof field.minLength === "number" && value.length < field.minLength)
           throw new Error(
             `Text field "${field.name}" has a defaultValue shorter than minLength`,
@@ -123,6 +133,18 @@ function validateFieldDefinition(field: FieldDefinition) {
       )
         throw new Error(
           `Date field "${field.name}" has an invalid defaultValue: ${field.defaultValue}`,
+        );
+      break;
+    }
+    case "richText": {
+      // Normalization strips tags and treats empty text content as missing, so a
+      // default with no text (e.g. "<br>") is unusable for an otherwise-defaulted field.
+      if (
+        field.defaultValue !== undefined &&
+        field.defaultValue.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim() === ""
+      )
+        throw new Error(
+          `Rich text field "${field.name}" has a defaultValue with no text content`,
         );
       break;
     }

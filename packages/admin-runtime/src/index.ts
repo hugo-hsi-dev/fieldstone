@@ -9,6 +9,7 @@ import type {
 
 import {
   getFieldstone,
+  isForbiddenError,
   type CreateInput,
   type DocumentInput,
   type GlobalInput,
@@ -43,11 +44,19 @@ export async function createFieldstoneAdmin({
       const collection = stone.getCollection(slug);
       if (!collection) return [];
       // Pass the request user so relationship pickers honour the target
-      // collection's access.read instead of being treated as anonymous.
-      const documents = (await stone.find({
-        collection: slug as CollectionSlug,
-        user,
-      })) as Record<string, unknown>[];
+      // collection's access.read instead of being treated as anonymous. If the
+      // target is unreadable, return no options so the source form still renders
+      // (current ids are preserved via fallback options in the UI).
+      let documents: Record<string, unknown>[];
+      try {
+        documents = (await stone.find({
+          collection: slug as CollectionSlug,
+          user,
+        })) as Record<string, unknown>[];
+      } catch (error) {
+        if (isForbiddenError(error)) return [];
+        throw error;
+      }
       const labelField =
         collection.fields.find(
           (field) =>

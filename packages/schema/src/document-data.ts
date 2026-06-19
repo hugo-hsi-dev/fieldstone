@@ -197,6 +197,8 @@ function normalizeRelationshipField(
     return Array.from(new Set(ids));
   }
 
+  if (Array.isArray(raw) && raw.length > 1)
+    throw new Error(`${field.name} expects a single relationship id, not multiple`);
   const id = toId(Array.isArray(raw) ? raw[0] : raw);
   if (!id) {
     if (field.required) throw new Error(`${field.name} is required`);
