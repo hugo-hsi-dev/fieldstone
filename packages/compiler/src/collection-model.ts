@@ -198,13 +198,30 @@ function fieldNullable(field: FieldDefinition): boolean {
   return !field.required;
 }
 
+// A field is optional on mutation input (but non-null when stored) when the
+// runtime fills it in: a defaulted field or an optional array (defaults to []).
+function isOptionalInput(field: FieldDefinition): boolean {
+  if ("defaultValue" in field && field.defaultValue !== undefined) return true;
+  return field.type === "array" && !field.required;
+}
+
+// Whether omitting a value would fail at runtime — used to derive group
+// requiredness from its (possibly nested) subfields.
+function isRequiredInput(field: FieldDefinition): boolean {
+  if (field.type === "boolean") return false;
+  if ("defaultValue" in field && field.defaultValue !== undefined) return false;
+  if (field.type === "group") return field.fields.some(isRequiredInput);
+  return "required" in field ? Boolean(field.required) : false;
+}
+
 function objectTypeScript(fields: FieldDefinition[]): string {
   if (fields.length === 0) return "Record<string, never>";
   const entries = fields
-    .map(
-      (field) =>
-        `${JSON.stringify(field.name)}: ${fieldTypeScript(field)}${fieldNullable(field) ? " | null" : ""}`,
-    )
+    .map((field) => {
+      const optional = isOptionalInput(field);
+      const nullable = !optional && fieldNullable(field);
+      return `${JSON.stringify(field.name)}${optional ? "?" : ""}: ${fieldTypeScript(field)}${nullable ? " | null" : ""}`;
+    })
     .join("; ");
   return `{ ${entries} }`;
 }
@@ -340,9 +357,12 @@ function compileContent(
     required:
       field.type === "boolean"
         ? true
-        : "required" in field
-          ? Boolean(field.required)
-          : false,
+        : field.type === "group"
+          ? // A group must be provided when a subfield would otherwise fail.
+            field.fields.some(isRequiredInput)
+          : "required" in field
+            ? Boolean(field.required)
+            : false,
   }));
   const fingerprint = {
     fields: fields.map((field) => ({

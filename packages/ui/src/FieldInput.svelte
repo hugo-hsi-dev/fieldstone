@@ -313,6 +313,7 @@
 		<input
 			class="fs-admin__input"
 			readonly={readOnly}
+			step="0.001"
 			{...formField.as('datetime-local', stringValue)}
 			{id}
 		/>

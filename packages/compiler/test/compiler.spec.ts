@@ -526,6 +526,22 @@ describe("fieldstone compiler", () => {
     ).toThrow('Select field "state" has a defaultValue not in its options');
   });
 
+  it("allows system-reserved names on nested (JSON) subfields", () => {
+    expect(() =>
+      compileFieldstoneConfig({
+        db: { dialect: "sqlite", url: ":memory:" },
+        collections: {
+          posts: {
+            fields: [
+              array({ name: "links", fields: [text({ name: "id" })] }),
+            ],
+            slug: "posts",
+          },
+        },
+      }),
+    ).not.toThrow();
+  });
+
   it("rejects a number defaultValue that violates its constraints", () => {
     expect(() =>
       compileFieldstoneConfig({

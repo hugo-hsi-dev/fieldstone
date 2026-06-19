@@ -81,6 +81,21 @@ function validateFieldDefinition(field: FieldDefinition) {
           throw new Error(`Text field "${field.name}" has an invalid pattern`);
         }
       }
+      if (field.defaultValue !== undefined) {
+        const value = field.defaultValue;
+        if (typeof field.minLength === "number" && value.length < field.minLength)
+          throw new Error(
+            `Text field "${field.name}" has a defaultValue shorter than minLength`,
+          );
+        if (typeof field.maxLength === "number" && value.length > field.maxLength)
+          throw new Error(
+            `Text field "${field.name}" has a defaultValue longer than maxLength`,
+          );
+        if (field.pattern !== undefined && !new RegExp(field.pattern).test(value))
+          throw new Error(
+            `Text field "${field.name}" has a defaultValue that does not match its pattern`,
+          );
+      }
       break;
     }
     case "relationship": {
@@ -96,7 +111,9 @@ function validateFieldDefinition(field: FieldDefinition) {
         throw new Error(
           `${field.type === "group" ? "Group" : "Array"} field "${field.name}" requires at least one field`,
         );
-      validateCollectionFields(field.fields);
+      // Nested fields live in a JSON column, so they can't collide with the
+      // document's system columns (id/createdAt/...); only __proto__ stays reserved.
+      validateCollectionFields(field.fields, false);
       break;
     }
     default:
@@ -104,13 +121,17 @@ function validateFieldDefinition(field: FieldDefinition) {
   }
 }
 
+const nestedReservedFieldNames = new Set(["__proto__"]);
+
 export function validateCollectionFields(
   collectionFields: readonly FieldDefinition[],
+  topLevel = true,
 ) {
   const seen = new Set<string>();
+  const reserved = topLevel ? reservedFieldNames : nestedReservedFieldNames;
 
   for (const field of collectionFields) {
-    if (reservedFieldNames.has(field.name)) throw new Error(`Reserved field name: ${field.name}`);
+    if (reserved.has(field.name)) throw new Error(`Reserved field name: ${field.name}`);
     const normalizedName = field.name.toLowerCase();
     if (seen.has(normalizedName)) throw new Error(`Duplicate field name: ${field.name}`);
     seen.add(normalizedName);

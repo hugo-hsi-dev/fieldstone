@@ -293,13 +293,18 @@ type FallbackDocument = {
   updatedAt: Date;
 } & Record<string, unknown>;
 
-// The generated interface marks defaulted fields / optional arrays optional so
-// mutation input (CollectionData) can omit them, but a *read* always returns a
-// concrete value. This makes every read property required and non-undefined so
-// the document (read) type stays sound; nullable fields keep their `| null`.
-type DocumentShape<TGenerated> = {
-  [TField in keyof TGenerated]-?: Exclude<TGenerated[TField], undefined>;
-};
+// The generated interface marks defaulted fields / optional arrays / optional
+// nested subfields optional so mutation input (CollectionData) can omit them, but
+// a *read* always returns a concrete value. This recursively makes every read
+// property required and non-undefined (including inside nested group/array
+// shapes) so the document type stays sound; nullable fields keep their `| null`.
+type DocumentShape<T> = T extends Date
+  ? T
+  : T extends readonly (infer TItem)[]
+    ? DocumentShape<TItem>[]
+    : T extends object
+      ? { [TField in keyof T]-?: DocumentShape<Exclude<T[TField], undefined>> }
+      : T;
 
 export type CollectionDocument<TCollection extends string> =
   TCollection extends keyof GeneratedCollections

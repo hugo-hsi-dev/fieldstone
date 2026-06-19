@@ -175,13 +175,21 @@ function normalizeRelationshipField(
   field: Extract<FieldDefinition, { type: "relationship" }>,
   raw: unknown,
 ): string | string[] | null {
+  // Only primitive ids coerce cleanly; an object would stringify to
+  // "[object Object]" and corrupt the relation, so reject it.
+  const toId = (entry: unknown): string => {
+    if (entry !== null && typeof entry === "object")
+      throw new Error(`${field.name} must be relationship id(s), not objects`);
+    return String(entry ?? "").trim();
+  };
+
   if (field.hasMany) {
     const list = Array.isArray(raw)
       ? raw
       : raw === undefined || raw === null || raw === ""
         ? []
         : [raw];
-    const ids = list.map((entry) => String(entry).trim()).filter(Boolean);
+    const ids = list.map(toId).filter(Boolean);
     if (ids.length === 0) {
       if (field.required) throw new Error(`${field.name} is required`);
       return null;
@@ -189,9 +197,7 @@ function normalizeRelationshipField(
     return Array.from(new Set(ids));
   }
 
-  const id = Array.isArray(raw)
-    ? String(raw[0] ?? "").trim()
-    : String(raw ?? "").trim();
+  const id = toId(Array.isArray(raw) ? raw[0] : raw);
   if (!id) {
     if (field.required) throw new Error(`${field.name} is required`);
     return null;
@@ -227,6 +233,14 @@ function normalizeGroupField(
   raw: unknown,
 ): { [key: string]: DocumentDataValue } {
   const parsed = parseNested(field.name, raw);
+  // Absent/blank defaults to an empty group; a provided non-object is rejected
+  // rather than silently replaced with {}.
+  if (
+    parsed !== undefined &&
+    parsed !== null &&
+    (typeof parsed !== "object" || Array.isArray(parsed))
+  )
+    throw new Error(`${field.name} must be an object`);
   const source =
     parsed && typeof parsed === "object" && !Array.isArray(parsed)
       ? (parsed as Record<string, unknown>)
@@ -244,6 +258,9 @@ function normalizeArrayField(
   raw: unknown,
 ): { [key: string]: DocumentDataValue }[] {
   const parsed = parseNested(field.name, raw);
+  // Absent/blank defaults to an empty array; a provided non-array is rejected.
+  if (parsed !== undefined && parsed !== null && !Array.isArray(parsed))
+    throw new Error(`${field.name} must be an array`);
   const list = Array.isArray(parsed) ? parsed : [];
   const entries = list.map((item) => {
     if (!item || typeof item !== "object" || Array.isArray(item))

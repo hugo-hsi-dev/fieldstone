@@ -61,7 +61,14 @@ export function toDatetimeLocalValue(value: unknown): string {
 	// so the server parses the submitted value as UTC too (see normalizeDateFieldValue);
 	// using UTC on both sides keeps the stored instant stable and avoids an SSR/client
 	// hydration mismatch from differing local timezones.
-	return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}T${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
+	const base = `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}T${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
+	const seconds = date.getUTCSeconds();
+	const ms = date.getUTCMilliseconds();
+	// Include seconds/fraction so an unchanged edit round-trips without truncating
+	// a stored value like 12:34:56.789 back to 12:34:00.000.
+	if (ms) return `${base}:${pad(seconds)}.${String(ms).padStart(3, '0')}`;
+	if (seconds) return `${base}:${pad(seconds)}`;
+	return base;
 }
 
 export function toInputValue(value: unknown): string {
