@@ -105,6 +105,11 @@
 		isItalic = active.isActive('italic');
 	}
 
+	function syncRichTextHtml(active: Editor) {
+		richTextHtml = active.isEmpty ? '' : active.getHTML();
+		syncMarks(active);
+	}
+
 	onMount(() => {
 		if (field.type !== 'richText' || !editorEl) return;
 		editor = new Editor({
@@ -122,12 +127,13 @@
 					...(readOnly ? { 'aria-readonly': 'true' } : {})
 				}
 			},
-			onUpdate: ({ editor: active }) => {
-				richTextHtml = active.isEmpty ? '' : active.getHTML();
-				syncMarks(active);
-			},
+			onUpdate: ({ editor: active }) => syncRichTextHtml(active),
 			onSelectionUpdate: ({ editor: active }) => syncMarks(active)
 		});
+		// Seed the hidden input from TipTap's parsed/normalized document so an
+		// unedited submission posts schema-normalized HTML rather than the raw
+		// stored value (TipTap's schema is what replaces the old sanitizer).
+		if (!readOnly) syncRichTextHtml(editor);
 	});
 
 	onDestroy(() => editor?.destroy());
