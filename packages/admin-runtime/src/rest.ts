@@ -42,7 +42,10 @@ async function readBody(request: Request): Promise<Record<string, unknown>> {
  * the request for any missing required field.
  */
 function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  // Only deep-merge plain group records; replace scalar object values wholesale.
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
 }
 
 function deepMerge(

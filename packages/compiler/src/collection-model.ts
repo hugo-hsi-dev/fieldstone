@@ -203,6 +203,8 @@ function fieldNullable(field: FieldDefinition): boolean {
 // a group whose subfields are all optional (defaults to {} and fills them in).
 function isOptionalInput(field: FieldDefinition): boolean {
   if ("defaultValue" in field && field.defaultValue !== undefined) return true;
+  // A boolean defaults to false when omitted, so it's always optional on input.
+  if (field.type === "boolean") return true;
   if (field.type === "array") return !field.required;
   if (field.type === "group") return !isRequiredInput(field);
   return false;

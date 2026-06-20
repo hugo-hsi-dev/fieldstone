@@ -55,7 +55,17 @@ function pad(value: number) {
 
 export function toDatetimeLocalValue(value: unknown): string {
 	if (value === null || value === undefined || value === '') return '';
-	const date = value instanceof Date ? value : new Date(String(value));
+	let date: Date;
+	if (value instanceof Date) {
+		date = value;
+	} else {
+		let raw = String(value).trim();
+		// A timezone-less datetime-local string is stored as UTC by the server
+		// (normalizeDateFieldValue appends Z), so parse it as UTC here too — otherwise
+		// a non-UTC browser would render a date default shifted by its offset.
+		if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(raw)) raw += 'Z';
+		date = new Date(raw);
+	}
 	if (Number.isNaN(date.getTime())) return '';
 	// Render the UTC wall-clock time. The datetime-local control carries no offset,
 	// so the server parses the submitted value as UTC too (see normalizeDateFieldValue);

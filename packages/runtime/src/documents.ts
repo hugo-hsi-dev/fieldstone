@@ -33,7 +33,11 @@ function stripSystemFields(doc: Doc): Record<string, unknown> {
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  // Only merge plain records (group objects); scalar object values like Date are
+  // replaced wholesale so the deep merge can't turn a Date into {}.
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
 }
 
 // Recursively overlay a PATCH body onto the stored row so partial group payloads
@@ -117,7 +121,9 @@ export function createDocumentRuntime(context: DatabaseContext) {
       if (conditions.length === 1) query = query.where(conditions[0] as any);
       else if (conditions.length > 1) query = query.where(and(...(conditions as any[])));
       const sortColumn =
-        sort?.field && table[sort.field] ? table[sort.field] : table.createdAt;
+        sort?.field && Object.prototype.hasOwnProperty.call(table, sort.field)
+          ? table[sort.field]
+          : table.createdAt;
       query = query.orderBy(sort?.direction === "asc" ? asc(sortColumn) : desc(sortColumn));
       if (typeof limit === "number") query = query.limit(limit);
       if (typeof offset === "number") query = query.offset(offset);
@@ -172,7 +178,18 @@ export function createDocumentRuntime(context: DatabaseContext) {
       const hooks = getCollectionHooks(config, collectionSlug);
       // Normalize before the access check so rules inspecting `data` see the trimmed
       // values and applied defaults that will actually be stored.
-      let document = compiledConfig.normalizeDocumentData(collectionSlug, data) as Doc;
+      let document: Doc;
+      try {
+        document = compiledConfig.normalizeDocumentData(collectionSlug, data) as Doc;
+      } catch (normalizationError) {
+        // Check access before surfacing a validation error, so denied callers can't
+        // probe field names/constraints via 400 messages.
+        await assertCollectionAccess(config, collectionSlug, "create", {
+          user: user ?? null,
+          data: data as Record<string, unknown>,
+        });
+        throw normalizationError;
+      }
       await assertCollectionAccess(config, collectionSlug, "create", {
         user: user ?? null,
         data: document as Record<string, unknown>,

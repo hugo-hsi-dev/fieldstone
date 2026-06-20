@@ -104,7 +104,7 @@
 				<select
 					id={fieldId}
 					class="fs-admin__input"
-					value={String(value[field.name] ?? '')}
+					value={String(value[field.name] ?? field.defaultValue ?? '')}
 					disabled={readOnly}
 					onchange={(event) => setValue(field.name, event.currentTarget.value)}
 				>

@@ -65,6 +65,17 @@ export type CreateInput<TCollection extends CollectionSlug = CollectionSlug> =
     updatedAt?: Date;
   };
 
+// PATCH merge data is recursively partial: top-level fields and nested group
+// objects may be omitted (the runtime deep-merges them onto the stored row), while
+// arrays and scalar values are replaced wholesale.
+type DeepMergeData<T> = T extends Date | string | number | boolean | null
+  ? T
+  : T extends readonly unknown[]
+    ? T
+    : T extends object
+      ? { [TKey in keyof T]?: DeepMergeData<T[TKey]> }
+      : T;
+
 export type UpdateInput<TCollection extends CollectionSlug = CollectionSlug> =
   DocumentInput<TCollection> & {
     updatedAt?: Date;
@@ -74,10 +85,11 @@ export type UpdateInput<TCollection extends CollectionSlug = CollectionSlug> =
          * Partial (PATCH) update: merge `data` onto the stored row instead of
          * replacing it, so omitted fields keep their values. The merge reads the
          * raw row under the already-checked update access — no separate read,
-         * which is why `data` may omit otherwise-required fields.
+         * which is why `data` may omit otherwise-required fields (including nested
+         * group siblings).
          */
         merge: true;
-        data: Partial<CollectionData<TCollection>>;
+        data: DeepMergeData<CollectionData<TCollection>>;
       }
     | {
         merge?: false;
