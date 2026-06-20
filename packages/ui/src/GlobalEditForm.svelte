@@ -6,7 +6,19 @@
 	import Button from './primitives/Button.svelte';
 
 	type RemoteFormField = {
-		as: (type: 'checkbox' | 'hidden' | 'text', value?: string) => Record<string, unknown>;
+		as: (
+			type:
+				| 'checkbox'
+				| 'hidden'
+				| 'text'
+				| 'email'
+				| 'number'
+				| 'date'
+				| 'datetime-local'
+				| 'select'
+				| 'select multiple',
+			value?: string | boolean
+		) => Record<string, unknown>;
 		issues: () => { message: string }[] | undefined;
 	};
 
@@ -24,11 +36,13 @@
 	let {
 		globalConfig,
 		document,
-		form
+		form,
+		relationOptions = {}
 	}: {
 		globalConfig: GlobalRuntimeConfig;
 		document: GlobalDocument<GlobalSlug> | null;
 		form: RemoteForm;
+		relationOptions?: Record<string, { value: string; label: string }[]>;
 	} = $props();
 
 	const formFields = $derived(form.fields as RemoteFormFields);
@@ -55,6 +69,8 @@
 			formField={formFields.data[field.identifier]}
 			id={`global-${globalConfig.slug}-${field.identifier}`}
 			value={getFieldInputValue(document, field.name)}
+			options={field.type === 'relationship' ? (relationOptions[field.relationTo] ?? []) : []}
+			{relationOptions}
 			compact
 		/>
 	{/each}

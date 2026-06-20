@@ -1,11 +1,13 @@
 import type { CompiledContent, SchemaPlan } from "./collection-model.ts";
 
 function renderTypeColumn(column: CompiledContent["columns"][number]) {
+  // optionalInput fields (defaulted fields, optional arrays) are optional on
+  // create/update but non-null when stored, so mark them `?` rather than nullable.
   const type =
-    column.origin === "field" && !column.required
+    column.origin === "field" && !column.required && !column.optionalInput
       ? `${column.typeScriptType} | null`
       : column.typeScriptType;
-  return `    ${column.typeScriptProperty}: ${type};`;
+  return `    ${column.typeScriptProperty}${column.optionalInput ? "?" : ""}: ${type};`;
 }
 
 function renderGeneratedEntries(contents: readonly CompiledContent[]) {

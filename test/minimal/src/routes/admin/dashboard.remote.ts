@@ -11,6 +11,7 @@ export const {
 	listCollections,
 	listDocuments,
 	listGlobals,
+	listRelationOptions,
 	updateDocument,
 	updateGlobal
 } = createFieldstoneAdminRemotes({ config });

@@ -9,6 +9,7 @@
 	import GlobalEditForm from './GlobalEditForm.svelte';
 	import { getCollectionLabel, getFieldLabel, getFieldValue, getGlobalLabel } from './labels';
 	import Button from './primitives/Button.svelte';
+	import type { CollectionRuntimeConfig, FieldDefinition } from '@fieldstone/schema';
 	import type { FieldstoneAdminRemotes } from '@fieldstone/remotes';
 	import {
 		adminCollectionPath,
@@ -31,9 +32,55 @@
 	const routeKey = $derived(currentPathname);
 
 	$effect(() => {
-		if (route.type !== 'documentEdit') return;
+		// Refresh the cached document when viewing or editing it, so the detail page
+		// reflects a just-saved edit (the update redirects back here) instead of a
+		// stale cached copy.
+		if (route.type !== 'documentEdit' && route.type !== 'documentDetail') return;
 		void remotes.getDocument({ collection: route.collection, id: route.id }).refresh();
 	});
+
+	const PAGE_SIZE = 10;
+	let searchInput = $state('');
+	let appliedSearch = $state('');
+	let pageIndex = $state(0);
+	const listCollectionSlug = $derived(route.type === 'collectionList' ? route.collection : null);
+
+	$effect(() => {
+		// Reset search and paging when switching collections.
+		void listCollectionSlug;
+		searchInput = '';
+		appliedSearch = '';
+		pageIndex = 0;
+	});
+
+	function applySearch(event: SubmitEvent) {
+		event.preventDefault();
+		appliedSearch = searchInput.trim();
+		pageIndex = 0;
+	}
+
+	async function loadRelationOptions(collection: CollectionRuntimeConfig) {
+		// Collect every relationship target, including those nested inside group/array
+		// fields, and key the options by the target slug so top-level and nested
+		// relationship inputs can both look them up.
+		const targets: string[] = [];
+		const collect = (fields: readonly FieldDefinition[]) => {
+			for (const field of fields) {
+				if (field.type === 'relationship') {
+					if (!targets.includes(field.relationTo)) targets.push(field.relationTo);
+				} else if (field.type === 'group' || field.type === 'array') {
+					collect(field.fields);
+				}
+			}
+		};
+		collect(collection.fields);
+		const entries = await Promise.all(
+			targets.map(
+				async (slug) => [slug, await remotes.listRelationOptions({ collection: slug })] as const
+			)
+		);
+		return Object.fromEntries(entries);
+	}
 
 	function routeCollection(route: AdminRoute) {
 		return 'collection' in route ? route.collection : null;
@@ -44,7 +91,10 @@
 	}
 
 	function getBoundaryErrorMessage(error: unknown) {
-		return error instanceof Error ? error.message : 'Could not load admin data';
+		if (error instanceof Error) return error.message;
+		if (error && typeof error === 'object' && 'message' in error)
+			return String((error as { message: unknown }).message);
+		return 'Could not load admin data';
 	}
 
 	function resolveAdminPath(path: string) {
@@ -152,11 +202,43 @@
 									<Button href={newDocumentHref(collection.slug)}>New</Button>
 								</div>
 
-								<svelte:boundary>
-									<DocumentList
-										{collection}
-										documents={await remotes.listDocuments({ collection: collection.slug })}
+								<form class="fs-admin__search" onsubmit={applySearch}>
+									<input
+										class="fs-admin__input fs-admin__search-input"
+										type="search"
+										placeholder="Search {getCollectionLabel(collection, 'plural').toLowerCase()}..."
+										aria-label="Search"
+										bind:value={searchInput}
 									/>
+									<Button type="submit">Search</Button>
+								</form>
+
+								<svelte:boundary>
+									{@const result = await remotes.listDocuments({
+										collection: collection.slug,
+										limit: PAGE_SIZE,
+										offset: pageIndex * PAGE_SIZE,
+										search: appliedSearch || undefined
+									})}
+									<DocumentList {collection} documents={result.docs} />
+
+									{#if result.total > PAGE_SIZE}
+										<div class="fs-admin__pagination">
+											<Button
+												type="button"
+												disabled={pageIndex === 0}
+												onclick={() => (pageIndex = Math.max(0, pageIndex - 1))}>Previous</Button
+											>
+											<span class="fs-admin__muted">
+												Page {pageIndex + 1} of {Math.ceil(result.total / PAGE_SIZE)} ({result.total})
+											</span>
+											<Button
+												type="button"
+												disabled={(pageIndex + 1) * PAGE_SIZE >= result.total}
+												onclick={() => (pageIndex = pageIndex + 1)}>Next</Button
+											>
+										</div>
+									{/if}
 
 									{#snippet pending()}
 										<p class="fs-admin__muted">Loading documents...</p>
@@ -192,9 +274,11 @@
 									<Button href={collectionHref(collection.slug)}>Back to list</Button>
 								</div>
 
+								{@const newRelationOptions = await loadRelationOptions(collection)}
 								<CreateDocumentForm
 									{collection}
 									form={remotes.createDocument.for(collection.slug)}
+									relationOptions={newRelationOptions}
 								/>
 
 								{#snippet pending()}
@@ -281,12 +365,18 @@
 								{@const global = await remotes.getGlobalConfig({ global: route.global })}
 								{@const document = await remotes.getGlobal({ global: global.slug })}
 								{@const updateForm = remotes.updateGlobal.for(global.slug)}
+								{@const globalRelationOptions = await loadRelationOptions(global)}
 
 								<div class="fs-admin__section-header">
 									<h2 class="fs-admin__section-title">{getGlobalLabel(global)}</h2>
 								</div>
 
-								<GlobalEditForm globalConfig={global} {document} form={updateForm} />
+								<GlobalEditForm
+									globalConfig={global}
+									{document}
+									form={updateForm}
+									relationOptions={globalRelationOptions}
+								/>
 
 								{#snippet pending()}
 									<p class="fs-admin__muted">Loading global...</p>
@@ -318,7 +408,13 @@
 										>
 									</div>
 
-									<DocumentEditForm {collection} {document} form={updateForm} />
+									{@const editRelationOptions = await loadRelationOptions(collection)}
+									<DocumentEditForm
+										{collection}
+										{document}
+										form={updateForm}
+										relationOptions={editRelationOptions}
+									/>
 
 									{#snippet pending()}
 										<p class="fs-admin__muted">Loading document...</p>
@@ -389,6 +485,32 @@
 
 	.fs-admin__documents {
 		gap: 0.75rem;
+	}
+
+	.fs-admin__search {
+		display: flex;
+		gap: 0.5rem;
+	}
+
+	.fs-admin__search-input {
+		flex: 1;
+		min-width: 0;
+		box-sizing: border-box;
+		border: 1px solid var(--fs-admin-border-strong);
+		border-radius: 0.375rem;
+		padding: 0.5rem 0.75rem;
+		font: inherit;
+		font-size: 0.875rem;
+		color: var(--fs-admin-text);
+		background: var(--fs-admin-panel);
+	}
+
+	.fs-admin__pagination {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		font-size: 0.875rem;
 	}
 
 	.fs-admin__eyebrow {

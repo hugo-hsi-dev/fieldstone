@@ -17,10 +17,15 @@ export type {
   FieldstoneGlobalData,
   FieldstoneGlobalSlug,
   GlobalInput,
+  ListInput,
+  ListResult,
+  ListSort,
   MutationInput,
   UpdateGlobalInput,
   UpdateInput,
 } from "./types.ts";
+
+export { ForbiddenError, isForbiddenError } from "./access.ts";
 
 export async function getFieldstone({ config }: { config: FieldstoneConfig }) {
   return createFieldstoneRuntime(config);

@@ -29,3 +29,6 @@ test-results
 
 # Fieldstone
 .fieldstone/
+
+# Playwright auth state
+playwright/.auth

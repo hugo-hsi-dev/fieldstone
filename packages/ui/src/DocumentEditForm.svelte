@@ -12,7 +12,19 @@
 	import { adminDocumentPath, adminRouteId, adminRouteSegments } from '@fieldstone/routes';
 
 	type RemoteFormField = {
-		as: (type: 'checkbox' | 'hidden' | 'text', value?: string) => Record<string, unknown>;
+		as: (
+			type:
+				| 'checkbox'
+				| 'hidden'
+				| 'text'
+				| 'email'
+				| 'number'
+				| 'date'
+				| 'datetime-local'
+				| 'select'
+				| 'select multiple',
+			value?: string | boolean
+		) => Record<string, unknown>;
 		issues: () => { message: string }[] | undefined;
 	};
 
@@ -31,11 +43,13 @@
 	let {
 		collection,
 		document,
-		form
+		form,
+		relationOptions = {}
 	}: {
 		collection: CollectionRuntimeConfig;
 		document: CollectionDocument<CollectionSlug>;
 		form: RemoteForm;
+		relationOptions?: Record<string, { value: string; label: string }[]>;
 	} = $props();
 
 	const formFields = $derived(form.fields as RemoteFormFields);
@@ -67,6 +81,8 @@
 			formField={formFields.data[field.identifier]}
 			id={`edit-${document.id}-${field.identifier}`}
 			value={getFieldInputValue(document, field.name)}
+			options={field.type === 'relationship' ? (relationOptions[field.relationTo] ?? []) : []}
+			{relationOptions}
 			compact
 		/>
 	{/each}

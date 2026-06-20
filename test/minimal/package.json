@@ -24,9 +24,13 @@
 		"vite": "^8.0.16"
 	},
 	"dependencies": {
+		"@fieldstone/admin-runtime": "workspace:*",
 		"@fieldstone/remotes": "workspace:*",
 		"@fieldstone/schema": "workspace:*",
 		"@fieldstone/ui": "workspace:*",
-		"@fieldstone/vite-plugin": "workspace:*"
+		"@fieldstone/vite-plugin": "workspace:*",
+		"@libsql/client": "^0.15.15",
+		"better-auth": "^1.6.19",
+		"drizzle-orm": "^0.45.2"
 	}
 }

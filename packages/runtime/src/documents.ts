@@ -1,12 +1,66 @@
 import type { CollectionDocument, CollectionSlug } from "@fieldstone/schema";
 
+import { assertCollectionAccess } from "./access.ts";
 import type { createDatabase } from "./database.ts";
-import type { CollectionInput, CreateInput, DocumentInput, UpdateInput } from "./types.ts";
+import {
+  getCollectionHooks,
+  hasChangeHooks,
+  runAfterChangeHooks,
+  runAfterDeleteHooks,
+  runAfterReadHooks,
+  runBeforeChangeHooks,
+  runBeforeDeleteHooks,
+} from "./hooks.ts";
+import type {
+  CreateInput,
+  DocumentInput,
+  ListInput,
+  UpdateInput,
+} from "./types.ts";
 
 type DatabaseContext = Awaited<ReturnType<typeof createDatabase>>;
+type Doc = Record<string, unknown>;
+
+// Drop the runtime-managed system columns so a stored row can be used as a merge
+// base for a partial update without the normalizer rejecting them as unknown.
+const SYSTEM_FIELDS = new Set(["id", "createdAt", "updatedAt"]);
+function stripSystemFields(doc: Doc): Record<string, unknown> {
+  const rest: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(doc)) {
+    if (!SYSTEM_FIELDS.has(key)) rest[key] = value;
+  }
+  return rest;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  // Only merge plain records (group objects); scalar object values like Date are
+  // replaced wholesale so the deep merge can't turn a Date into {}.
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
+// Recursively overlay a PATCH body onto the stored row so partial group payloads
+// (e.g. { seo: { description } }) keep their omitted siblings instead of replacing
+// the whole group. Arrays and scalars are replaced wholesale.
+function deepMergePatch(
+  base: Record<string, unknown>,
+  patch: Record<string, unknown>,
+): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...base };
+  for (const [key, value] of Object.entries(patch)) {
+    const existing = result[key];
+    result[key] =
+      isPlainObject(value) && isPlainObject(existing)
+        ? deepMergePatch(existing, value)
+        : value;
+  }
+  return result;
+}
 
 export function createDocumentRuntime(context: DatabaseContext) {
-  const { compiled, compiledConfig, database, desc, eq } = context;
+  const { compiled, compiledConfig, config, database, and, asc, count, desc, eq, like, or } =
+    context;
 
   function getTable(collectionSlug: string) {
     if (!compiledConfig.getCollection(collectionSlug)) {
@@ -15,23 +69,103 @@ export function createDocumentRuntime(context: DatabaseContext) {
     return compiled.tables[collectionSlug];
   }
 
+  function buildConditions(
+    collectionSlug: string,
+    table: Record<string, any>,
+    status: ListInput["status"],
+    search: string | undefined,
+  ) {
+    const conditions: unknown[] = [];
+    if (status) {
+      // Reject rather than silently drop the predicate, which would otherwise
+      // return every row (including ones that aren't drafts) on a non-draft collection.
+      if (!table._status)
+        throw new Error(
+          `Collection "${collectionSlug}" does not support a status filter (drafts are not enabled)`,
+        );
+      conditions.push(eq(table._status, status));
+    }
+    const term = search?.trim();
+    if (term) {
+      const fields = compiledConfig.getCollection(collectionSlug)?.fields ?? [];
+      const likes = fields
+        .filter(
+          (field) =>
+            field.type === "text" ||
+            field.type === "email" ||
+            field.type === "select",
+        )
+        .map((field) => table[field.name])
+        .filter(Boolean)
+        .map((column) => like(column, `%${term}%`));
+      if (likes.length === 1) conditions.push(likes[0]);
+      else if (likes.length > 1) conditions.push(or(...likes));
+    }
+    return conditions;
+  }
+
   return {
     find: async <TCollection extends CollectionSlug>({
       collection: collectionSlug,
-    }: CollectionInput<TCollection>) => {
+      status,
+      limit,
+      offset,
+      sort,
+      search,
+      user,
+    }: ListInput<TCollection>) => {
+      await assertCollectionAccess(config, collectionSlug, "read", { user: user ?? null });
       const table = getTable(collectionSlug);
-      return database.select().from(table).orderBy(desc(table.createdAt)) as unknown as Promise<
-        CollectionDocument<TCollection>[]
-      >;
+      const conditions = buildConditions(collectionSlug, table, status, search);
+      let query = database.select().from(table).$dynamic();
+      if (conditions.length === 1) query = query.where(conditions[0] as any);
+      else if (conditions.length > 1) query = query.where(and(...(conditions as any[])));
+      const sortColumn =
+        sort?.field && Object.prototype.hasOwnProperty.call(table, sort.field)
+          ? table[sort.field]
+          : table.createdAt;
+      query = query.orderBy(sort?.direction === "asc" ? asc(sortColumn) : desc(sortColumn));
+      if (typeof limit === "number") query = query.limit(limit);
+      if (typeof offset === "number") query = query.offset(offset);
+      const rows = (await query) as Doc[];
+      const hooks = getCollectionHooks(config, collectionSlug);
+      if (!hooks?.afterRead?.length) {
+        return rows as unknown as CollectionDocument<TCollection>[];
+      }
+      const read = await Promise.all(
+        rows.map((row) => runAfterReadHooks(hooks, collectionSlug, row)),
+      );
+      return read as unknown as CollectionDocument<TCollection>[];
+    },
+
+    count: async <TCollection extends CollectionSlug>({
+      collection: collectionSlug,
+      status,
+      search,
+      user,
+    }: ListInput<TCollection>) => {
+      await assertCollectionAccess(config, collectionSlug, "read", { user: user ?? null });
+      const table = getTable(collectionSlug);
+      const conditions = buildConditions(collectionSlug, table, status, search);
+      let query = database.select({ value: count() }).from(table).$dynamic();
+      if (conditions.length === 1) query = query.where(conditions[0] as any);
+      else if (conditions.length > 1) query = query.where(and(...(conditions as any[])));
+      const [row] = (await query) as { value: number }[];
+      return Number(row?.value ?? 0);
     },
 
     findById: async <TCollection extends CollectionSlug>({
       collection: collectionSlug,
       id,
+      user,
     }: DocumentInput<TCollection>) => {
+      await assertCollectionAccess(config, collectionSlug, "read", { user: user ?? null, id });
       const table = getTable(collectionSlug);
       const [document] = await database.select().from(table).where(eq(table.id, id)).limit(1);
-      return (document ?? null) as CollectionDocument<TCollection> | null;
+      if (!document) return null;
+      const hooks = getCollectionHooks(config, collectionSlug);
+      const read = await runAfterReadHooks(hooks, collectionSlug, document as Doc);
+      return read as unknown as CollectionDocument<TCollection>;
     },
 
     create: async <TCollection extends CollectionSlug>({
@@ -39,8 +173,33 @@ export function createDocumentRuntime(context: DatabaseContext) {
       createdAt,
       data,
       updatedAt,
+      user,
     }: CreateInput<TCollection>) => {
-      const document = compiledConfig.normalizeDocumentData(collectionSlug, data);
+      const hooks = getCollectionHooks(config, collectionSlug);
+      // Normalize before the access check so rules inspecting `data` see the trimmed
+      // values and applied defaults that will actually be stored.
+      let document: Doc;
+      try {
+        document = compiledConfig.normalizeDocumentData(collectionSlug, data) as Doc;
+      } catch (normalizationError) {
+        // Check access before surfacing a validation error, so denied callers can't
+        // probe field names/constraints via 400 messages.
+        await assertCollectionAccess(config, collectionSlug, "create", {
+          user: user ?? null,
+          data: data as Record<string, unknown>,
+        });
+        throw normalizationError;
+      }
+      await assertCollectionAccess(config, collectionSlug, "create", {
+        user: user ?? null,
+        data: document as Record<string, unknown>,
+      });
+      document = await runBeforeChangeHooks(hooks, {
+        collection: collectionSlug,
+        data: document,
+        operation: "create",
+        originalDoc: null,
+      });
       const table = compiled.tables[collectionSlug];
       const now = new Date();
       const createdRows = (await database
@@ -50,20 +209,80 @@ export function createDocumentRuntime(context: DatabaseContext) {
           createdAt: createdAt ?? now,
           updatedAt: updatedAt ?? now,
         })
-        .returning()) as unknown[];
-      const [created] = createdRows;
+        .returning()) as Doc[];
+      const created = await runAfterChangeHooks(hooks, {
+        collection: collectionSlug,
+        doc: createdRows[0] as Doc,
+        operation: "create",
+        previousDoc: null,
+      });
 
-      return created as CollectionDocument<TCollection>;
+      return created as unknown as CollectionDocument<TCollection>;
     },
 
     update: async <TCollection extends CollectionSlug>({
       collection: collectionSlug,
       data,
       id,
+      merge,
       updatedAt,
+      user,
     }: UpdateInput<TCollection>) => {
-      const document = compiledConfig.normalizeDocumentData(collectionSlug, data);
-      const table = compiled.tables[collectionSlug];
+      const hooks = getCollectionHooks(config, collectionSlug);
+      const table = getTable(collectionSlug);
+      let originalDoc: Doc | null = null;
+      const needExisting = merge || hasChangeHooks(hooks);
+      if (needExisting) {
+        const [existing] = await database.select().from(table).where(eq(table.id, id)).limit(1);
+        originalDoc = (existing ?? null) as Doc | null;
+      }
+      if (needExisting && !originalDoc) {
+        // Run the access rule (against the body) before revealing absence, so a
+        // forbidden caller gets 403 rather than enumerating ids via 404-vs-403.
+        await assertCollectionAccess(config, collectionSlug, "update", {
+          user: user ?? null,
+          id,
+          data: data as Record<string, unknown>,
+        });
+        throw new Error("Document not found");
+      }
+      // PATCH/merge: overlay the provided fields onto the stored content so omitted
+      // fields keep their values. Reads the raw row directly (no afterRead); unknown
+      // keys still flow to the normalizer, which rejects them.
+      const inputData =
+        merge && originalDoc
+          ? deepMergePatch(
+              stripSystemFields(originalDoc),
+              data as Record<string, unknown>,
+            )
+          : data;
+      // Check access against the normalized, merged document — so rules see the
+      // trimmed/defaulted values that will be stored and a PATCH can't bypass a rule
+      // on a persisted field by omitting it.
+      let document: Doc;
+      try {
+        document = compiledConfig.normalizeDocumentData(collectionSlug, inputData) as Doc;
+      } catch (normalizationError) {
+        // Run the access rule before surfacing a validation/unknown-field error, so a
+        // forbidden caller can't enumerate existing vs missing ids with a malformed body.
+        await assertCollectionAccess(config, collectionSlug, "update", {
+          user: user ?? null,
+          id,
+          data: inputData as Record<string, unknown>,
+        });
+        throw normalizationError;
+      }
+      await assertCollectionAccess(config, collectionSlug, "update", {
+        user: user ?? null,
+        id,
+        data: document as Record<string, unknown>,
+      });
+      document = await runBeforeChangeHooks(hooks, {
+        collection: collectionSlug,
+        data: document,
+        operation: "update",
+        originalDoc,
+      });
       const updatedRows = (await database
         .update(table)
         .set({
@@ -71,18 +290,36 @@ export function createDocumentRuntime(context: DatabaseContext) {
           updatedAt: updatedAt ?? new Date(),
         })
         .where(eq(table.id, id))
-        .returning()) as unknown[];
-      const [updated] = updatedRows;
+        .returning()) as Doc[];
+      const updated = updatedRows[0];
 
       if (!updated) throw new Error("Document not found");
-      return updated as CollectionDocument<TCollection>;
+      const afterChange = await runAfterChangeHooks(hooks, {
+        collection: collectionSlug,
+        doc: updated,
+        operation: "update",
+        previousDoc: originalDoc,
+      });
+      return afterChange as unknown as CollectionDocument<TCollection>;
     },
 
     delete: async <TCollection extends CollectionSlug>({
       collection: collectionSlug,
       id,
+      user,
     }: DocumentInput<TCollection>) => {
+      await assertCollectionAccess(config, collectionSlug, "delete", { user: user ?? null, id });
+      const hooks = getCollectionHooks(config, collectionSlug);
       const table = getTable(collectionSlug);
+      let deletedDoc: Doc | null = null;
+      if (hooks?.beforeDelete?.length || hooks?.afterDelete?.length) {
+        const [existing] = await database.select().from(table).where(eq(table.id, id)).limit(1);
+        deletedDoc = (existing ?? null) as Doc | null;
+        // Confirm the row exists before firing hooks, so beforeDelete/afterDelete
+        // never run (writing audit records, cleaning resources) for a no-op delete.
+        if (!deletedDoc) throw new Error("Document not found");
+      }
+      await runBeforeDeleteHooks(hooks, collectionSlug, id);
       const deletedRows = (await database
         .delete(table)
         .where(eq(table.id, id))
@@ -90,7 +327,8 @@ export function createDocumentRuntime(context: DatabaseContext) {
       const [deleted] = deletedRows;
 
       if (!deleted) throw new Error("Document not found");
-      return deleted;
+      if (deletedDoc) await runAfterDeleteHooks(hooks, collectionSlug, id, deletedDoc);
+      return deleted as { id: string };
     },
   };
 }

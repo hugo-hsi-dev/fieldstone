@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 
 import {
   integer,
+  real,
   sqliteTable,
   text as sqliteText,
 } from "drizzle-orm/sqlite-core";
@@ -15,9 +16,31 @@ export type RuntimeSchema = {
 
 function createRuntimeColumn(column: CompiledColumn) {
   if (column.sourceExpression === "text") {
-    return column.required
-      ? sqliteText(column.columnName).notNull()
-      : sqliteText(column.columnName);
+    let builder = sqliteText(column.columnName);
+    if (column.required) builder = builder.notNull();
+    if (column.unique) builder = builder.unique();
+    return builder;
+  }
+
+  if (column.sourceExpression === "json") {
+    let builder = sqliteText(column.columnName, { mode: "json" });
+    if (column.required) builder = builder.notNull();
+    if (column.unique) builder = builder.unique();
+    return builder;
+  }
+
+  if (column.sourceExpression === "number") {
+    let builder = real(column.columnName);
+    if (column.required) builder = builder.notNull();
+    if (column.unique) builder = builder.unique();
+    return builder;
+  }
+
+  if (column.sourceExpression === "dateValue") {
+    let builder = integer(column.columnName, { mode: "timestamp" });
+    if (column.required) builder = builder.notNull();
+    if (column.unique) builder = builder.unique();
+    return builder;
   }
 
   if (column.sourceExpression === "boolean") {

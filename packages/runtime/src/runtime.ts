@@ -18,6 +18,7 @@ export async function createFieldstoneRuntime(config: FieldstoneConfig) {
     getGlobalConfig: (slug: string) => database.compiledConfig.getGlobal(slug),
 
     find: documents.find,
+    count: documents.count,
     findById: documents.findById,
     create: documents.create,
     update: documents.update,
