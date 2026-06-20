@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
+	import { Editor } from '@tiptap/core';
+	import StarterKit from '@tiptap/starter-kit';
 	import type { CollectionRuntimeConfig, DocumentDataValue } from '@fieldstone/schema';
 
 	import { getFieldLabel, shouldUseTextarea, toDatetimeLocalValue, toInputValue } from './labels';
@@ -86,50 +88,49 @@
 		return [...options, ...missing];
 	});
 
-	// Rich text: a contenteditable surface bound to local HTML state, submitted via a
-	// reactive hidden input (same approach as the checkbox — avoids form value tracking).
-	// Stays empty during SSR and is seeded with the sanitized stored value on mount, so
-	// untrusted HTML never reaches the server-rendered markup.
-	let richTextHtml = $state('');
+	// Rich text uses TipTap. The editor is created client-side (it needs the DOM)
+	// and mirrors its HTML into a hidden input for form submission. TipTap parses
+	// stored HTML through its schema, dropping disallowed nodes/marks (scripts,
+	// inline handlers, unknown elements), so no separate sanitizer is needed and
+	// untrusted HTML never reaches the DOM as raw markup.
+	// svelte-ignore state_referenced_locally
+	let richTextHtml = $state(typeof base === 'string' ? base : '');
+	let editorEl = $state<HTMLDivElement>();
+	let editor: Editor | undefined;
+	let isBold = $state(false);
+	let isItalic = $state(false);
 
-	// Stored rich-text HTML can originate from another user, an import, or the REST API,
-	// so it must be sanitized before it reaches `innerHTML`. Parsing through a detached
-	// <template> lets the browser normalize the markup (quoted or unquoted attributes
-	// alike), after which we strip dangerous elements, inline event handlers, and unsafe
-	// URL protocols. Runs on the client only (it needs the DOM), hence the mount seeding.
-	const DANGEROUS_TAGS = /^(?:SCRIPT|STYLE|IFRAME|OBJECT|EMBED|LINK|META|BASE|FORM|SVG|MATH)$/;
-	function sanitizeHtml(html: string): string {
-		const template = document.createElement('template');
-		template.innerHTML = html;
-		for (const element of [...template.content.querySelectorAll('*')]) {
-			if (DANGEROUS_TAGS.test(element.tagName)) {
-				element.remove();
-				continue;
-			}
-			for (const attr of [...element.attributes]) {
-				const name = attr.name.toLowerCase();
-				// Strip control chars so an obfuscated protocol can't bypass the URL check
-				// below; the control-char range is intentional.
-				// eslint-disable-next-line no-control-regex
-				const value = attr.value.replace(/[\u0000-\u0020]+/g, '').toLowerCase();
-				const isUrlAttr = name === 'href' || name === 'src' || name === 'xlink:href';
-				if (name.startsWith('on') || (isUrlAttr && /^(?:javascript|data|vbscript):/.test(value)))
-					element.removeAttribute(attr.name);
-			}
-		}
-		return template.innerHTML;
+	function syncMarks(active: Editor) {
+		isBold = active.isActive('bold');
+		isItalic = active.isActive('italic');
 	}
 
-	// Seed once on mount (client-only - sanitizeHtml needs the DOM). Not an $effect, so
-	// clearing the editor to empty never re-populates it from the stored value.
 	onMount(() => {
-		if (field.type === 'richText')
-			richTextHtml = sanitizeHtml(typeof base === 'string' ? base : '');
+		if (field.type !== 'richText' || !editorEl) return;
+		editor = new Editor({
+			element: editorEl,
+			extensions: [StarterKit],
+			content: typeof base === 'string' ? base : '',
+			editable: !readOnly,
+			editorProps: {
+				attributes: {
+					id,
+					role: 'textbox',
+					'aria-multiline': 'true',
+					'aria-label': getFieldLabel(field),
+					class: 'fs-admin__richtext-editor',
+					...(readOnly ? { 'aria-readonly': 'true' } : {})
+				}
+			},
+			onUpdate: ({ editor: active }) => {
+				richTextHtml = active.isEmpty ? '' : active.getHTML();
+				syncMarks(active);
+			},
+			onSelectionUpdate: ({ editor: active }) => syncMarks(active)
+		});
 	});
 
-	function execCommand(command: string) {
-		document.execCommand(command);
-	}
+	onDestroy(() => editor?.destroy());
 
 	// Nested fields (group/array) are edited as local state and submitted as JSON via a
 	// reactive hidden input.
@@ -240,47 +241,29 @@
 		</select>
 	{:else if field.type === 'richText'}
 		<div class="fs-admin__richtext">
-			{#if readOnly}
-				<!-- Display-only: render the sanitized HTML without an editable surface. -->
-				<div
-					{id}
-					class="fs-admin__richtext-editor"
-					role="textbox"
-					aria-readonly="true"
-					aria-label={getFieldLabel(field)}
-				>
-					<!-- eslint-disable-next-line svelte/no-at-html-tags -- richTextHtml is sanitized in sanitizeHtml() -->
-					{@html richTextHtml}
-				</div>
-			{:else}
+			{#if !readOnly}
 				<div class="fs-admin__richtext-toolbar">
 					<button
 						type="button"
-						class="fs-admin__richtext-btn"
+						class={['fs-admin__richtext-btn', isBold && 'fs-admin__richtext-btn--active']}
 						aria-label="Bold"
+						aria-pressed={isBold}
 						onmousedown={(event) => event.preventDefault()}
-						onclick={() => execCommand('bold')}><strong>B</strong></button
+						onclick={() => editor?.chain().focus().toggleBold().run()}><strong>B</strong></button
 					>
 					<button
 						type="button"
-						class="fs-admin__richtext-btn"
+						class={['fs-admin__richtext-btn', isItalic && 'fs-admin__richtext-btn--active']}
 						aria-label="Italic"
+						aria-pressed={isItalic}
 						onmousedown={(event) => event.preventDefault()}
-						onclick={() => execCommand('italic')}><em>I</em></button
+						onclick={() => editor?.chain().focus().toggleItalic().run()}><em>I</em></button
 					>
 				</div>
-				<div
-					{id}
-					class="fs-admin__richtext-editor"
-					contenteditable="true"
-					role="textbox"
-					aria-multiline="true"
-					aria-label={getFieldLabel(field)}
-					bind:innerHTML={richTextHtml}
-				></div>
 			{/if}
-			<!-- Read-only submits the original stored value (only the display is
-			     sanitized), so saving another field can't overwrite it with stripped HTML. -->
+			<!-- TipTap mounts its contenteditable (role=textbox, aria-label) into this host. -->
+			<div bind:this={editorEl} class="fs-admin__richtext-host"></div>
+			<!-- Read-only submits the original stored value untouched. -->
 			<input
 				type="hidden"
 				name={`data.${field.identifier}`}

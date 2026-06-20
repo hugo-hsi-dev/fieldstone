@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 
@@ -14,6 +15,7 @@
 		getCollectionLabel,
 		getFieldLabel,
 		getFieldValue,
+		stripHtml,
 		getGlobalLabel,
 		globalLabelFromSlug
 	} from './labels';
@@ -64,10 +66,44 @@
 
 	// Mobile navigation drawer.
 	let drawerOpen = $state(false);
+	// Whether the layout is in drawer mode (must match the 960px CSS breakpoint),
+	// so off-canvas nav is only made inert / focus-managed on narrow viewports.
+	let isNarrow = $state(false);
+	let hamburgerEl = $state<HTMLButtonElement>();
+	let sidebarEl = $state<HTMLElement>();
+
 	$effect(() => {
 		// Close the drawer whenever the route changes.
 		void routeKey;
 		drawerOpen = false;
+	});
+
+	onMount(() => {
+		const query = window.matchMedia('(max-width: 960px)');
+		isNarrow = query.matches;
+		const onChange = (event: MediaQueryListEvent) => {
+			isNarrow = event.matches;
+		};
+		query.addEventListener('change', onChange);
+		return () => query.removeEventListener('change', onChange);
+	});
+
+	// Move focus into the drawer when it opens and back to the trigger when it
+	// closes (drawer mode only), per the WAI-ARIA disclosure pattern.
+	let drawerWasOpen = false;
+	$effect(() => {
+		const open = drawerOpen;
+		if (!isNarrow) {
+			drawerWasOpen = open;
+			return;
+		}
+		if (open && !drawerWasOpen) {
+			const first = sidebarEl?.querySelector<HTMLElement>('a, button');
+			(first ?? sidebarEl)?.focus();
+		} else if (!open && drawerWasOpen) {
+			hamburgerEl?.focus();
+		}
+		drawerWasOpen = open;
 	});
 
 	function handleKeydown(event: KeyboardEvent) {
@@ -265,6 +301,7 @@
 	<div class="fs-admin__shell">
 		<header class="fs-admin__header">
 			<button
+				bind:this={hamburgerEl}
 				type="button"
 				class="fs-admin__hamburger fs-admin__button fs-admin__button--ghost fs-admin__button--icon"
 				aria-label="Open navigation"
@@ -299,7 +336,13 @@
 			<ThemeToggle />
 		</header>
 
-		<aside class="fs-admin__sidebar" id="fs-admin-nav">
+		<aside
+			bind:this={sidebarEl}
+			class="fs-admin__sidebar"
+			id="fs-admin-nav"
+			tabindex="-1"
+			inert={isNarrow && !drawerOpen}
+		>
 			<svelte:boundary>
 				{@const collections = await remotes.listCollections()}
 				{@const globals = await remotes.listGlobals()}
@@ -330,7 +373,7 @@
 			onclick={() => (drawerOpen = false)}
 		></button>
 
-		<main class="fs-admin__content">
+		<main class="fs-admin__content" inert={isNarrow && drawerOpen}>
 			{#key routeKey}
 				{#if route.type === 'index'}
 					<div class="fs-admin__page-header">
@@ -556,11 +599,13 @@
 							{#if collection.fields.length}
 								<dl class="fs-admin__panel fs-admin__fields">
 									{#each collection.fields as field (field.name)}
+										{@const raw = getFieldValue(document, field.name)}
+										{@const display = field.type === 'richText' ? stripHtml(raw) : raw}
 										<div class="fs-admin__field-row">
 											<dt>{getFieldLabel(field)}</dt>
 											<dd>
-												{#if getFieldValue(document, field.name)}
-													{getFieldValue(document, field.name)}
+												{#if display}
+													{display}
 												{:else}
 													<span class="fs-admin__field-empty">Empty</span>
 												{/if}

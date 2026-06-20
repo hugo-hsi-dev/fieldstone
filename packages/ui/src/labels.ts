@@ -101,6 +101,16 @@ export function shouldUseTextarea(field: CollectionRuntimeConfig['fields'][numbe
 	return field.type === 'text' && Boolean(field.multiline);
 }
 
+// Strip HTML tags to a plain-text summary. Used to display rich-text values in
+// the read-only detail view; the result is rendered as text (never as HTML), so
+// it is safe regardless of the stored markup.
+export function stripHtml(value: string): string {
+	return value
+		.replace(/<[^>]*>/g, ' ')
+		.replace(/\s+/g, ' ')
+		.trim();
+}
+
 export function getSelectedCollection(
 	collections: CollectionRuntimeConfig[],
 	collectionName: string,

@@ -140,4 +140,12 @@
 		/* 2px left accent bar — location never depends on the tint contrast */
 		box-shadow: inset 2px 0 0 var(--fs-admin-accent);
 	}
+
+	/* Keep the accent bar when the active link is keyboard-focused (box-shadow
+	   does not merge, so combine the bar with the focus ring explicitly). */
+	.fs-admin__nav-link--active:focus-visible {
+		box-shadow:
+			inset 2px 0 0 var(--fs-admin-accent),
+			var(--fs-focus-ring);
+	}
 </style>

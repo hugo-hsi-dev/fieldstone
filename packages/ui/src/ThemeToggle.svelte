@@ -1,19 +1,17 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { mode, toggleMode } from 'mode-watcher';
 
 	import Icon from './primitives/Icon.svelte';
-	import { initTheme, theme, toggleTheme } from './theme.svelte';
 
-	// Seed the rune from the attribute the blocking app.html script set. Until
-	// mounted, render a stable placeholder so SSR markup never assumes a theme
-	// (avoids a hydration mismatch).
+	// `mode.current` is undefined during SSR; render a stable placeholder until
+	// mounted so the server and first client render agree (no hydration mismatch).
 	let mounted = $state(false);
 	onMount(() => {
-		initTheme();
 		mounted = true;
 	});
 
-	const isDark = $derived(theme.current === 'dark');
+	const isDark = $derived(mounted && mode.current === 'dark');
 	const label = $derived(isDark ? 'Switch to light theme' : 'Switch to dark theme');
 </script>
 
@@ -23,9 +21,9 @@
 	aria-label={label}
 	aria-pressed={isDark}
 	title={label}
-	onclick={toggleTheme}
+	onclick={toggleMode}
 >
-	{#if mounted && isDark}
+	{#if isDark}
 		<Icon name="moon" size={18} />
 	{:else}
 		<Icon name="sun" size={18} />

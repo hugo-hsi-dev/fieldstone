@@ -15,9 +15,10 @@
 	} = $props();
 </script>
 
-<BitsLabel.Root
-	class={['fs-admin__label', required && 'fs-admin__label--required', className]}
-	{...rest}
->
+<BitsLabel.Root class={['fs-admin__label', className]} {...rest}>
 	{@render children?.()}
+	{#if required}
+		<!-- aria-hidden so the marker is excluded from the control's accessible name -->
+		<span class="fs-admin__required" aria-hidden="true">&nbsp;*</span>
+	{/if}
 </BitsLabel.Root>

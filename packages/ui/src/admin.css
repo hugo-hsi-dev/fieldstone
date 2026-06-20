@@ -6,8 +6,7 @@
    ========================================================================== */
 
 /* ---------- Light theme (default) ---------------------------------------- */
-:root,
-[data-theme='light'] {
+:root {
 	color-scheme: light;
 
 	/* Surfaces (layered, light → up) */
@@ -81,8 +80,8 @@
 		0 4px 8px -4px hsl(var(--fs-admin-shadow-color) / 0.1);
 }
 
-/* ---------- Dark theme ---------------------------------------------------- */
-[data-theme='dark'] {
+/* ---------- Dark theme (mode-watcher applies `.dark` to <html>) ----------- */
+.dark {
 	color-scheme: dark;
 
 	/* Surfaces — each layer steps UP in lightness as it rises. No pure black. */
@@ -150,62 +149,6 @@
 	--fs-shadow-sm: 0 1px 2px 0 hsl(var(--fs-admin-shadow-color) / 0.4);
 	--fs-shadow-md: 0 2px 6px -1px hsl(var(--fs-admin-shadow-color) / 0.5);
 	--fs-shadow-lg: 0 16px 32px -8px hsl(var(--fs-admin-shadow-color) / 0.65);
-}
-
-/*
- * No-JS / pre-script fallback: honor the OS preference only when no explicit
- * choice has been made. The blocking script in app.html sets data-theme before
- * paint when JS is on, so this only covers the no-JS case. Keep in sync with the
- * [data-theme='dark'] block above.
- */
-@media (prefers-color-scheme: dark) {
-	:root:not([data-theme]) {
-		color-scheme: dark;
-		--fs-admin-bg: #09090b;
-		--fs-admin-panel: #131316;
-		--fs-admin-raised: #1c1c20;
-		--fs-admin-inset: #1a1a1d;
-		--fs-admin-hover: #1c1c20;
-		--fs-admin-active: #27272a;
-		--fs-admin-text: #e4e4e7;
-		--fs-admin-text-strong: #fafafa;
-		--fs-admin-muted: #a1a1aa;
-		--fs-admin-faint: #8a8a93;
-		--fs-admin-border: #27272a;
-		--fs-admin-border-strong: #3f3f46;
-		--fs-admin-border-stronger: #52525b;
-		--fs-admin-primary: #fafafa;
-		--fs-admin-primary-hover: #e4e4e7;
-		--fs-admin-primary-active: #d4d4d8;
-		--fs-admin-primary-fg: #18181b;
-		--fs-admin-accent: #a5b4fc;
-		--fs-admin-accent-hover: #c7d2fe;
-		--fs-admin-accent-fg: #1e1b4b;
-		--fs-admin-accent-bg: #1e1b4b;
-		--fs-admin-accent-border: #3730a3;
-		--fs-admin-danger: #f87171;
-		--fs-admin-danger-hover: #fca5a5;
-		--fs-admin-danger-fg: #18181b;
-		--fs-admin-danger-bg: #2a1416;
-		--fs-admin-danger-border: #5b1d1d;
-		--fs-admin-danger-ring: rgba(248, 113, 113, 0.4);
-		--fs-admin-success: #4ade80;
-		--fs-admin-success-fg: #052e16;
-		--fs-admin-success-bg: #0f2417;
-		--fs-admin-success-border: #14532d;
-		--fs-admin-warning: #fbbf24;
-		--fs-admin-warning-fg: #1c1917;
-		--fs-admin-warning-bg: #2a1f0a;
-		--fs-admin-warning-border: #5a3d12;
-		--fs-admin-ring: #818cf8;
-		--fs-admin-ring-alpha: rgba(129, 140, 248, 0.55);
-		--fs-admin-overlay: rgba(0, 0, 0, 0.65);
-		--fs-admin-shadow-color: 0 0% 0%;
-		--fs-admin-raised-highlight: rgba(255, 255, 255, 0.05);
-		--fs-shadow-sm: 0 1px 2px 0 hsl(var(--fs-admin-shadow-color) / 0.4);
-		--fs-shadow-md: 0 2px 6px -1px hsl(var(--fs-admin-shadow-color) / 0.5);
-		--fs-shadow-lg: 0 16px 32px -8px hsl(var(--fs-admin-shadow-color) / 0.65);
-	}
 }
 
 /* ---------- Theme-independent scales ------------------------------------- */
@@ -457,8 +400,9 @@
 	line-height: 1.25rem;
 }
 
-.fs-admin__label--required::after {
-	content: ' *';
+/* The required marker is a real aria-hidden element inside the label (see
+   Label.svelte) so it never folds into the control's accessible name. */
+.fs-admin__required {
 	color: var(--fs-admin-danger);
 }
 
@@ -562,7 +506,7 @@
 	background-size: 1rem;
 }
 
-[data-theme='dark'] .fs-admin__select {
+.dark .fs-admin__select {
 	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 
@@ -783,6 +727,12 @@
 	color: var(--fs-admin-text);
 }
 
+.fs-admin__richtext-btn--active,
+.fs-admin__richtext-btn--active:hover {
+	background: var(--fs-admin-active);
+	color: var(--fs-admin-text-strong);
+}
+
 .fs-admin__richtext-btn:focus-visible {
 	outline: none;
 	box-shadow: var(--fs-focus-ring);
@@ -799,65 +749,6 @@
 
 .fs-admin__richtext-editor:focus {
 	outline: none;
-}
-
-/* ==========================================================================
-   Prose (rendered rich text in the detail view)
-   ========================================================================== */
-.fs-admin__prose {
-	max-width: 65ch;
-	color: var(--fs-admin-text);
-	line-height: 1.6;
-}
-
-.fs-admin__prose :where(p, ul, ol, blockquote) {
-	margin: 0 0 0.75em;
-}
-
-.fs-admin__prose :where(p, ul, ol, blockquote):last-child {
-	margin-bottom: 0;
-}
-
-.fs-admin__prose :where(a) {
-	color: var(--fs-admin-accent);
-}
-
-/* ==========================================================================
-   Badges + status pills
-   ========================================================================== */
-.fs-admin__badge {
-	display: inline-flex;
-	align-items: center;
-	gap: 0.375rem;
-	border: 1px solid var(--fs-admin-border);
-	border-radius: var(--fs-radius-full);
-	background: var(--fs-admin-inset);
-	color: var(--fs-admin-muted);
-	padding: 0.0625rem 0.5rem;
-	font-size: 0.75rem;
-	font-weight: 500;
-	line-height: 1.25rem;
-	font-variant-numeric: tabular-nums;
-	white-space: nowrap;
-}
-
-.fs-admin__badge-dot {
-	width: 0.375rem;
-	height: 0.375rem;
-	border-radius: var(--fs-radius-full);
-	background: currentColor;
-}
-
-.fs-admin__badge--success {
-	background: var(--fs-admin-success-bg);
-	color: var(--fs-admin-success);
-	border-color: var(--fs-admin-success-border);
-}
-
-.fs-admin__badge--warning {
-	background: var(--fs-admin-warning-bg);
-	color: var(--fs-admin-warning);
-	border-color: var(--fs-admin-warning-border);
 }
 
 /* ==========================================================================

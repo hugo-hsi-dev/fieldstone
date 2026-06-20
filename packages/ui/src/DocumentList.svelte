@@ -61,9 +61,9 @@
 				<tr>
 					<th scope="col">Title</th>
 					{#each summaryFields as field (field.name)}
-						<th scope="col" class="fs-admin__th-summary">{getFieldLabel(field)}</th>
+						<th scope="col">{getFieldLabel(field)}</th>
 					{/each}
-					<th scope="col" class="fs-admin__th-updated">Updated</th>
+					<th scope="col">Updated</th>
 					<th scope="col" class="fs-admin__th-actions">
 						<span class="fs-admin__sr-only">Actions</span>
 					</th>
@@ -136,9 +136,6 @@
 	}
 
 	.fs-admin__table thead th {
-		position: sticky;
-		top: var(--fs-header-h);
-		z-index: 1;
 		background: var(--fs-admin-inset);
 		color: var(--fs-admin-muted);
 		font-size: 0.75rem;
@@ -213,17 +210,6 @@
 		white-space: nowrap;
 	}
 
-	/* Row actions stay reachable but recede until the row is hovered/focused. */
-	.fs-admin__cell-actions :global(.fs-admin__button) {
-		opacity: 0.65;
-		transition: opacity var(--fs-dur) var(--fs-ease);
-	}
-
-	.fs-admin__table tbody tr:hover .fs-admin__cell-actions :global(.fs-admin__button),
-	.fs-admin__cell-actions:focus-within :global(.fs-admin__button) {
-		opacity: 1;
-	}
-
 	/* Stacked "card" layout on narrow screens (single DOM, no duplicate links). */
 	@media (max-width: 720px) {
 		.fs-admin__table-wrap {
@@ -286,10 +272,6 @@
 
 		.fs-admin__cell-actions::before {
 			display: none;
-		}
-
-		.fs-admin__cell-actions :global(.fs-admin__button) {
-			opacity: 1;
 		}
 	}
 </style>
