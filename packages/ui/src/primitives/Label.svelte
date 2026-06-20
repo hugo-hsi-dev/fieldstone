@@ -5,21 +5,19 @@
 	let {
 		children,
 		class: className = '',
+		required = false,
 		...rest
 	}: {
 		children?: Snippet;
 		class?: string;
+		required?: boolean;
 		[key: string]: unknown;
 	} = $props();
 </script>
 
-<BitsLabel.Root class={['fs-admin__label', className]} {...rest}>
+<BitsLabel.Root
+	class={['fs-admin__label', required && 'fs-admin__label--required', className]}
+	{...rest}
+>
 	{@render children?.()}
 </BitsLabel.Root>
-
-<style>
-	:global(.fs-admin__label) {
-		font-size: 0.875rem;
-		font-weight: 500;
-	}
-</style>

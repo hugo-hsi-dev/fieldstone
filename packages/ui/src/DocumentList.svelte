@@ -1,38 +1,295 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import type {
 		CollectionDocument,
 		CollectionRuntimeConfig,
 		CollectionSlug
 	} from '@fieldstone/schema';
 
-	import DocumentCard from './DocumentCard.svelte';
-	import { getCollectionLabel } from './labels';
+	import { getCollectionLabel, getFieldLabel, getFieldValue } from './labels';
+	import Button from './primitives/Button.svelte';
+	import Icon from './primitives/Icon.svelte';
+	import {
+		adminDocumentPath,
+		adminEditDocumentPath,
+		adminRouteId,
+		adminRouteSegments
+	} from '@fieldstone/routes';
 
 	let {
 		collection,
-		documents
+		documents,
+		search = ''
 	}: {
 		collection: CollectionRuntimeConfig;
 		documents: CollectionDocument<CollectionSlug>[];
+		search?: string;
 	} = $props();
+
+	const titleField = $derived(collection.fields[0]?.name ?? 'id');
+
+	// Up to two scalar summary columns (skip the title field and anything that
+	// renders as long/structured content — rich text, groups, arrays).
+	const SUMMARY_TYPES = ['text', 'email', 'number', 'select', 'boolean', 'date'];
+	const summaryFields = $derived(
+		collection.fields
+			.slice(1)
+			.filter((field) => SUMMARY_TYPES.includes(field.type))
+			.slice(0, 2)
+	);
+
+	function resolveAdminPath(path: string) {
+		return resolve(adminRouteId, { segments: adminRouteSegments(path) });
+	}
+
+	function formatDate(value: unknown): string {
+		if (!value) return '';
+		const date = value instanceof Date ? value : new Date(String(value));
+		if (Number.isNaN(date.getTime())) return '';
+		return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+	}
+
+	function hasUpdated(document: CollectionDocument<CollectionSlug>): boolean {
+		return 'updatedAt' in document && Boolean((document as { updatedAt?: unknown }).updatedAt);
+	}
 </script>
 
-{#each documents as document (document.id)}
-	<DocumentCard {collection} {document} />
-{:else}
-	<div class="fs-admin__empty">
-		No {getCollectionLabel(collection, 'plural').toLowerCase()} yet.
+{#if documents.length}
+	<div class="fs-admin__panel fs-admin__table-wrap">
+		<table class="fs-admin__table">
+			<thead>
+				<tr>
+					<th scope="col">Title</th>
+					{#each summaryFields as field (field.name)}
+						<th scope="col" class="fs-admin__th-summary">{getFieldLabel(field)}</th>
+					{/each}
+					<th scope="col" class="fs-admin__th-updated">Updated</th>
+					<th scope="col" class="fs-admin__th-actions">
+						<span class="fs-admin__sr-only">Actions</span>
+					</th>
+				</tr>
+			</thead>
+			<tbody>
+				{#each documents as document (document.id)}
+					<tr>
+						<td data-label="Title" class="fs-admin__cell-title">
+							<a
+								class="fs-admin__doc-link"
+								href={resolveAdminPath(adminDocumentPath(collection.slug, document.id))}
+							>
+								{getFieldValue(document, titleField)}
+							</a>
+						</td>
+						{#each summaryFields as field (field.name)}
+							<td data-label={getFieldLabel(field)} class="fs-admin__cell-muted">
+								{getFieldValue(document, field.name)}
+							</td>
+						{/each}
+						<td data-label="Updated" class="fs-admin__cell-muted fs-admin__cell-updated">
+							{hasUpdated(document)
+								? formatDate((document as { updatedAt?: unknown }).updatedAt)
+								: ''}
+						</td>
+						<td class="fs-admin__cell-actions">
+							<Button
+								size="sm"
+								variant="ghost"
+								href={resolveAdminPath(adminEditDocumentPath(collection.slug, document.id))}
+							>
+								<Icon name="edit" />
+								Edit
+							</Button>
+						</td>
+					</tr>
+				{/each}
+			</tbody>
+		</table>
 	</div>
-{/each}
+{:else if search}
+	<div class="fs-admin__panel fs-admin__empty">
+		<span class="fs-admin__empty-icon"><Icon name="search" size={20} /></span>
+		<p class="fs-admin__empty-title">No results for “{search}”</p>
+		<p class="fs-admin__empty-text">Try a different search term.</p>
+	</div>
+{:else}
+	<div class="fs-admin__panel fs-admin__empty">
+		<span class="fs-admin__empty-icon"><Icon name="inbox" size={20} /></span>
+		<p class="fs-admin__empty-title">
+			No {getCollectionLabel(collection, 'plural').toLowerCase()} yet
+		</p>
+		<p class="fs-admin__empty-text">
+			Create your first {getCollectionLabel(collection, 'singular').toLowerCase()} to get started.
+		</p>
+	</div>
+{/if}
 
 <style>
-	.fs-admin__empty {
-		border: 1px dashed var(--fs-admin-border);
-		border-radius: 0.5rem;
-		background: var(--fs-admin-panel);
-		padding: 2rem;
-		text-align: center;
+	.fs-admin__table-wrap {
+		overflow-x: auto;
+		padding: 0;
+	}
+
+	.fs-admin__table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 0.8125rem;
+	}
+
+	.fs-admin__table thead th {
+		position: sticky;
+		top: var(--fs-header-h);
+		z-index: 1;
+		background: var(--fs-admin-inset);
 		color: var(--fs-admin-muted);
-		font-size: 0.875rem;
+		font-size: 0.75rem;
+		font-weight: 600;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		text-align: left;
+		white-space: nowrap;
+		padding: 0 1rem;
+		height: 2.5rem;
+		border-bottom: 1px solid var(--fs-admin-border);
+	}
+
+	.fs-admin__th-actions {
+		width: 1%;
+	}
+
+	.fs-admin__table tbody td {
+		padding: 0 1rem;
+		height: 3rem;
+		border-top: 1px solid var(--fs-admin-border);
+		color: var(--fs-admin-text);
+		vertical-align: middle;
+	}
+
+	.fs-admin__table tbody tr:first-child td {
+		border-top: none;
+	}
+
+	.fs-admin__table tbody tr {
+		transition: background var(--fs-dur-fast) var(--fs-ease);
+	}
+
+	.fs-admin__table tbody tr:hover {
+		background: var(--fs-admin-hover);
+	}
+
+	.fs-admin__cell-muted {
+		color: var(--fs-admin-muted);
+		max-width: 18rem;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.fs-admin__cell-updated {
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+	}
+
+	.fs-admin__doc-link {
+		color: var(--fs-admin-text);
+		font-weight: 600;
+		text-decoration: none;
+		overflow-wrap: anywhere;
+	}
+
+	.fs-admin__doc-link:hover {
+		color: var(--fs-admin-accent);
+		text-decoration: underline;
+		text-underline-offset: 0.2rem;
+	}
+
+	.fs-admin__doc-link:focus-visible {
+		outline: none;
+		border-radius: var(--fs-radius-sm);
+		box-shadow: var(--fs-focus-ring);
+	}
+
+	.fs-admin__cell-actions {
+		text-align: right;
+		white-space: nowrap;
+	}
+
+	/* Row actions stay reachable but recede until the row is hovered/focused. */
+	.fs-admin__cell-actions :global(.fs-admin__button) {
+		opacity: 0.65;
+		transition: opacity var(--fs-dur) var(--fs-ease);
+	}
+
+	.fs-admin__table tbody tr:hover .fs-admin__cell-actions :global(.fs-admin__button),
+	.fs-admin__cell-actions:focus-within :global(.fs-admin__button) {
+		opacity: 1;
+	}
+
+	/* Stacked "card" layout on narrow screens (single DOM, no duplicate links). */
+	@media (max-width: 720px) {
+		.fs-admin__table-wrap {
+			overflow-x: visible;
+		}
+
+		.fs-admin__table thead {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			padding: 0;
+			margin: -1px;
+			overflow: hidden;
+			clip: rect(0, 0, 0, 0);
+		}
+
+		.fs-admin__table tbody tr {
+			display: grid;
+			gap: 0.25rem;
+			padding: 0.875rem 1rem;
+			border-top: 1px solid var(--fs-admin-border);
+		}
+
+		.fs-admin__table tbody tr:first-child {
+			border-top: none;
+		}
+
+		.fs-admin__table tbody td {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 1rem;
+			height: auto;
+			padding: 0.125rem 0;
+			border: none;
+			white-space: normal;
+		}
+
+		.fs-admin__table tbody td::before {
+			content: attr(data-label);
+			color: var(--fs-admin-faint);
+			font-size: 0.6875rem;
+			font-weight: 600;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+		}
+
+		.fs-admin__cell-title {
+			font-size: 1rem;
+		}
+
+		.fs-admin__cell-title::before {
+			display: none;
+		}
+
+		.fs-admin__cell-actions {
+			justify-content: flex-start;
+			margin-top: 0.25rem;
+		}
+
+		.fs-admin__cell-actions::before {
+			display: none;
+		}
+
+		.fs-admin__cell-actions :global(.fs-admin__button) {
+			opacity: 1;
+		}
 	}
 </style>

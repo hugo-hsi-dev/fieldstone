@@ -6,6 +6,7 @@
 	import Label from './primitives/Label.svelte';
 	import NestedFields from './NestedFields.svelte';
 	import Button from './primitives/Button.svelte';
+	import Icon from './primitives/Icon.svelte';
 
 	type Field = CollectionRuntimeConfig['fields'][number];
 
@@ -56,6 +57,12 @@
 	);
 	const placeholder = $derived(field.admin?.placeholder);
 	const readOnly = $derived(field.admin?.readOnly ?? false);
+	// Show a required marker for scalar fields only (booleans/group/array don't
+	// take one). The marker is CSS-only (::after) so it never alters the label's
+	// accessible name used by tests.
+	const showRequired = $derived(
+		Boolean(field.required) && !['boolean', 'group', 'array'].includes(field.type)
+	);
 
 	// Drive boolean submission through a reactive hidden input (string "true"/"false")
 	// and keep the checkbox as pure UI. This avoids SvelteKit's checkbox value tracking,
@@ -157,7 +164,7 @@
 </script>
 
 <div class="fs-admin__field">
-	<Label for={id}>{getFieldLabel(field)}</Label>
+	<Label for={id} required={showRequired}>{getFieldLabel(field)}</Label>
 	{#if field.admin?.description}
 		<p class="fs-admin__field-description">{field.admin.description}</p>
 	{/if}
@@ -167,20 +174,22 @@
 			name={`data.${field.identifier}`}
 			value={booleanState ? 'true' : 'false'}
 		/>
-		<input
-			class="fs-admin__checkbox"
-			type="checkbox"
-			bind:checked={booleanState}
-			disabled={readOnly}
-			{id}
-		/>
+		<div class="fs-admin__checkbox-row">
+			<input
+				class="fs-admin__checkbox"
+				type="checkbox"
+				bind:checked={booleanState}
+				disabled={readOnly}
+				{id}
+			/>
+		</div>
 	{:else if field.type === 'select'}
 		{#if readOnly}
 			<!-- A disabled control is omitted from submission, so carry its value explicitly. -->
 			<input type="hidden" name={`data.${field.identifier}`} value={stringValue} />
 		{/if}
 		<select
-			class="fs-admin__input"
+			class="fs-admin__select"
 			{...formField.as('select', stringValue)}
 			{id}
 			disabled={readOnly}
@@ -217,7 +226,7 @@
 			<input type="hidden" name={`data.${field.identifier}`} value={stringValue} />
 		{/if}
 		<select
-			class="fs-admin__input"
+			class="fs-admin__select"
 			{...formField.as('select', stringValue)}
 			{id}
 			disabled={readOnly}
@@ -296,6 +305,19 @@
 			<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -- keyed by arrayKeys, bound by index -->
 			{#each arrayState as entry, index (arrayKeys[index])}
 				<div class="fs-admin__array-row">
+					<div class="fs-admin__array-row-header">
+						<span class="fs-admin__array-index">Item {index + 1}</span>
+						{#if !readOnly}
+							<Button
+								type="button"
+								variant="danger-ghost"
+								size="sm"
+								onclick={() => removeArrayRow(index)}
+							>
+								Remove
+							</Button>
+						{/if}
+					</div>
 					<NestedFields
 						fields={field.fields}
 						bind:value={arrayState[index]}
@@ -303,13 +325,13 @@
 						{relationOptions}
 						{readOnly}
 					/>
-					{#if !readOnly}
-						<Button type="button" onclick={() => removeArrayRow(index)}>Remove</Button>
-					{/if}
 				</div>
 			{/each}
 			{#if !readOnly}
-				<Button type="button" onclick={addArrayRow}>Add item</Button>
+				<button type="button" class="fs-admin__array-add" onclick={addArrayRow}>
+					<Icon name="plus" />
+					Add item
+				</button>
 			{/if}
 		</fieldset>
 		<input type="hidden" name={`data.${field.identifier}`} value={JSON.stringify(arrayState)} />
@@ -358,138 +380,9 @@
 		/>
 	{/if}
 	{#each formField.issues() ?? [] as issue, index (`${issue.message}-${index}`)}
-		<p class="fs-admin__field-error">{issue.message}</p>
+		<p class="fs-admin__field-error">
+			<Icon name="alert" size={13} />
+			<span>{issue.message}</span>
+		</p>
 	{/each}
 </div>
-
-<style>
-	.fs-admin__field {
-		display: grid;
-		gap: 0.5rem;
-	}
-
-	.fs-admin__input,
-	.fs-admin__textarea {
-		width: 100%;
-		box-sizing: border-box;
-		border: 1px solid var(--fs-admin-border-strong);
-		border-radius: 0.375rem;
-		padding: 0.5rem 0.75rem;
-		font: inherit;
-		font-size: 0.875rem;
-		color: var(--fs-admin-text);
-		background: var(--fs-admin-panel);
-	}
-
-	.fs-admin__input:focus,
-	.fs-admin__textarea:focus {
-		border-color: var(--fs-admin-primary);
-		outline: none;
-	}
-
-	.fs-admin__textarea {
-		min-height: 8rem;
-		resize: vertical;
-	}
-
-	.fs-admin__textarea--compact {
-		min-height: 7rem;
-	}
-
-	.fs-admin__checkbox {
-		width: 1rem;
-		height: 1rem;
-		accent-color: var(--fs-admin-primary);
-	}
-
-	.fs-admin__nested {
-		display: grid;
-		gap: 0.75rem;
-		border: 1px solid var(--fs-admin-border);
-		border-radius: 0.5rem;
-		padding: 0.75rem;
-		margin: 0;
-	}
-
-	.fs-admin__nested-legend {
-		padding: 0 0.375rem;
-		font-size: 0.8125rem;
-		font-weight: 600;
-		color: var(--fs-admin-muted);
-	}
-
-	.fs-admin__array-row {
-		display: grid;
-		gap: 0.5rem;
-		border-top: 1px solid var(--fs-admin-border);
-		padding-top: 0.75rem;
-	}
-
-	.fs-admin__richtext {
-		display: grid;
-		gap: 0.25rem;
-	}
-
-	.fs-admin__richtext-toolbar {
-		display: flex;
-		gap: 0.25rem;
-	}
-
-	.fs-admin__richtext-btn {
-		min-width: 2rem;
-		border: 1px solid var(--fs-admin-border-strong);
-		border-radius: 0.25rem;
-		background: var(--fs-admin-panel);
-		color: var(--fs-admin-text);
-		padding: 0.25rem 0.5rem;
-		font-size: 0.875rem;
-		cursor: pointer;
-	}
-
-	.fs-admin__richtext-editor {
-		min-height: 6rem;
-		box-sizing: border-box;
-		border: 1px solid var(--fs-admin-border-strong);
-		border-radius: 0.375rem;
-		padding: 0.5rem 0.75rem;
-		font: inherit;
-		font-size: 0.875rem;
-		color: var(--fs-admin-text);
-		background: var(--fs-admin-panel);
-	}
-
-	.fs-admin__richtext-editor:focus {
-		border-color: var(--fs-admin-primary);
-		outline: none;
-	}
-
-	.fs-admin__select-multiple {
-		width: 100%;
-		box-sizing: border-box;
-		min-height: 6rem;
-		border: 1px solid var(--fs-admin-border-strong);
-		border-radius: 0.375rem;
-		padding: 0.25rem;
-		font: inherit;
-		font-size: 0.875rem;
-		color: var(--fs-admin-text);
-		background: var(--fs-admin-panel);
-	}
-
-	.fs-admin__select-multiple--readonly {
-		pointer-events: none;
-		opacity: 0.7;
-	}
-
-	.fs-admin__field-description {
-		margin: 0;
-		color: var(--fs-admin-muted);
-		font-size: 0.8125rem;
-	}
-
-	.fs-admin__field-error {
-		margin: 0;
-		color: var(--fs-admin-danger);
-		font-size: 0.8125rem;
-	}
-</style>

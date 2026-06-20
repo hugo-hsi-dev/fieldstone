@@ -16,15 +16,25 @@ function singularize(slug: string) {
 	return slug.endsWith('s') ? slug.slice(0, -1) : slug;
 }
 
+// Slug-only label helpers, so the shell can render the page title and
+// breadcrumb from the route alone — before the collection config loads.
+export function collectionLabelFromSlug(slug: string, count: 'singular' | 'plural') {
+	return titleCase(count === 'singular' ? singularize(slug) : slug);
+}
+
+export function globalLabelFromSlug(slug: string) {
+	return titleCase(slug);
+}
+
 export function getCollectionLabel(
 	collection: CollectionRuntimeConfig,
 	count: 'singular' | 'plural'
 ) {
-	return titleCase(count === 'singular' ? singularize(collection.slug) : collection.slug);
+	return collectionLabelFromSlug(collection.slug, count);
 }
 
 export function getGlobalLabel(global: GlobalRuntimeConfig) {
-	return titleCase(global.slug);
+	return globalLabelFromSlug(global.slug);
 }
 
 export function getFieldLabel(field: { name: string; label?: string }) {

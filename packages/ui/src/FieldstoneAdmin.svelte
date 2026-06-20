@@ -7,7 +7,16 @@
 	import DocumentEditForm from './DocumentEditForm.svelte';
 	import DocumentList from './DocumentList.svelte';
 	import GlobalEditForm from './GlobalEditForm.svelte';
-	import { getCollectionLabel, getFieldLabel, getFieldValue, getGlobalLabel } from './labels';
+	import ThemeToggle from './ThemeToggle.svelte';
+	import Icon from './primitives/Icon.svelte';
+	import {
+		collectionLabelFromSlug,
+		getCollectionLabel,
+		getFieldLabel,
+		getFieldValue,
+		getGlobalLabel,
+		globalLabelFromSlug
+	} from './labels';
 	import Button from './primitives/Button.svelte';
 	import type { CollectionRuntimeConfig, FieldDefinition } from '@fieldstone/schema';
 	import type { FieldstoneAdminRemotes } from '@fieldstone/remotes';
@@ -53,6 +62,18 @@
 		pageIndex = 0;
 	});
 
+	// Mobile navigation drawer.
+	let drawerOpen = $state(false);
+	$effect(() => {
+		// Close the drawer whenever the route changes.
+		void routeKey;
+		drawerOpen = false;
+	});
+
+	function handleKeydown(event: KeyboardEvent) {
+		if (event.key === 'Escape') drawerOpen = false;
+	}
+
 	function applySearch(event: SubmitEvent) {
 		event.preventDefault();
 		appliedSearch = searchInput.trim();
@@ -90,6 +111,9 @@
 		return 'global' in route ? route.global : null;
 	}
 
+	const selectedCollectionSlug = $derived(routeCollection(route));
+	const selectedGlobalSlug = $derived(routeGlobal(route));
+
 	function getBoundaryErrorMessage(error: unknown) {
 		if (error instanceof Error) return error.message;
 		if (error && typeof error === 'object' && 'message' in error)
@@ -100,6 +124,8 @@
 	function resolveAdminPath(path: string) {
 		return resolve(adminRouteId, { segments: adminRouteSegments(path) });
 	}
+
+	const indexHref = $derived(resolveAdminPath(adminIndexPath()));
 
 	function collectionHref(collection: string) {
 		return resolveAdminPath(adminCollectionPath(collection));
@@ -120,450 +146,862 @@
 	function editDocumentHref(collection: string, id: string) {
 		return resolveAdminPath(adminEditDocumentPath(collection, id));
 	}
+
+	// Breadcrumb trail derived from the route alone (slug-based labels), so the
+	// header renders immediately without waiting on data.
+	type Crumb = { label: string; href?: string };
+	const crumbs = $derived.by<Crumb[]>(() => {
+		switch (route.type) {
+			case 'collectionList':
+				return [{ label: collectionLabelFromSlug(route.collection, 'plural') }];
+			case 'collectionNew':
+				return [
+					{
+						label: collectionLabelFromSlug(route.collection, 'plural'),
+						href: collectionHref(route.collection)
+					},
+					{ label: 'New' }
+				];
+			case 'documentDetail':
+				return [
+					{
+						label: collectionLabelFromSlug(route.collection, 'plural'),
+						href: collectionHref(route.collection)
+					},
+					{ label: collectionLabelFromSlug(route.collection, 'singular') }
+				];
+			case 'documentEdit':
+				return [
+					{
+						label: collectionLabelFromSlug(route.collection, 'plural'),
+						href: collectionHref(route.collection)
+					},
+					{
+						label: collectionLabelFromSlug(route.collection, 'singular'),
+						href: documentHref(route.collection, route.id)
+					},
+					{ label: 'Edit' }
+				];
+			case 'globalEdit':
+				return [{ label: globalLabelFromSlug(route.global) }];
+			case 'notFound':
+				return [{ label: 'Not found' }];
+			default:
+				return [];
+		}
+	});
 </script>
 
-{#key routeKey}
-	<main class="fs-admin" data-sveltekit-preload-data="off">
-		<svelte:boundary>
-			{@const collections = await remotes.listCollections()}
-			{@const globals = await remotes.listGlobals()}
-			{@const selectedCollectionSlug = routeCollection(route)}
-			{@const selectedGlobalSlug = routeGlobal(route)}
-			{@const selectedCollection =
-				collections.find((collection) => collection.slug === selectedCollectionSlug) ?? null}
-			{@const selectedGlobal = globals.find((global) => global.slug === selectedGlobalSlug) ?? null}
+<svelte:window onkeydown={handleKeydown} />
 
-			{#if route.type === 'index'}
-				<section class="fs-admin__index">
-					<div>
-						<p class="fs-admin__eyebrow">CMS</p>
-						<h1 class="fs-admin__title">CMS</h1>
-					</div>
+{#snippet navSkeleton()}
+	<div class="fs-admin__nav-skeleton" aria-hidden="true">
+		<div
+			class="fs-admin__skeleton"
+			style="height:0.75rem;width:5rem;margin:0 0 0.5rem 0.5rem"
+		></div>
+		{#each Array.from({ length: 5 }, (_, i) => i) as index (index)}
+			<div class="fs-admin__skeleton" style="height:2rem;border-radius:var(--fs-radius-sm)"></div>
+		{/each}
+	</div>
+{/snippet}
 
-					{#if collections.length || globals.length}
-						<CollectionNav
-							{collections}
-							{collectionHref}
-							{globals}
-							{globalHref}
-							selectedCollectionSlug={null}
-							selectedGlobalSlug={null}
-						/>
-					{:else}
-						<p class="fs-admin__muted">No CMS content found.</p>
-					{/if}
-				</section>
-			{:else if route.type === 'notFound'}
-				<section class="fs-admin__index">
-					<h1 class="fs-admin__title">Admin route not found</h1>
-					<Button href={resolveAdminPath(adminIndexPath())}>Back to admin</Button>
-				</section>
-			{:else}
-				<div class="fs-admin__grid">
-					<section class="fs-admin__sidebar">
-						<div>
-							<p class="fs-admin__eyebrow">CMS</p>
-							<h1 class="fs-admin__title">
-								{selectedCollection
-									? getCollectionLabel(selectedCollection, 'plural')
-									: selectedGlobal
-										? getGlobalLabel(selectedGlobal)
-										: (selectedCollectionSlug ?? selectedGlobalSlug)}
-							</h1>
-						</div>
+{#snippet dashboardSkeleton()}
+	<div class="fs-admin__dashboard" aria-hidden="true">
+		{#each Array.from({ length: 4 }, (_, i) => i) as index (index)}
+			<div class="fs-admin__skeleton" style="height:6rem;border-radius:var(--fs-radius-md)"></div>
+		{/each}
+	</div>
+{/snippet}
 
-						<CollectionNav
-							{collections}
-							{collectionHref}
-							{globals}
-							{globalHref}
-							{selectedCollectionSlug}
-							{selectedGlobalSlug}
-						/>
+{#snippet listSkeleton()}
+	<div aria-hidden="true">
+		<div class="fs-admin__skeleton" style="height:2.25rem;max-width:24rem;margin-bottom:1rem"></div>
+		<div class="fs-admin__skeleton" style="height:18rem;border-radius:var(--fs-radius-md)"></div>
+	</div>
+{/snippet}
 
-						{#if selectedCollectionSlug}
-							<Button variant="primary" href={newDocumentHref(selectedCollectionSlug)}>
-								New {selectedCollection
-									? getCollectionLabel(selectedCollection, 'singular').toLowerCase()
-									: 'document'}
-							</Button>
+{#snippet tableSkeleton()}
+	<div
+		class="fs-admin__skeleton"
+		style="height:18rem;border-radius:var(--fs-radius-md)"
+		aria-hidden="true"
+	></div>
+{/snippet}
+
+{#snippet formSkeleton()}
+	<div class="fs-admin__panel fs-admin__form" aria-hidden="true">
+		{#each Array.from({ length: 5 }, (_, i) => i) as index (index)}
+			<div style="display:grid;gap:0.5rem">
+				<div class="fs-admin__skeleton" style="height:0.875rem;width:6rem"></div>
+				<div class="fs-admin__skeleton" style="height:2.25rem"></div>
+			</div>
+		{/each}
+	</div>
+{/snippet}
+
+{#snippet detailSkeleton()}
+	<div aria-hidden="true">
+		<div class="fs-admin__skeleton" style="height:1.875rem;width:14rem;margin-bottom:0.75rem"></div>
+		<div class="fs-admin__skeleton" style="height:1rem;width:11rem;margin-bottom:1.5rem"></div>
+		<div class="fs-admin__skeleton" style="height:16rem;border-radius:var(--fs-radius-md)"></div>
+	</div>
+{/snippet}
+
+{#snippet errorBox(error: unknown, reset: () => void)}
+	<div class="fs-admin__error" role="alert">
+		<p class="fs-admin__error-title">
+			<Icon name="alert" />
+			<span>Something went wrong</span>
+		</p>
+		<p>{getBoundaryErrorMessage(error)}</p>
+		<div>
+			<Button type="button" size="sm" onclick={reset}>Try again</Button>
+		</div>
+	</div>
+{/snippet}
+
+<div class="fs-admin" data-sveltekit-preload-data="off" class:fs-admin--drawer-open={drawerOpen}>
+	<div class="fs-admin__shell">
+		<header class="fs-admin__header">
+			<button
+				type="button"
+				class="fs-admin__hamburger fs-admin__button fs-admin__button--ghost fs-admin__button--icon"
+				aria-label="Open navigation"
+				aria-expanded={drawerOpen}
+				aria-controls="fs-admin-nav"
+				onclick={() => (drawerOpen = !drawerOpen)}
+			>
+				<Icon name="menu" size={18} />
+			</button>
+
+			<a class="fs-admin__brand" href={indexHref}>
+				<span class="fs-admin__brandmark" aria-hidden="true">F</span>
+				<span class="fs-admin__brand-name">Fieldstone</span>
+			</a>
+
+			{#if crumbs.length}
+				<nav class="fs-admin__breadcrumb" aria-label="Breadcrumb">
+					{#each crumbs as crumb, index (index)}
+						<span class="fs-admin__crumb-sep" aria-hidden="true">/</span>
+						{#if crumb.href}
+							<a class="fs-admin__crumb" href={crumb.href}>{crumb.label}</a>
+						{:else}
+							<span class="fs-admin__crumb fs-admin__crumb--current" aria-current="page"
+								>{crumb.label}</span
+							>
 						{/if}
-					</section>
-
-					<section class="fs-admin__documents">
-						{#if route.type === 'collectionList'}
-							<svelte:boundary>
-								{@const collection = await remotes.getCollection({ collection: route.collection })}
-
-								<div class="fs-admin__section-header">
-									<h2 class="fs-admin__section-title">
-										{getCollectionLabel(collection, 'plural')}
-									</h2>
-									<Button href={newDocumentHref(collection.slug)}>New</Button>
-								</div>
-
-								<form class="fs-admin__search" onsubmit={applySearch}>
-									<input
-										class="fs-admin__input fs-admin__search-input"
-										type="search"
-										placeholder="Search {getCollectionLabel(collection, 'plural').toLowerCase()}..."
-										aria-label="Search"
-										bind:value={searchInput}
-									/>
-									<Button type="submit">Search</Button>
-								</form>
-
-								<svelte:boundary>
-									{@const result = await remotes.listDocuments({
-										collection: collection.slug,
-										limit: PAGE_SIZE,
-										offset: pageIndex * PAGE_SIZE,
-										search: appliedSearch || undefined
-									})}
-									<DocumentList {collection} documents={result.docs} />
-
-									{#if result.total > PAGE_SIZE}
-										<div class="fs-admin__pagination">
-											<Button
-												type="button"
-												disabled={pageIndex === 0}
-												onclick={() => (pageIndex = Math.max(0, pageIndex - 1))}>Previous</Button
-											>
-											<span class="fs-admin__muted">
-												Page {pageIndex + 1} of {Math.ceil(result.total / PAGE_SIZE)} ({result.total})
-											</span>
-											<Button
-												type="button"
-												disabled={(pageIndex + 1) * PAGE_SIZE >= result.total}
-												onclick={() => (pageIndex = pageIndex + 1)}>Next</Button
-											>
-										</div>
-									{/if}
-
-									{#snippet pending()}
-										<p class="fs-admin__muted">Loading documents...</p>
-									{/snippet}
-
-									{#snippet failed(error, reset)}
-										<div class="fs-admin__error">
-											<p>{getBoundaryErrorMessage(error)}</p>
-											<Button type="button" onclick={reset}>Retry</Button>
-										</div>
-									{/snippet}
-								</svelte:boundary>
-
-								{#snippet pending()}
-									<p class="fs-admin__muted">Loading collection...</p>
-								{/snippet}
-
-								{#snippet failed(error, reset)}
-									<div class="fs-admin__error">
-										<p>{getBoundaryErrorMessage(error)}</p>
-										<Button type="button" onclick={reset}>Retry</Button>
-									</div>
-								{/snippet}
-							</svelte:boundary>
-						{:else if route.type === 'collectionNew'}
-							<svelte:boundary>
-								{@const collection = await remotes.getCollection({ collection: route.collection })}
-
-								<div class="fs-admin__section-header">
-									<h2 class="fs-admin__section-title">
-										New {getCollectionLabel(collection, 'singular').toLowerCase()}
-									</h2>
-									<Button href={collectionHref(collection.slug)}>Back to list</Button>
-								</div>
-
-								{@const newRelationOptions = await loadRelationOptions(collection)}
-								<CreateDocumentForm
-									{collection}
-									form={remotes.createDocument.for(collection.slug)}
-									relationOptions={newRelationOptions}
-								/>
-
-								{#snippet pending()}
-									<p class="fs-admin__muted">Loading collection...</p>
-								{/snippet}
-
-								{#snippet failed(error, reset)}
-									<div class="fs-admin__error">
-										<p>{getBoundaryErrorMessage(error)}</p>
-										<Button type="button" onclick={reset}>Retry</Button>
-									</div>
-								{/snippet}
-							</svelte:boundary>
-						{:else if route.type === 'documentDetail'}
-							<svelte:boundary>
-								{@const collection = await remotes.getCollection({ collection: route.collection })}
-
-								<svelte:boundary>
-									{@const document = await remotes.getDocument({
-										collection: collection.slug,
-										id: route.id
-									})}
-									{@const deleteForm = remotes.deleteDocument.for(document.id)}
-
-									<article class="fs-admin__panel fs-admin__detail">
-										<div class="fs-admin__section-header">
-											<h2 class="fs-admin__section-title">
-												{getFieldValue(document, collection.fields[0]?.name ?? 'id')}
-											</h2>
-											<div class="fs-admin__actions">
-												<Button href={editDocumentHref(collection.slug, document.id)}>Edit</Button>
-												<Button href={collectionHref(collection.slug)}>Back to list</Button>
-											</div>
-										</div>
-
-										<dl class="fs-admin__fields">
-											{#each collection.fields as field (field.name)}
-												<div class="fs-admin__field-row">
-													<dt>{getFieldLabel(field)}</dt>
-													<dd>{getFieldValue(document, field.name) || 'Empty'}</dd>
-												</div>
-											{/each}
-										</dl>
-
-										<form class="fs-admin__delete-form" {...deleteForm}>
-											<input {...deleteForm.fields.collection.as('hidden', collection.slug)} />
-											<input {...deleteForm.fields.id.as('hidden', document.id)} />
-
-											{#each deleteForm.fields.allIssues() ?? [] as issue, index (`${issue.message}-${index}`)}
-												<p class="fs-admin__error">{issue.message}</p>
-											{/each}
-
-											<Button variant="danger" disabled={Boolean(deleteForm.pending)}>
-												Delete {getCollectionLabel(collection, 'singular').toLowerCase()}
-											</Button>
-										</form>
-									</article>
-
-									{#snippet pending()}
-										<p class="fs-admin__muted">Loading document...</p>
-									{/snippet}
-
-									{#snippet failed(error, reset)}
-										<div class="fs-admin__error">
-											<p>{getBoundaryErrorMessage(error)}</p>
-											<Button type="button" onclick={reset}>Retry</Button>
-										</div>
-									{/snippet}
-								</svelte:boundary>
-
-								{#snippet pending()}
-									<p class="fs-admin__muted">Loading collection...</p>
-								{/snippet}
-
-								{#snippet failed(error, reset)}
-									<div class="fs-admin__error">
-										<p>{getBoundaryErrorMessage(error)}</p>
-										<Button type="button" onclick={reset}>Retry</Button>
-									</div>
-								{/snippet}
-							</svelte:boundary>
-						{:else if route.type === 'globalEdit'}
-							<svelte:boundary>
-								{@const global = await remotes.getGlobalConfig({ global: route.global })}
-								{@const document = await remotes.getGlobal({ global: global.slug })}
-								{@const updateForm = remotes.updateGlobal.for(global.slug)}
-								{@const globalRelationOptions = await loadRelationOptions(global)}
-
-								<div class="fs-admin__section-header">
-									<h2 class="fs-admin__section-title">{getGlobalLabel(global)}</h2>
-								</div>
-
-								<GlobalEditForm
-									globalConfig={global}
-									{document}
-									form={updateForm}
-									relationOptions={globalRelationOptions}
-								/>
-
-								{#snippet pending()}
-									<p class="fs-admin__muted">Loading global...</p>
-								{/snippet}
-
-								{#snippet failed(error, reset)}
-									<div class="fs-admin__error">
-										<p>{getBoundaryErrorMessage(error)}</p>
-										<Button type="button" onclick={reset}>Retry</Button>
-									</div>
-								{/snippet}
-							</svelte:boundary>
-						{:else if route.type === 'documentEdit'}
-							<svelte:boundary>
-								{@const collection = await remotes.getCollection({ collection: route.collection })}
-
-								<svelte:boundary>
-									{@const document = await remotes.getDocument({
-										collection: collection.slug,
-										id: route.id
-									})}
-									{@const updateForm = remotes.updateDocument.for(document.id)}
-
-									<div class="fs-admin__section-header">
-										<h2 class="fs-admin__section-title">
-											Edit {getCollectionLabel(collection, 'singular').toLowerCase()}
-										</h2>
-										<Button href={documentHref(collection.slug, document.id)}>Back to detail</Button
-										>
-									</div>
-
-									{@const editRelationOptions = await loadRelationOptions(collection)}
-									<DocumentEditForm
-										{collection}
-										{document}
-										form={updateForm}
-										relationOptions={editRelationOptions}
-									/>
-
-									{#snippet pending()}
-										<p class="fs-admin__muted">Loading document...</p>
-									{/snippet}
-
-									{#snippet failed(error, reset)}
-										<div class="fs-admin__error">
-											<p>{getBoundaryErrorMessage(error)}</p>
-											<Button type="button" onclick={reset}>Retry</Button>
-										</div>
-									{/snippet}
-								</svelte:boundary>
-
-								{#snippet pending()}
-									<p class="fs-admin__muted">Loading collection...</p>
-								{/snippet}
-
-								{#snippet failed(error, reset)}
-									<div class="fs-admin__error">
-										<p>{getBoundaryErrorMessage(error)}</p>
-										<Button type="button" onclick={reset}>Retry</Button>
-									</div>
-								{/snippet}
-							</svelte:boundary>
-						{/if}
-					</section>
-				</div>
+					{/each}
+				</nav>
 			{/if}
 
-			{#snippet pending()}
-				<p class="fs-admin__muted">Loading collections...</p>
-			{/snippet}
+			<div class="fs-admin__header-spacer"></div>
+			<ThemeToggle />
+		</header>
 
-			{#snippet failed(error, reset)}
-				<div class="fs-admin__error">
-					<p>{getBoundaryErrorMessage(error)}</p>
-					<Button type="button" onclick={reset}>Retry</Button>
-				</div>
-			{/snippet}
-		</svelte:boundary>
-	</main>
-{/key}
+		<aside class="fs-admin__sidebar" id="fs-admin-nav">
+			<svelte:boundary>
+				{@const collections = await remotes.listCollections()}
+				{@const globals = await remotes.listGlobals()}
+				<CollectionNav
+					{collections}
+					{collectionHref}
+					{globals}
+					{globalHref}
+					{selectedCollectionSlug}
+					{selectedGlobalSlug}
+				/>
+
+				{#snippet pending()}
+					{@render navSkeleton()}
+				{/snippet}
+
+				{#snippet failed(error, reset)}
+					{@render errorBox(error, reset)}
+				{/snippet}
+			</svelte:boundary>
+		</aside>
+
+		<button
+			type="button"
+			class="fs-admin__scrim"
+			tabindex="-1"
+			aria-label="Close navigation"
+			onclick={() => (drawerOpen = false)}
+		></button>
+
+		<main class="fs-admin__content">
+			{#key routeKey}
+				{#if route.type === 'index'}
+					<div class="fs-admin__page-header">
+						<div class="fs-admin__page-heading">
+							<h1 class="fs-admin__title">CMS</h1>
+							<p class="fs-admin__subtitle">Manage your content collections and globals.</p>
+						</div>
+					</div>
+
+					<svelte:boundary>
+						{@const collections = await remotes.listCollections()}
+						{@const globals = await remotes.listGlobals()}
+
+						{#if collections.length || globals.length}
+							<div class="fs-admin__dashboard">
+								{#each collections as collection (collection.slug)}
+									<a class="fs-admin__card" href={collectionHref(collection.slug)}>
+										<span class="fs-admin__card-icon"><Icon name="collection" size={18} /></span>
+										<span class="fs-admin__card-body">
+											<span class="fs-admin__card-title"
+												>{getCollectionLabel(collection, 'plural')}</span
+											>
+											<span class="fs-admin__card-meta">
+												{collection.fields.length}
+												{collection.fields.length === 1 ? 'field' : 'fields'}
+											</span>
+										</span>
+										<span class="fs-admin__card-arrow" aria-hidden="true"
+											><Icon name="chevron-right" /></span
+										>
+									</a>
+								{/each}
+								{#each globals as global (global.slug)}
+									<a class="fs-admin__card" href={globalHref(global.slug)}>
+										<span class="fs-admin__card-icon"><Icon name="globe" size={18} /></span>
+										<span class="fs-admin__card-body">
+											<span class="fs-admin__card-title">{getGlobalLabel(global)}</span>
+											<span class="fs-admin__card-meta">Single document</span>
+										</span>
+										<span class="fs-admin__card-arrow" aria-hidden="true"
+											><Icon name="chevron-right" /></span
+										>
+									</a>
+								{/each}
+							</div>
+						{:else}
+							<div class="fs-admin__empty">
+								<span class="fs-admin__empty-icon"><Icon name="inbox" size={20} /></span>
+								<p class="fs-admin__empty-title">No content yet</p>
+								<p class="fs-admin__empty-text">No CMS collections or globals were found.</p>
+							</div>
+						{/if}
+
+						{#snippet pending()}
+							{@render dashboardSkeleton()}
+						{/snippet}
+
+						{#snippet failed(error, reset)}
+							{@render errorBox(error, reset)}
+						{/snippet}
+					</svelte:boundary>
+				{:else if route.type === 'collectionList'}
+					<div class="fs-admin__page-header">
+						<div class="fs-admin__page-heading">
+							<h1 class="fs-admin__title">{collectionLabelFromSlug(route.collection, 'plural')}</h1>
+						</div>
+						<Button variant="primary" href={newDocumentHref(route.collection)}>
+							<Icon name="plus" />
+							New {collectionLabelFromSlug(route.collection, 'singular').toLowerCase()}
+						</Button>
+					</div>
+
+					<svelte:boundary>
+						{@const collection = await remotes.getCollection({ collection: route.collection })}
+
+						<form class="fs-admin__search" onsubmit={applySearch}>
+							<span class="fs-admin__search-icon" aria-hidden="true"><Icon name="search" /></span>
+							<input
+								class="fs-admin__input fs-admin__search-input"
+								type="search"
+								placeholder="Search {getCollectionLabel(collection, 'plural').toLowerCase()}..."
+								aria-label="Search"
+								bind:value={searchInput}
+							/>
+							<Button type="submit">Search</Button>
+						</form>
+
+						<svelte:boundary>
+							{@const result = await remotes.listDocuments({
+								collection: collection.slug,
+								limit: PAGE_SIZE,
+								offset: pageIndex * PAGE_SIZE,
+								search: appliedSearch || undefined
+							})}
+
+							{#if result.total > 0}
+								<p class="fs-admin__result-count">
+									{result.total}
+									{result.total === 1
+										? getCollectionLabel(collection, 'singular').toLowerCase()
+										: getCollectionLabel(collection, 'plural').toLowerCase()}
+								</p>
+							{/if}
+
+							<DocumentList {collection} documents={result.docs} search={appliedSearch} />
+
+							{#if result.total > PAGE_SIZE}
+								<div class="fs-admin__pagination">
+									<Button
+										variant="ghost"
+										type="button"
+										disabled={pageIndex === 0}
+										onclick={() => (pageIndex = Math.max(0, pageIndex - 1))}
+									>
+										Previous
+									</Button>
+									<span class="fs-admin__muted">
+										Page {pageIndex + 1} of {Math.ceil(result.total / PAGE_SIZE)} ({result.total})
+									</span>
+									<Button
+										variant="ghost"
+										type="button"
+										disabled={(pageIndex + 1) * PAGE_SIZE >= result.total}
+										onclick={() => (pageIndex = pageIndex + 1)}
+									>
+										Next
+									</Button>
+								</div>
+							{/if}
+
+							{#snippet pending()}
+								{@render tableSkeleton()}
+							{/snippet}
+
+							{#snippet failed(error, reset)}
+								{@render errorBox(error, reset)}
+							{/snippet}
+						</svelte:boundary>
+
+						{#snippet pending()}
+							{@render listSkeleton()}
+						{/snippet}
+
+						{#snippet failed(error, reset)}
+							{@render errorBox(error, reset)}
+						{/snippet}
+					</svelte:boundary>
+				{:else if route.type === 'collectionNew'}
+					<div class="fs-admin__page-header">
+						<div class="fs-admin__page-heading">
+							<h1 class="fs-admin__title">
+								New {collectionLabelFromSlug(route.collection, 'singular').toLowerCase()}
+							</h1>
+						</div>
+						<Button variant="ghost" href={collectionHref(route.collection)}>
+							<Icon name="arrow-left" />
+							Back to list
+						</Button>
+					</div>
+
+					<svelte:boundary>
+						{@const collection = await remotes.getCollection({ collection: route.collection })}
+						{@const newRelationOptions = await loadRelationOptions(collection)}
+						<CreateDocumentForm
+							{collection}
+							form={remotes.createDocument.for(collection.slug)}
+							relationOptions={newRelationOptions}
+						/>
+
+						{#snippet pending()}
+							{@render formSkeleton()}
+						{/snippet}
+
+						{#snippet failed(error, reset)}
+							{@render errorBox(error, reset)}
+						{/snippet}
+					</svelte:boundary>
+				{:else if route.type === 'documentDetail'}
+					<svelte:boundary>
+						{@const collection = await remotes.getCollection({ collection: route.collection })}
+
+						<svelte:boundary>
+							{@const document = await remotes.getDocument({
+								collection: collection.slug,
+								id: route.id
+							})}
+							{@const deleteForm = remotes.deleteDocument.for(document.id)}
+							{@const titleField = collection.fields[0]?.name ?? 'id'}
+
+							<div class="fs-admin__page-header">
+								<div class="fs-admin__page-heading">
+									<h1 class="fs-admin__title">
+										{getFieldValue(document, titleField) ||
+											collectionLabelFromSlug(route.collection, 'singular')}
+									</h1>
+									<p class="fs-admin__detail-meta">
+										<span class="fs-admin__mono">{document.id}</span>
+									</p>
+								</div>
+								<div class="fs-admin__actions">
+									<Button variant="ghost" href={collectionHref(collection.slug)}>
+										<Icon name="arrow-left" />
+										Back to list
+									</Button>
+									<Button variant="primary" href={editDocumentHref(collection.slug, document.id)}>
+										<Icon name="edit" />
+										Edit
+									</Button>
+									<form class="fs-admin__delete-form" {...deleteForm}>
+										<input {...deleteForm.fields.collection.as('hidden', collection.slug)} />
+										<input {...deleteForm.fields.id.as('hidden', document.id)} />
+										<Button variant="danger-ghost" disabled={Boolean(deleteForm.pending)}>
+											Delete {getCollectionLabel(collection, 'singular').toLowerCase()}
+										</Button>
+									</form>
+								</div>
+							</div>
+
+							{#each deleteForm.fields.allIssues() ?? [] as issue, index (`${issue.message}-${index}`)}
+								<p class="fs-admin__error">{issue.message}</p>
+							{/each}
+
+							{#if collection.fields.length}
+								<dl class="fs-admin__panel fs-admin__fields">
+									{#each collection.fields as field (field.name)}
+										<div class="fs-admin__field-row">
+											<dt>{getFieldLabel(field)}</dt>
+											<dd>
+												{#if getFieldValue(document, field.name)}
+													{getFieldValue(document, field.name)}
+												{:else}
+													<span class="fs-admin__field-empty">Empty</span>
+												{/if}
+											</dd>
+										</div>
+									{/each}
+								</dl>
+							{:else}
+								<div class="fs-admin__panel fs-admin__empty">
+									<p class="fs-admin__empty-text">This collection has no fields.</p>
+								</div>
+							{/if}
+
+							{#snippet pending()}
+								{@render detailSkeleton()}
+							{/snippet}
+
+							{#snippet failed(error, reset)}
+								{@render errorBox(error, reset)}
+							{/snippet}
+						</svelte:boundary>
+
+						{#snippet pending()}
+							{@render detailSkeleton()}
+						{/snippet}
+
+						{#snippet failed(error, reset)}
+							{@render errorBox(error, reset)}
+						{/snippet}
+					</svelte:boundary>
+				{:else if route.type === 'documentEdit'}
+					<div class="fs-admin__page-header">
+						<div class="fs-admin__page-heading">
+							<h1 class="fs-admin__title">
+								Edit {collectionLabelFromSlug(route.collection, 'singular').toLowerCase()}
+							</h1>
+						</div>
+						<Button variant="ghost" href={documentHref(route.collection, route.id)}>
+							<Icon name="arrow-left" />
+							Back to detail
+						</Button>
+					</div>
+
+					<svelte:boundary>
+						{@const collection = await remotes.getCollection({ collection: route.collection })}
+
+						<svelte:boundary>
+							{@const document = await remotes.getDocument({
+								collection: collection.slug,
+								id: route.id
+							})}
+							{@const updateForm = remotes.updateDocument.for(document.id)}
+							{@const editRelationOptions = await loadRelationOptions(collection)}
+							<DocumentEditForm
+								{collection}
+								{document}
+								form={updateForm}
+								relationOptions={editRelationOptions}
+							/>
+
+							{#snippet pending()}
+								{@render formSkeleton()}
+							{/snippet}
+
+							{#snippet failed(error, reset)}
+								{@render errorBox(error, reset)}
+							{/snippet}
+						</svelte:boundary>
+
+						{#snippet pending()}
+							{@render formSkeleton()}
+						{/snippet}
+
+						{#snippet failed(error, reset)}
+							{@render errorBox(error, reset)}
+						{/snippet}
+					</svelte:boundary>
+				{:else if route.type === 'globalEdit'}
+					<div class="fs-admin__page-header">
+						<div class="fs-admin__page-heading">
+							<h1 class="fs-admin__title">{globalLabelFromSlug(route.global)}</h1>
+						</div>
+					</div>
+
+					<svelte:boundary>
+						{@const global = await remotes.getGlobalConfig({ global: route.global })}
+						{@const document = await remotes.getGlobal({ global: global.slug })}
+						{@const updateForm = remotes.updateGlobal.for(global.slug)}
+						{@const globalRelationOptions = await loadRelationOptions(global)}
+						<GlobalEditForm
+							globalConfig={global}
+							{document}
+							form={updateForm}
+							relationOptions={globalRelationOptions}
+						/>
+
+						{#snippet pending()}
+							{@render formSkeleton()}
+						{/snippet}
+
+						{#snippet failed(error, reset)}
+							{@render errorBox(error, reset)}
+						{/snippet}
+					</svelte:boundary>
+				{:else}
+					<div class="fs-admin__page-header">
+						<div class="fs-admin__page-heading">
+							<h1 class="fs-admin__title">Page not found</h1>
+						</div>
+					</div>
+					<div class="fs-admin__empty">
+						<span class="fs-admin__empty-icon"><Icon name="alert" size={20} /></span>
+						<p class="fs-admin__empty-title">This admin route doesn't exist</p>
+						<Button href={indexHref}>Back to admin</Button>
+					</div>
+				{/if}
+			{/key}
+		</main>
+	</div>
+</div>
 
 <style>
-	.fs-admin__grid {
+	/* ---- Shell grid ---- */
+	.fs-admin__shell {
 		display: grid;
-		gap: 2rem;
-		max-width: 72rem;
-		margin: 0 auto;
+		grid-template-columns: var(--fs-sidebar-w) 1fr;
+		grid-template-rows: var(--fs-header-h) 1fr;
+		min-height: 100dvh;
 	}
 
-	.fs-admin__index,
-	.fs-admin__sidebar,
-	.fs-admin__documents {
-		display: grid;
-		gap: 1rem;
-	}
-
-	.fs-admin__sidebar {
-		align-content: start;
-		align-items: start;
-	}
-
-	.fs-admin__index {
-		max-width: 48rem;
-		margin: 0 auto;
-	}
-
-	.fs-admin__documents {
-		gap: 0.75rem;
-	}
-
-	.fs-admin__search {
+	/* ---- Header ---- */
+	.fs-admin__header {
+		grid-column: 1 / -1;
+		position: sticky;
+		top: 0;
+		z-index: 30;
 		display: flex;
-		gap: 0.5rem;
+		align-items: center;
+		gap: var(--fs-space-3);
+		height: var(--fs-header-h);
+		padding: 0 var(--fs-space-6);
+		border-bottom: 1px solid var(--fs-admin-border);
+		background: color-mix(in srgb, var(--fs-admin-panel) 85%, transparent);
+		backdrop-filter: blur(8px);
+		--fs-focus-gap: var(--fs-admin-panel);
+	}
+
+	.fs-admin__brand {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--fs-space-2);
+		color: var(--fs-admin-text-strong);
+		font-size: 0.9375rem;
+		font-weight: 600;
+		letter-spacing: -0.01em;
+		text-decoration: none;
+		white-space: nowrap;
+	}
+
+	.fs-admin__brand:focus-visible {
+		outline: none;
+		border-radius: var(--fs-radius-sm);
+		box-shadow: var(--fs-focus-ring);
+	}
+
+	.fs-admin__brandmark {
+		display: grid;
+		place-items: center;
+		width: 1.5rem;
+		height: 1.5rem;
+		border-radius: var(--fs-radius-sm);
+		background: var(--fs-admin-primary);
+		color: var(--fs-admin-primary-fg);
+		font-size: 0.8125rem;
+		font-weight: 700;
+	}
+
+	.fs-admin__breadcrumb {
+		display: flex;
+		align-items: center;
+		gap: var(--fs-space-2);
+		min-width: 0;
+		color: var(--fs-admin-muted);
+		font-size: 0.8125rem;
+	}
+
+	.fs-admin__crumb-sep {
+		color: var(--fs-admin-faint);
+	}
+
+	.fs-admin__crumb {
+		color: var(--fs-admin-muted);
+		text-decoration: none;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	a.fs-admin__crumb:hover {
+		color: var(--fs-admin-text);
+	}
+
+	a.fs-admin__crumb:focus-visible {
+		outline: none;
+		border-radius: var(--fs-radius-sm);
+		box-shadow: var(--fs-focus-ring);
+	}
+
+	.fs-admin__crumb--current {
+		color: var(--fs-admin-text);
+		font-weight: 500;
+	}
+
+	.fs-admin__header-spacer {
+		flex: 1;
+	}
+
+	.fs-admin__hamburger {
+		display: none;
+	}
+
+	/* ---- Sidebar ---- */
+	.fs-admin__sidebar {
+		grid-column: 1;
+		grid-row: 2;
+		position: sticky;
+		top: var(--fs-header-h);
+		align-self: start;
+		height: calc(100dvh - var(--fs-header-h));
+		overflow-y: auto;
+		padding: var(--fs-space-3);
+		border-right: 1px solid var(--fs-admin-border);
+		background: var(--fs-admin-panel);
+		--fs-focus-gap: var(--fs-admin-panel);
+	}
+
+	.fs-admin__nav-skeleton {
+		display: grid;
+		gap: 0.125rem;
+	}
+
+	.fs-admin__scrim {
+		display: none;
+		border: none;
+		padding: 0;
+	}
+
+	/* ---- Content ---- */
+	.fs-admin__content {
+		grid-column: 2;
+		grid-row: 2;
+		min-width: 0;
+		padding: var(--fs-space-8);
+	}
+
+	.fs-admin__page-header {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: var(--fs-space-3);
+		margin-bottom: var(--fs-space-6);
+	}
+
+	.fs-admin__page-heading {
+		display: grid;
+		gap: var(--fs-space-1);
+		min-width: 0;
+	}
+
+	.fs-admin__title {
+		margin: 0;
+		color: var(--fs-admin-text-strong);
+		font-size: 1.5rem;
+		line-height: 2rem;
+		font-weight: 600;
+		letter-spacing: -0.02em;
+		overflow-wrap: anywhere;
+	}
+
+	.fs-admin__subtitle {
+		margin: 0;
+		color: var(--fs-admin-muted);
+		font-size: 0.875rem;
+	}
+
+	.fs-admin__detail-meta {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--fs-space-2);
+		margin: 0;
+		color: var(--fs-admin-muted);
+		font-size: 0.8125rem;
+	}
+
+	.fs-admin__actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--fs-space-2);
+	}
+
+	.fs-admin__actions .fs-admin__delete-form {
+		display: inline-flex;
+	}
+
+	/* ---- Index dashboard ---- */
+	.fs-admin__dashboard {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+		gap: var(--fs-space-4);
+		max-width: 60rem;
+	}
+
+	.fs-admin__card {
+		display: flex;
+		align-items: center;
+		gap: var(--fs-space-3);
+		border: 1px solid var(--fs-admin-border);
+		border-radius: var(--fs-radius-md);
+		background: var(--fs-admin-panel);
+		box-shadow: var(--fs-shadow-sm);
+		padding: var(--fs-space-4);
+		text-decoration: none;
+		color: inherit;
+		transition:
+			border-color var(--fs-dur) var(--fs-ease),
+			box-shadow var(--fs-dur) var(--fs-ease),
+			transform var(--fs-dur-fast) var(--fs-ease);
+	}
+
+	.fs-admin__card:hover {
+		border-color: var(--fs-admin-border-stronger);
+		box-shadow: var(--fs-shadow-md);
+	}
+
+	.fs-admin__card:focus-visible {
+		outline: none;
+		box-shadow: var(--fs-focus-ring);
+	}
+
+	.fs-admin__card-icon {
+		display: grid;
+		place-items: center;
+		width: 2.25rem;
+		height: 2.25rem;
+		flex-shrink: 0;
+		border-radius: var(--fs-radius-sm);
+		background: var(--fs-admin-inset);
+		color: var(--fs-admin-muted);
+	}
+
+	.fs-admin__card-body {
+		display: grid;
+		gap: 0.125rem;
+		min-width: 0;
+		flex: 1;
+	}
+
+	.fs-admin__card-title {
+		color: var(--fs-admin-text-strong);
+		font-size: 0.9375rem;
+		font-weight: 600;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.fs-admin__card-meta {
+		color: var(--fs-admin-muted);
+		font-size: 0.8125rem;
+	}
+
+	.fs-admin__card-arrow {
+		color: var(--fs-admin-faint);
+		transition: transform var(--fs-dur) var(--fs-ease);
+	}
+
+	.fs-admin__card:hover .fs-admin__card-arrow {
+		transform: translateX(2px);
+		color: var(--fs-admin-muted);
+	}
+
+	/* ---- List view (toolbar + count + pagination) ---- */
+	.fs-admin__search {
+		position: relative;
+		display: flex;
+		gap: var(--fs-space-2);
+		max-width: 32rem;
+		margin-bottom: var(--fs-space-4);
+	}
+
+	.fs-admin__search-icon {
+		position: absolute;
+		left: 0.625rem;
+		top: 50%;
+		transform: translateY(-50%);
+		color: var(--fs-admin-faint);
+		pointer-events: none;
 	}
 
 	.fs-admin__search-input {
 		flex: 1;
 		min-width: 0;
-		box-sizing: border-box;
-		border: 1px solid var(--fs-admin-border-strong);
-		border-radius: 0.375rem;
-		padding: 0.5rem 0.75rem;
-		font: inherit;
-		font-size: 0.875rem;
-		color: var(--fs-admin-text);
-		background: var(--fs-admin-panel);
+		padding-left: 2rem;
+	}
+
+	.fs-admin__result-count {
+		margin: 0 0 var(--fs-space-3);
+		color: var(--fs-admin-muted);
+		font-size: 0.8125rem;
+		font-variant-numeric: tabular-nums;
 	}
 
 	.fs-admin__pagination {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 0.75rem;
-		font-size: 0.875rem;
+		gap: var(--fs-space-3);
+		margin-top: var(--fs-space-4);
+		font-size: 0.8125rem;
+		font-variant-numeric: tabular-nums;
 	}
 
-	.fs-admin__eyebrow {
-		margin: 0;
-		color: var(--fs-admin-muted);
-		font-size: 0.875rem;
-		font-weight: 500;
-	}
-
-	.fs-admin__title {
-		margin: 0;
-		font-size: 1.875rem;
-		line-height: 2.25rem;
-		font-weight: 600;
-	}
-
-	.fs-admin__section-header {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.75rem;
-	}
-
-	.fs-admin__section-title {
-		margin: 0;
-		overflow-wrap: anywhere;
-		font-size: 1.25rem;
-		line-height: 1.75rem;
-		font-weight: 600;
-	}
-
-	.fs-admin__panel {
-		border: 1px solid var(--fs-admin-border);
-		border-radius: 0.5rem;
-		background: var(--fs-admin-panel);
-		padding: 1rem;
-	}
-
-	.fs-admin__detail {
-		display: grid;
-		gap: 1.25rem;
-	}
-
+	/* ---- Detail definition list ---- */
 	.fs-admin__fields {
-		display: grid;
-		gap: 0.75rem;
 		margin: 0;
+		max-width: 48rem;
+		padding: 0;
 	}
 
 	.fs-admin__field-row {
 		display: grid;
-		gap: 0.25rem;
+		grid-template-columns: 12rem 1fr;
+		gap: var(--fs-space-4);
+		padding: 0.875rem 1.25rem;
+		border-top: 1px solid var(--fs-admin-border);
+	}
+
+	.fs-admin__field-row:first-child {
+		border-top: none;
 	}
 
 	.fs-admin__field-row dt {
@@ -575,41 +1013,87 @@
 	.fs-admin__field-row dd {
 		margin: 0;
 		overflow-wrap: anywhere;
-		font-size: 0.9375rem;
+		color: var(--fs-admin-text);
+		font-size: 0.875rem;
 		line-height: 1.5rem;
 	}
 
-	.fs-admin__actions,
-	.fs-admin__delete-form {
+	.fs-admin__field-empty {
+		color: var(--fs-admin-faint);
+	}
+
+	.fs-admin__error-title {
 		display: flex;
-		flex-wrap: wrap;
-		gap: 0.5rem;
+		align-items: center;
+		gap: var(--fs-space-2);
+		font-weight: 600;
 	}
 
-	.fs-admin__error {
-		border: 1px solid var(--fs-admin-danger-border);
-		border-radius: 0.5rem;
-		background: var(--fs-admin-danger-bg);
-		color: var(--fs-admin-danger);
-		padding: 0.5rem 0.75rem;
-		font-size: 0.875rem;
+	/* ---- Forms / detail centering ---- */
+	.fs-admin__content :global(.fs-admin__form),
+	.fs-admin__fields {
+		max-width: 42rem;
 	}
 
-	.fs-admin__error p {
-		margin: 0 0 0.5rem;
+	.fs-admin__fields {
+		max-width: 48rem;
 	}
 
-	.fs-admin__error p:last-child {
-		margin-bottom: 0;
+	/* ---- Responsive: collapse to a drawer ---- */
+	@media (max-width: 960px) {
+		.fs-admin__shell {
+			grid-template-columns: 1fr;
+		}
+
+		.fs-admin__hamburger {
+			display: inline-flex;
+		}
+
+		.fs-admin__sidebar {
+			position: fixed;
+			top: var(--fs-header-h);
+			left: 0;
+			z-index: 40;
+			width: min(18rem, 80vw);
+			height: calc(100dvh - var(--fs-header-h));
+			transform: translateX(-100%);
+			transition: transform var(--fs-dur-slow) var(--fs-ease);
+			box-shadow: var(--fs-shadow-lg);
+		}
+
+		.fs-admin--drawer-open .fs-admin__sidebar {
+			transform: translateX(0);
+		}
+
+		.fs-admin__content {
+			grid-column: 1;
+		}
+
+		.fs-admin--drawer-open .fs-admin__scrim {
+			display: block;
+			position: fixed;
+			inset: var(--fs-header-h) 0 0;
+			z-index: 35;
+			background: var(--fs-admin-overlay);
+		}
 	}
 
-	.fs-admin__muted {
-		color: var(--fs-admin-muted);
-	}
+	@media (max-width: 560px) {
+		.fs-admin__content {
+			padding: var(--fs-space-4);
+		}
 
-	@media (min-width: 1024px) {
-		.fs-admin__grid {
-			grid-template-columns: 20rem 1fr;
+		.fs-admin__header {
+			padding: 0 var(--fs-space-4);
+		}
+
+		.fs-admin__breadcrumb {
+			display: none;
+		}
+
+		.fs-admin__field-row {
+			grid-template-columns: 1fr;
+			gap: var(--fs-space-1);
 		}
 	}
 </style>
