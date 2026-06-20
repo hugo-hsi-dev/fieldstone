@@ -26,7 +26,12 @@
 		"@fieldstone/remotes": "workspace:*",
 		"@fieldstone/routes": "workspace:*",
 		"@fieldstone/schema": "workspace:*",
-		"bits-ui": "^2.18.1"
+		"@lucide/svelte": "^1.21.0",
+		"@tiptap/core": "^3.27.1",
+		"@tiptap/pm": "^3.27.1",
+		"@tiptap/starter-kit": "^3.27.1",
+		"bits-ui": "^2.18.1",
+		"mode-watcher": "^1.1.0"
 	},
 	"peerDependencies": {
 		"@sveltejs/kit": "^2.64.0",

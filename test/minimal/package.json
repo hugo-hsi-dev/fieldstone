@@ -31,6 +31,7 @@
 		"@fieldstone/vite-plugin": "workspace:*",
 		"@libsql/client": "^0.15.15",
 		"better-auth": "^1.6.19",
-		"drizzle-orm": "^0.45.2"
+		"drizzle-orm": "^0.45.2",
+		"mode-watcher": "^1.1.0"
 	}
 }

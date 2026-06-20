@@ -32,13 +32,13 @@ describe('fieldstone ui package exports', () => {
 		const admin = await readFile('src/FieldstoneAdmin.svelte', 'utf-8');
 		const createForm = await readFile('src/CreateDocumentForm.svelte', 'utf-8');
 		const editForm = await readFile('src/DocumentEditForm.svelte', 'utf-8');
-		const card = await readFile('src/DocumentCard.svelte', 'utf-8');
+		const list = await readFile('src/DocumentList.svelte', 'utf-8');
 		const input = await readFile('src/FieldInput.svelte', 'utf-8');
 
 		expect(admin).toContain("import Button from './primitives/Button.svelte'");
 		expect(createForm).toContain("import Button from './primitives/Button.svelte'");
 		expect(editForm).toContain("import Button from './primitives/Button.svelte'");
-		expect(card).toContain("import Button from './primitives/Button.svelte'");
+		expect(list).toContain("import Button from './primitives/Button.svelte'");
 		expect(input).toContain("import Label from './primitives/Label.svelte'");
 	});
 });

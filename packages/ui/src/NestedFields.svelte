@@ -4,6 +4,7 @@
 	import { getFieldLabel } from './labels';
 	import Label from './primitives/Label.svelte';
 	import Button from './primitives/Button.svelte';
+	import Icon from './primitives/Icon.svelte';
 	import NestedFields from './NestedFields.svelte';
 
 	type Field = FieldDefinition;
@@ -81,6 +82,14 @@
 	function readOnlyOf(field: Field): boolean {
 		return readOnly || field.admin?.readOnly === true;
 	}
+
+	function requiredOf(field: Field): boolean {
+		return (
+			'required' in field &&
+			Boolean(field.required) &&
+			!['boolean', 'group', 'array'].includes(field.type)
+		);
+	}
 </script>
 
 <div class="fs-admin__nested-fields">
@@ -88,22 +97,24 @@
 		{@const fieldId = `${idPrefix}-${field.name}`}
 		{@const readOnly = readOnlyOf(field)}
 		<div class="fs-admin__field">
-			<Label for={fieldId}>{getFieldLabel(field)}</Label>
+			<Label for={fieldId} required={requiredOf(field)}>{getFieldLabel(field)}</Label>
 			{#if field.type === 'boolean'}
-				<input
-					id={fieldId}
-					class="fs-admin__checkbox"
-					type="checkbox"
-					checked={value[field.name] === undefined
-						? field.defaultValue === true
-						: value[field.name] === true}
-					disabled={readOnly}
-					onchange={(event) => setValue(field.name, event.currentTarget.checked)}
-				/>
+				<div class="fs-admin__checkbox-row">
+					<input
+						id={fieldId}
+						class="fs-admin__checkbox"
+						type="checkbox"
+						checked={value[field.name] === undefined
+							? field.defaultValue === true
+							: value[field.name] === true}
+						disabled={readOnly}
+						onchange={(event) => setValue(field.name, event.currentTarget.checked)}
+					/>
+				</div>
 			{:else if field.type === 'select'}
 				<select
 					id={fieldId}
-					class="fs-admin__input"
+					class="fs-admin__select"
 					value={String(value[field.name] ?? field.defaultValue ?? '')}
 					disabled={readOnly}
 					onchange={(event) => setValue(field.name, event.currentTarget.value)}
@@ -118,7 +129,7 @@
 				{@const opts = mergeRelationOptions(field.relationTo, selected)}
 				<select
 					id={fieldId}
-					class="fs-admin__input"
+					class="fs-admin__select-multiple"
 					multiple
 					disabled={readOnly}
 					onchange={(event) =>
@@ -140,7 +151,7 @@
 				     ids can be entered. -->
 				<select
 					id={fieldId}
-					class="fs-admin__input"
+					class="fs-admin__select"
 					value={current}
 					disabled={readOnly}
 					onchange={(event) => setValue(field.name, event.currentTarget.value || null)}
@@ -165,6 +176,19 @@
 				<fieldset class="fs-admin__nested">
 					{#each asArray(value[field.name]) as entry, index (index)}
 						<div class="fs-admin__array-row">
+							<div class="fs-admin__array-row-header">
+								<span class="fs-admin__array-index">Item {index + 1}</span>
+								{#if !readOnly}
+									<Button
+										type="button"
+										variant="danger-ghost"
+										size="sm"
+										onclick={() => removeArrayRow(field.name, index)}
+									>
+										Remove
+									</Button>
+								{/if}
+							</div>
 							<NestedFields
 								fields={field.fields}
 								value={entry}
@@ -173,15 +197,17 @@
 								{readOnly}
 								onUpdate={(next) => setArrayRow(field.name, index, next)}
 							/>
-							{#if !readOnly}
-								<Button type="button" onclick={() => removeArrayRow(field.name, index)}
-									>Remove</Button
-								>
-							{/if}
 						</div>
 					{/each}
 					{#if !readOnly}
-						<Button type="button" onclick={() => addArrayRow(field.name)}>Add item</Button>
+						<button
+							type="button"
+							class="fs-admin__array-add"
+							onclick={() => addArrayRow(field.name)}
+						>
+							<Icon name="plus" />
+							Add item
+						</button>
 					{/if}
 				</fieldset>
 			{:else if field.type === 'number'}
@@ -210,49 +236,3 @@
 		</div>
 	{/each}
 </div>
-
-<style>
-	.fs-admin__nested-fields {
-		display: grid;
-		gap: 0.75rem;
-	}
-
-	.fs-admin__field {
-		display: grid;
-		gap: 0.5rem;
-	}
-
-	.fs-admin__nested {
-		display: grid;
-		gap: 0.75rem;
-		border: 1px solid var(--fs-admin-border);
-		border-radius: 0.5rem;
-		padding: 0.75rem;
-		margin: 0;
-	}
-
-	.fs-admin__array-row {
-		display: grid;
-		gap: 0.5rem;
-		border-top: 1px solid var(--fs-admin-border);
-		padding-top: 0.75rem;
-	}
-
-	.fs-admin__input {
-		width: 100%;
-		box-sizing: border-box;
-		border: 1px solid var(--fs-admin-border-strong);
-		border-radius: 0.375rem;
-		padding: 0.5rem 0.75rem;
-		font: inherit;
-		font-size: 0.875rem;
-		color: var(--fs-admin-text);
-		background: var(--fs-admin-panel);
-	}
-
-	.fs-admin__checkbox {
-		width: 1rem;
-		height: 1rem;
-		accent-color: var(--fs-admin-primary);
-	}
-</style>
