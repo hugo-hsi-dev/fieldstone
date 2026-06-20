@@ -94,7 +94,9 @@
 					id={fieldId}
 					class="fs-admin__checkbox"
 					type="checkbox"
-					checked={value[field.name] === true}
+					checked={value[field.name] === undefined
+						? field.defaultValue === true
+						: value[field.name] === true}
 					disabled={readOnly}
 					onchange={(event) => setValue(field.name, event.currentTarget.checked)}
 				/>

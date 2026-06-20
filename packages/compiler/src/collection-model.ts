@@ -199,10 +199,13 @@ function fieldNullable(field: FieldDefinition): boolean {
 }
 
 // A field is optional on mutation input (but non-null when stored) when the
-// runtime fills it in: a defaulted field or an optional array (defaults to []).
+// runtime fills it in: a defaulted field, an optional array (defaults to []), or
+// a group whose subfields are all optional (defaults to {} and fills them in).
 function isOptionalInput(field: FieldDefinition): boolean {
   if ("defaultValue" in field && field.defaultValue !== undefined) return true;
-  return field.type === "array" && !field.required;
+  if (field.type === "array") return !field.required;
+  if (field.type === "group") return !isRequiredInput(field);
+  return false;
 }
 
 // Whether omitting a value would fail at runtime — used to derive group

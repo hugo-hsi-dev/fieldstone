@@ -242,7 +242,19 @@ export function createDocumentRuntime(context: DatabaseContext) {
       // Check access against the normalized, merged document — so rules see the
       // trimmed/defaulted values that will be stored and a PATCH can't bypass a rule
       // on a persisted field by omitting it.
-      let document = compiledConfig.normalizeDocumentData(collectionSlug, inputData) as Doc;
+      let document: Doc;
+      try {
+        document = compiledConfig.normalizeDocumentData(collectionSlug, inputData) as Doc;
+      } catch (normalizationError) {
+        // Run the access rule before surfacing a validation/unknown-field error, so a
+        // forbidden caller can't enumerate existing vs missing ids with a malformed body.
+        await assertCollectionAccess(config, collectionSlug, "update", {
+          user: user ?? null,
+          id,
+          data: inputData as Record<string, unknown>,
+        });
+        throw normalizationError;
+      }
       await assertCollectionAccess(config, collectionSlug, "update", {
         user: user ?? null,
         id,

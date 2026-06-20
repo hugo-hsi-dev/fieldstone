@@ -131,8 +131,12 @@ function createCollectionDataSchema(
 function createFormDataSchema(
   collection: CollectionRuntimeConfig | GlobalRuntimeConfig,
 ) {
+  // Always default `data` to {} — when every submitted field is empty (e.g. the
+  // only field is an empty optional multiselect) the browser sends no `data.*`
+  // entries at all, so the parsed form lacks `data`. Required fields are still
+  // enforced by the inner object schema.
   const data = createCollectionDataSchema(collection);
-  return collection.fields.length === 0 ? v.optional(data, {}) : data;
+  return v.optional(data, {});
 }
 
 function createDocumentMutationSchema(
