@@ -2,16 +2,26 @@
 	import type { Component } from 'svelte';
 	import {
 		ArrowLeft,
+		Bold,
+		Check,
 		ChevronRight,
 		CircleAlert,
+		Code,
 		Globe,
+		Heading2,
+		Heading3,
 		Inbox,
+		Italic,
 		Layers,
+		List,
+		ListOrdered,
 		Menu,
 		Moon,
 		Pencil,
 		Plus,
+		Quote,
 		Search,
+		Strikethrough,
 		Sun,
 		X
 	} from '@lucide/svelte';
@@ -31,7 +41,17 @@
 		| 'plus'
 		| 'close'
 		| 'edit'
-		| 'chevron-right';
+		| 'chevron-right'
+		| 'check'
+		| 'bold'
+		| 'italic'
+		| 'strikethrough'
+		| 'code'
+		| 'heading-2'
+		| 'heading-3'
+		| 'list'
+		| 'list-ordered'
+		| 'quote';
 
 	const ICONS: Record<IconName, Component> = {
 		collection: Layers,
@@ -46,7 +66,17 @@
 		plus: Plus,
 		close: X,
 		edit: Pencil,
-		'chevron-right': ChevronRight
+		'chevron-right': ChevronRight,
+		check: Check,
+		bold: Bold,
+		italic: Italic,
+		strikethrough: Strikethrough,
+		code: Code,
+		'heading-2': Heading2,
+		'heading-3': Heading3,
+		list: List,
+		'list-ordered': ListOrdered,
+		quote: Quote
 	};
 
 	let {

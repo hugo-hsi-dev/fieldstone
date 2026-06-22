@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 
@@ -37,6 +37,25 @@
 	} from '@fieldstone/routes';
 
 	let { remotes }: { remotes: FieldstoneAdminRemotes } = $props();
+
+	// Transient success toast (auto-dismissed). Owned here so it survives the
+	// post-save/delete redirect that the mutation forms trigger.
+	let toast = $state<{ id: number; tone: 'success' | 'error'; text: string } | null>(null);
+	let toastSeq = 0;
+	let toastTimer: ReturnType<typeof setTimeout> | undefined;
+
+	function showToast(text: string, tone: 'success' | 'error' = 'success') {
+		toast = { id: (toastSeq += 1), tone, text };
+		clearTimeout(toastTimer);
+		toastTimer = setTimeout(() => {
+			toast = null;
+		}, 4000);
+	}
+
+	onDestroy(() => clearTimeout(toastTimer));
+
+	// Confirmation dialog for destructive document deletes.
+	let deleteDialog = $state<HTMLDialogElement>();
 
 	const currentPathname = $derived(page.url.pathname);
 	const route = $derived(parseAdminRoute(getAdminSegments(currentPathname)));
@@ -541,6 +560,7 @@
 							{collection}
 							form={remotes.createDocument.for(collection.slug)}
 							relationOptions={newRelationOptions}
+							onSuccess={() => showToast(`${getCollectionLabel(collection, 'singular')} created`)}
 						/>
 
 						{#snippet pending()}
@@ -561,6 +581,10 @@
 								id: route.id
 							})}
 							{@const deleteForm = remotes.deleteDocument.for(document.id)}
+							{@const deleteEnhanced = deleteForm.enhance(async (enhanced) => {
+								const ok = await enhanced.submit();
+								if (ok) showToast(`${getCollectionLabel(collection, 'singular')} deleted`);
+							})}
 							{@const titleField = collection.fields[0]?.name ?? 'id'}
 
 							<div class="fs-admin__page-header">
@@ -582,19 +606,41 @@
 										<Icon name="edit" />
 										Edit
 									</Button>
-									<form class="fs-admin__delete-form" {...deleteForm}>
-										<input {...deleteForm.fields.collection.as('hidden', collection.slug)} />
-										<input {...deleteForm.fields.id.as('hidden', document.id)} />
-										<Button variant="danger-ghost" disabled={Boolean(deleteForm.pending)}>
-											Delete {getCollectionLabel(collection, 'singular').toLowerCase()}
-										</Button>
-									</form>
+									<Button
+										variant="danger-ghost"
+										type="button"
+										onclick={() => deleteDialog?.showModal()}
+									>
+										Delete {getCollectionLabel(collection, 'singular').toLowerCase()}
+									</Button>
 								</div>
 							</div>
 
-							{#each deleteForm.fields.allIssues() ?? [] as issue, index (`${issue.message}-${index}`)}
-								<p class="fs-admin__error">{issue.message}</p>
-							{/each}
+							<dialog
+								bind:this={deleteDialog}
+								class="fs-admin__dialog"
+								aria-labelledby="fs-delete-title"
+							>
+								<h2 id="fs-delete-title" class="fs-admin__dialog-title">
+									Delete {getCollectionLabel(collection, 'singular').toLowerCase()}?
+								</h2>
+								<p class="fs-admin__dialog-text">
+									This permanently removes
+									<strong>{getFieldValue(document, titleField) || document.id}</strong>. This can't
+									be undone.
+								</p>
+								{#each deleteForm.fields.allIssues() ?? [] as issue, index (`${issue.message}-${index}`)}
+									<p class="fs-admin__error">{issue.message}</p>
+								{/each}
+								<form class="fs-admin__delete-form fs-admin__dialog-actions" {...deleteEnhanced}>
+									<input {...deleteForm.fields.collection.as('hidden', collection.slug)} />
+									<input {...deleteForm.fields.id.as('hidden', document.id)} />
+									<Button type="button" variant="ghost" onclick={() => deleteDialog?.close()}>
+										Cancel
+									</Button>
+									<Button variant="danger" disabled={Boolean(deleteForm.pending)}>Delete</Button>
+								</form>
+							</dialog>
 
 							{#if collection.fields.length}
 								<dl class="fs-admin__panel fs-admin__fields">
@@ -664,6 +710,7 @@
 								{document}
 								form={updateForm}
 								relationOptions={editRelationOptions}
+								onSuccess={() => showToast(`${getCollectionLabel(collection, 'singular')} saved`)}
 							/>
 
 							{#snippet pending()}
@@ -700,6 +747,7 @@
 							{document}
 							form={updateForm}
 							relationOptions={globalRelationOptions}
+							onSuccess={() => showToast(`${getGlobalLabel(global)} saved`)}
 						/>
 
 						{#snippet pending()}
@@ -725,6 +773,29 @@
 			{/key}
 		</main>
 	</div>
+
+	{#if toast}
+		{#key toast.id}
+			<div
+				class={['fs-admin__toast', `fs-admin__toast--${toast.tone}`]}
+				role="status"
+				aria-live="polite"
+			>
+				<span class="fs-admin__toast-icon">
+					<Icon name={toast.tone === 'success' ? 'check' : 'alert'} size={16} />
+				</span>
+				<span class="fs-admin__toast-text">{toast.text}</span>
+				<button
+					type="button"
+					class="fs-admin__toast-close"
+					aria-label="Dismiss notification"
+					onclick={() => (toast = null)}
+				>
+					<Icon name="close" size={14} />
+				</button>
+			</div>
+		{/key}
+	{/if}
 </div>
 
 <style>

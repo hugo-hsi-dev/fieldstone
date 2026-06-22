@@ -99,10 +99,24 @@
 	let editor: Editor | undefined;
 	let isBold = $state(false);
 	let isItalic = $state(false);
+	let isStrike = $state(false);
+	let isCode = $state(false);
+	let isHeading2 = $state(false);
+	let isHeading3 = $state(false);
+	let isBulletList = $state(false);
+	let isOrderedList = $state(false);
+	let isBlockquote = $state(false);
 
 	function syncMarks(active: Editor) {
 		isBold = active.isActive('bold');
 		isItalic = active.isActive('italic');
+		isStrike = active.isActive('strike');
+		isCode = active.isActive('code');
+		isHeading2 = active.isActive('heading', { level: 2 });
+		isHeading3 = active.isActive('heading', { level: 3 });
+		isBulletList = active.isActive('bulletList');
+		isOrderedList = active.isActive('orderedList');
+		isBlockquote = active.isActive('blockquote');
 	}
 
 	function syncRichTextHtml(active: Editor) {
@@ -255,16 +269,92 @@
 						aria-label="Bold"
 						aria-pressed={isBold}
 						onmousedown={(event) => event.preventDefault()}
-						onclick={() => editor?.chain().focus().toggleBold().run()}><strong>B</strong></button
+						onclick={() => editor?.chain().focus().toggleBold().run()}
 					>
+						<Icon name="bold" size={15} />
+					</button>
 					<button
 						type="button"
 						class={['fs-admin__richtext-btn', isItalic && 'fs-admin__richtext-btn--active']}
 						aria-label="Italic"
 						aria-pressed={isItalic}
 						onmousedown={(event) => event.preventDefault()}
-						onclick={() => editor?.chain().focus().toggleItalic().run()}><em>I</em></button
+						onclick={() => editor?.chain().focus().toggleItalic().run()}
 					>
+						<Icon name="italic" size={15} />
+					</button>
+					<button
+						type="button"
+						class={['fs-admin__richtext-btn', isStrike && 'fs-admin__richtext-btn--active']}
+						aria-label="Strikethrough"
+						aria-pressed={isStrike}
+						onmousedown={(event) => event.preventDefault()}
+						onclick={() => editor?.chain().focus().toggleStrike().run()}
+					>
+						<Icon name="strikethrough" size={15} />
+					</button>
+					<button
+						type="button"
+						class={['fs-admin__richtext-btn', isCode && 'fs-admin__richtext-btn--active']}
+						aria-label="Inline code"
+						aria-pressed={isCode}
+						onmousedown={(event) => event.preventDefault()}
+						onclick={() => editor?.chain().focus().toggleCode().run()}
+					>
+						<Icon name="code" size={15} />
+					</button>
+					<span class="fs-admin__richtext-divider" aria-hidden="true"></span>
+					<button
+						type="button"
+						class={['fs-admin__richtext-btn', isHeading2 && 'fs-admin__richtext-btn--active']}
+						aria-label="Heading 2"
+						aria-pressed={isHeading2}
+						onmousedown={(event) => event.preventDefault()}
+						onclick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
+					>
+						<Icon name="heading-2" size={15} />
+					</button>
+					<button
+						type="button"
+						class={['fs-admin__richtext-btn', isHeading3 && 'fs-admin__richtext-btn--active']}
+						aria-label="Heading 3"
+						aria-pressed={isHeading3}
+						onmousedown={(event) => event.preventDefault()}
+						onclick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}
+					>
+						<Icon name="heading-3" size={15} />
+					</button>
+					<span class="fs-admin__richtext-divider" aria-hidden="true"></span>
+					<button
+						type="button"
+						class={['fs-admin__richtext-btn', isBulletList && 'fs-admin__richtext-btn--active']}
+						aria-label="Bullet list"
+						aria-pressed={isBulletList}
+						onmousedown={(event) => event.preventDefault()}
+						onclick={() => editor?.chain().focus().toggleBulletList().run()}
+					>
+						<Icon name="list" size={15} />
+					</button>
+					<button
+						type="button"
+						class={['fs-admin__richtext-btn', isOrderedList && 'fs-admin__richtext-btn--active']}
+						aria-label="Numbered list"
+						aria-pressed={isOrderedList}
+						onmousedown={(event) => event.preventDefault()}
+						onclick={() => editor?.chain().focus().toggleOrderedList().run()}
+					>
+						<Icon name="list-ordered" size={15} />
+					</button>
+					<button
+						type="button"
+						class={['fs-admin__richtext-btn', isBlockquote && 'fs-admin__richtext-btn--active']}
+						aria-label="Quote"
+						aria-pressed={isBlockquote}
+						onmousedown={(event) => event.preventDefault()}
+						onclick={() => editor?.chain().focus().toggleBlockquote().run()}
+					>
+						<Icon name="quote" size={15} />
+					</button>
 				</div>
 			{/if}
 			<!-- TipTap mounts its contenteditable (role=textbox, aria-label) into this host. -->

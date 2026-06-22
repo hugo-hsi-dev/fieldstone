@@ -1,0 +1,31 @@
+version: 2
+updates:
+  # Keep the SHA-pinned GitHub Actions in .github/workflows/* up to date. Without
+  # this, pinning to digests would silently miss upstream security patches.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+    groups:
+      # One PR per week for all action bumps rather than one per action.
+      actions:
+        patterns: ["*"]
+
+  # npm/pnpm workspace dependencies (pnpm-lock.yaml at the repo root covers every
+  # packages/* and test/* workspace).
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: deps
+      prefix-development: deps-dev
+    groups:
+      # Batch low-risk minor/patch bumps into a single PR; majors still come
+      # individually so they get a focused review.
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]

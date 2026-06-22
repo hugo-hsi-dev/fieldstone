@@ -4,6 +4,7 @@
 	import FieldInput from './FieldInput.svelte';
 	import { getFieldInputValue, getGlobalLabel } from './labels';
 	import Button from './primitives/Button.svelte';
+	import { createFormGuard } from './form-guard.svelte';
 
 	type RemoteFormField = {
 		as: (
@@ -37,15 +38,20 @@
 		globalConfig,
 		document,
 		form,
-		relationOptions = {}
+		relationOptions = {},
+		onSuccess
 	}: {
 		globalConfig: GlobalRuntimeConfig;
 		document: GlobalDocument<GlobalSlug> | null;
 		form: RemoteForm;
 		relationOptions?: Record<string, { value: string; label: string }[]>;
+		onSuccess?: () => void;
 	} = $props();
 
 	const formFields = $derived(form.fields as RemoteFormFields);
+	// The form remounts per route, so capturing form/onSuccess at init is intentional.
+	// svelte-ignore state_referenced_locally
+	const guard = createFormGuard(form as never, { onSuccess });
 
 	function hasFieldIssues() {
 		return globalConfig.fields.some((field) => {
@@ -54,7 +60,17 @@
 	}
 </script>
 
-<form class="fs-admin__panel fs-admin__form" {...form}>
+<svelte:window
+	onbeforeunload={(event) => {
+		if (guard.dirty && !guard.submitting) {
+			event.preventDefault();
+			// Older browsers gate the unsaved-changes prompt on returnValue, not preventDefault.
+			event.returnValue = '';
+		}
+	}}
+/>
+
+<form class="fs-admin__panel fs-admin__form" {...guard.attrs} oninput={guard.markDirty}>
 	<input {...formFields.global.as('hidden', globalConfig.slug)} />
 
 	{#if !hasFieldIssues()}

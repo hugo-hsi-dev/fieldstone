@@ -825,3 +825,149 @@
 .fs-admin__error p {
 	margin: 0;
 }
+
+/* ==========================================================================
+   Rich-text toolbar divider
+   ========================================================================== */
+.fs-admin__richtext-divider {
+	width: 1px;
+	height: 1.125rem;
+	margin: 0 var(--fs-space-1);
+	background: var(--fs-admin-border);
+}
+
+/* ==========================================================================
+   Confirmation dialog (native <dialog>)
+   ========================================================================== */
+.fs-admin__dialog {
+	width: min(28rem, calc(100vw - 2rem));
+	margin: auto;
+	padding: var(--fs-space-6);
+	border: 1px solid var(--fs-admin-border);
+	border-radius: var(--fs-radius-lg);
+	background: var(--fs-admin-panel);
+	color: var(--fs-admin-text);
+	box-shadow: var(--fs-shadow-lg);
+}
+
+.fs-admin__dialog::backdrop {
+	background: var(--fs-admin-overlay);
+}
+
+.fs-admin__dialog[open] {
+	animation: fs-admin-dialog-in var(--fs-dur) var(--fs-ease);
+}
+
+.fs-admin__dialog-title {
+	margin: 0 0 var(--fs-space-2);
+	font-size: 1.0625rem;
+	font-weight: 600;
+	color: var(--fs-admin-text-strong);
+}
+
+.fs-admin__dialog-text {
+	margin: 0 0 var(--fs-space-4);
+	font-size: 0.875rem;
+	line-height: 1.5;
+	color: var(--fs-admin-muted);
+}
+
+.fs-admin__dialog-text strong {
+	color: var(--fs-admin-text);
+	font-weight: 600;
+}
+
+.fs-admin__dialog-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--fs-space-2);
+	margin-top: var(--fs-space-2);
+}
+
+@keyframes fs-admin-dialog-in {
+	from {
+		opacity: 0;
+		transform: translateY(6px) scale(0.98);
+	}
+}
+
+/* ==========================================================================
+   Toast (transient action feedback)
+   ========================================================================== */
+.fs-admin__toast {
+	position: fixed;
+	right: var(--fs-space-6);
+	bottom: var(--fs-space-6);
+	z-index: 60;
+	display: flex;
+	align-items: center;
+	gap: var(--fs-space-3);
+	max-width: min(24rem, calc(100vw - 2rem));
+	padding: var(--fs-space-3) var(--fs-space-3) var(--fs-space-3) var(--fs-space-4);
+	border: 1px solid var(--fs-admin-border);
+	border-radius: var(--fs-radius-md);
+	background: var(--fs-admin-panel);
+	color: var(--fs-admin-text);
+	box-shadow: var(--fs-shadow-lg);
+	font-size: 0.875rem;
+	animation: fs-admin-toast-in var(--fs-dur) var(--fs-ease);
+}
+
+.fs-admin__toast-icon {
+	display: inline-flex;
+	flex-shrink: 0;
+}
+
+.fs-admin__toast--success .fs-admin__toast-icon {
+	color: var(--fs-admin-success);
+}
+
+.fs-admin__toast--error .fs-admin__toast-icon {
+	color: var(--fs-admin-danger);
+}
+
+.fs-admin__toast-text {
+	flex: 1;
+	min-width: 0;
+}
+
+.fs-admin__toast-close {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: 1.5rem;
+	height: 1.5rem;
+	border: none;
+	border-radius: var(--fs-radius-sm);
+	background: transparent;
+	color: var(--fs-admin-faint);
+	cursor: pointer;
+	transition:
+		background var(--fs-dur) var(--fs-ease),
+		color var(--fs-dur) var(--fs-ease);
+}
+
+.fs-admin__toast-close:hover {
+	background: var(--fs-admin-hover);
+	color: var(--fs-admin-text);
+}
+
+.fs-admin__toast-close:focus-visible {
+	outline: none;
+	box-shadow: var(--fs-focus-ring);
+}
+
+@keyframes fs-admin-toast-in {
+	from {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.fs-admin__dialog[open],
+	.fs-admin__toast {
+		animation: none;
+	}
+}
