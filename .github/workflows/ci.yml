@@ -21,6 +21,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Read-only job; don't leave the git token in local config for later steps.
+          persist-credentials: false
 
       # action-setup must run before setup-node so pnpm exists for the dependency cache.
       - uses: pnpm/action-setup@v4
@@ -55,6 +58,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Read-only job; don't leave the git token in local config for later steps.
+          persist-credentials: false
 
       - uses: pnpm/action-setup@v4
 

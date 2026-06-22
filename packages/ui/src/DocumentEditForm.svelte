@@ -73,7 +73,11 @@
 
 <svelte:window
 	onbeforeunload={(event) => {
-		if (guard.dirty && !guard.submitting) event.preventDefault();
+		if (guard.dirty && !guard.submitting) {
+			event.preventDefault();
+			// Older browsers gate the unsaved-changes prompt on returnValue, not preventDefault.
+			event.returnValue = '';
+		}
 	}}
 />
 
