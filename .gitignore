@@ -1,2 +1,31 @@
+# Dependencies
 node_modules/
+
+# Build output
 .svelte-kit/
+dist/
+build/
+
+# Test / scratch artifacts
+.tmp/
+test-results/
+playwright-report/
+playwright/.auth/
+coverage/
+
+# SQLite databases
+*.db
+*.db-shm
+*.db-wal
+
+# Fieldstone generated state
+.fieldstone/
+
+# Env (keep the example)
+.env
+.env.*
+!.env.example
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db

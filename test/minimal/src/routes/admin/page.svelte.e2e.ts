@@ -13,6 +13,7 @@ async function createPost(page: Page, title: string) {
 test('creates, edits, and deletes a post through route-driven admin', async ({ page }) => {
 	await createPost(page, 'POC post');
 
+	await expect(page.getByRole('status')).toContainText('Post created');
 	await expect(page.getByRole('heading', { name: 'POC post' })).toBeVisible();
 	await expect(page.getByText('Created from admin')).toBeVisible();
 	await expect(page.getByText('With another line')).toBeVisible();
@@ -28,12 +29,16 @@ test('creates, edits, and deletes a post through route-driven admin', async ({ p
 	await page.getByRole('button', { name: 'Save post' }).click();
 
 	await expect(page).toHaveURL(/\/admin\/collections\/posts\/[^/]+$/);
+	await expect(page.getByRole('status')).toContainText('Post saved');
 	await expect(page.getByRole('heading', { name: 'Edited POC post' })).toBeVisible();
 	await expect(page.getByText('Updated body')).toBeVisible();
-	await expect(page.locator('form.fs-admin__delete-form input[name="id"]')).toHaveValue(documentId);
 
+	// Deleting now goes through a confirmation dialog.
 	await page.getByRole('button', { name: 'Delete post' }).click();
+	await expect(page.locator('form.fs-admin__delete-form input[name="id"]')).toHaveValue(documentId);
+	await page.getByRole('button', { name: 'Delete', exact: true }).click();
 	await expect(page).toHaveURL(/\/admin\/collections\/posts$/);
+	await expect(page.getByRole('status')).toContainText('Post deleted');
 	await expect(page.getByRole('link', { name: 'Edited POC post' })).not.toBeVisible();
 });
 

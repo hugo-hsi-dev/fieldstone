@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel superseded runs on the same ref so a fast force-push doesn't pile up jobs.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Lint + typecheck + unit tests + production build. No browser needed, so this
+  # is the fast gate that should turn red first when something breaks.
+  check:
+    name: Lint · Typecheck · Unit · Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # action-setup must run before setup-node so pnpm exists for the dependency cache.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test:unit
+
+      # The production/SSR build is otherwise never exercised (e2e runs against
+      # `vite dev`), so gate it here. The Vite plugin reads DATABASE_URL at config time.
+      - name: Build
+        run: pnpm build
+        env:
+          DATABASE_URL: local.db
+
+  # End-to-end admin flows via Playwright against a freshly pushed SQLite schema.
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Cache the downloaded browser binaries; keyed on the lockfile so a Playwright
+      # version bump invalidates it. System deps are still (re)installed by setup:e2e.
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: playwright-${{ runner.os }}-
+
+      - name: Install Playwright (chromium)
+        run: pnpm setup:e2e
+
+      - name: Run e2e
+        run: pnpm test:e2e
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: test/minimal/playwright-report
+          retention-days: 7
+          if-no-files-found: ignore
