@@ -6,6 +6,7 @@
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
+		"sync": "svelte-kit sync",
 		"db:push": "node ../../packages/cli/bin/fieldstone.mjs push",
 		"setup:e2e": "playwright install --with-deps chromium",
 		"test:e2e": "playwright test",

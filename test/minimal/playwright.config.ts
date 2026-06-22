@@ -2,8 +2,11 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
 	webServer: {
+		// `svelte-kit sync` first: on a clean checkout (CI, fresh clone) the
+		// .svelte-kit/tsconfig.json that tsconfig.json extends doesn't exist yet, and
+		// the Vite dev server's TS transform of src/cms/*.ts collections fails without it.
 		command:
-			'rm -f local.db auth.db && BETTER_AUTH_URL=http://localhost:4173 DATABASE_URL=local.db FIELDSTONE_PUSH_ON_CONFIGURE=true npm run dev -- --host 127.0.0.1 --port 4173',
+			'npm run sync && rm -f local.db auth.db && BETTER_AUTH_URL=http://localhost:4173 DATABASE_URL=local.db FIELDSTONE_PUSH_ON_CONFIGURE=true npm run dev -- --host 127.0.0.1 --port 4173',
 		port: 4173,
 		// Locally, reuse an already-running dev server for a fast inner loop; in CI always
 		// start a clean one so the run is hermetic.
