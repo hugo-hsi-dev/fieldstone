@@ -114,7 +114,7 @@ DATABASE_URL=local.db pnpm db:push                                  # apply sche
 
 ## Repository layout
 
-```
+```text
 packages/
   schema/         field & collection definitions, validation, types
   compiler/       collections -> SchemaPlan (DDL + runtime config)
