@@ -5,6 +5,12 @@ import { fieldstone } from '@fieldstone/vite-plugin';
 
 export default defineConfig(() => {
 	return {
+		// Pre-bundle the Better Auth client at dev-server start. Otherwise Vite discovers
+		// and optimizes it on the first /login interaction and force-reloads the page,
+		// which can interrupt the sign-in redirect on a cold CI runner (flaky auth e2e).
+		optimizeDeps: {
+			include: ['better-auth/svelte']
+		},
 		plugins: [
 			fieldstone({
 				db: {

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import '@fieldstone/ui/admin.css';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -12,6 +13,13 @@
 	let mode = $state<'signin' | 'signup'>('signin');
 	let error = $state<string | null>(null);
 	let pending = $state(false);
+	// Gate submission on hydration. The form is JS-only (client-side auth), so a click
+	// before the onsubmit handler attaches would fall back to a native GET submit and
+	// never sign in — a real cold-load race, not just a test concern.
+	let hydrated = $state(false);
+	onMount(() => {
+		hydrated = true;
+	});
 
 	// Only honour same-origin absolute paths so `?redirect=` can't become an open
 	// redirect (e.g. `//evil.com` or `https://evil.com`).
@@ -81,7 +89,7 @@
 			<p class="login__error" role="alert">{error}</p>
 		{/if}
 
-		<button type="submit" class="login__submit" disabled={pending}>
+		<button type="submit" class="login__submit" disabled={pending || !hydrated}>
 			{mode === 'signup' ? 'Sign up' : 'Sign in'}
 		</button>
 
