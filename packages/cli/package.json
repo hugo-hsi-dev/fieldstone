@@ -1,13 +1,19 @@
 {
   "name": "@fieldstone/cli",
   "version": "0.0.1",
-  "private": true,
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "fieldstone": "./bin/fieldstone.mjs"
   },
+  "files": [
+    "bin"
+  ],
   "scripts": {
     "test": "vitest --run",
+    "check:publish": "publint",
     "typecheck": "tsgo -p tsconfig.json",
     "lint": "oxlint .",
     "format": "oxfmt -c ../../config/oxfmt/oxfmt.json ."
