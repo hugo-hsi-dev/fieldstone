@@ -7,10 +7,12 @@ import type {
   FieldDefinition,
   FieldstoneConfig,
   GlobalRuntimeConfig,
+  UploadOptions,
 } from "@fieldstone/schema";
 import {
   normalizeSelectOptions,
   STATUS_FIELD_NAME,
+  UPLOAD_FIELD_NAMES,
   validateCollectionFields,
 } from "@fieldstone/schema";
 import { toUniqueIdentifier } from "./identifiers.ts";
@@ -178,6 +180,7 @@ function fieldTypeScript(field: FieldDefinition): string {
     case "select":
       return selectUnionType(field);
     case "relationship":
+    case "upload":
       return field.hasMany ? "string[]" : "string";
     case "group":
       return objectTypeScript(field.fields);
@@ -287,6 +290,7 @@ function createFieldColumn(field: CompiledCollectionField): CompiledColumn {
         typeScriptType: selectUnionType(field),
       };
     case "relationship":
+    case "upload":
       return field.hasMany
         ? {
             ...base,
@@ -345,12 +349,51 @@ function withDraftStatusField(content: {
   return [...content.fields, statusField];
 }
 
+// Mirrors withDraftStatusField: an upload-enabled collection gets read-only media
+// metadata columns. They are left non-required (nullable) on purpose — they are
+// populated by the upload pipeline, never by a hand-written create, so forcing
+// them would break the collection's own create input type and form. `url` is
+// derived from `filename` at read time; `sizes` arrives with image variants.
+function withUploadFields(content: {
+  fields: FieldDefinition[];
+  upload?: UploadOptions;
+}): FieldDefinition[] {
+  if (!content.upload) return content.fields;
+  const reserved = new Set<string>(UPLOAD_FIELD_NAMES);
+  for (const field of content.fields) {
+    if (reserved.has(field.name))
+      throw new Error(
+        `Reserved field name on an upload-enabled collection: ${field.name}`,
+      );
+  }
+  const meta = (name: string, type: "text" | "number"): FieldDefinition =>
+    ({ name, type, admin: { readOnly: true } }) as FieldDefinition;
+  return [
+    ...content.fields,
+    meta("filename", "text"),
+    meta("mimeType", "text"),
+    meta("filesize", "number"),
+    meta("width", "number"),
+    meta("height", "number"),
+    meta("focalX", "number"),
+    meta("focalY", "number"),
+  ];
+}
+
 function compileContent(
-  content: { fields: FieldDefinition[]; slug: string; drafts?: boolean },
+  content: {
+    fields: FieldDefinition[];
+    slug: string;
+    drafts?: boolean;
+    upload?: UploadOptions;
+  },
   kind: "collection" | "global",
   tableIdentifiers: Set<string>,
 ): CompiledContent {
-  const sourceFields = withDraftStatusField(content);
+  const sourceFields = withUploadFields({
+    fields: withDraftStatusField(content),
+    upload: content.upload,
+  });
   validateCollectionFields(sourceFields);
   const fieldIdentifiers = new Set<string>();
   const fields = sourceFields.map((field) => ({
@@ -373,7 +416,7 @@ function compileContent(
     fields: fields.map((field) => ({
       name: field.name,
       ...(field.type === "text" ? { multiline: Boolean(field.multiline) } : {}),
-      ...(field.type === "relationship"
+      ...(field.type === "relationship" || field.type === "upload"
         ? { relationTo: field.relationTo, hasMany: Boolean(field.hasMany) }
         : {}),
       required: field.required,
@@ -496,22 +539,46 @@ export function buildSchemaPlan(config: FieldstoneConfig): SchemaPlan {
     );
 
   const collectionSlugs = new Set(collections.map((collection) => collection.slug));
-  const assertRelationshipTargets = (fields: FieldDefinition[]) => {
+  const uploadCollectionSlugs = new Set(
+    Object.values(config.collections)
+      .filter((collection) => collection.upload)
+      .map((collection) => collection.slug),
+  );
+  const assertRelationshipTargets = (
+    fields: FieldDefinition[],
+    withinGlobal: boolean,
+  ) => {
     for (const field of fields) {
       if (field.type === "relationship" && !collectionSlugs.has(field.relationTo))
         throw new Error(
           `Relationship field "${field.name}" points to unknown collection: ${field.relationTo}`,
         );
-      // Relationships can be nested inside group/array fields; validate those too.
+      if (field.type === "upload") {
+        // Globals run no hooks/access, so there is no seam to clean up files or
+        // gate them — upload fields are collection-only.
+        if (withinGlobal)
+          throw new Error(
+            `Upload field "${field.name}" is not supported on globals`,
+          );
+        if (!collectionSlugs.has(field.relationTo))
+          throw new Error(
+            `Upload field "${field.name}" points to unknown collection: ${field.relationTo}`,
+          );
+        if (!uploadCollectionSlugs.has(field.relationTo))
+          throw new Error(
+            `Upload field "${field.name}" must point to an upload-enabled collection: ${field.relationTo}`,
+          );
+      }
+      // Relationships/uploads can be nested inside group/array fields; validate those too.
       if (field.type === "group" || field.type === "array")
-        assertRelationshipTargets(field.fields);
+        assertRelationshipTargets(field.fields, withinGlobal);
     }
   };
-  for (const content of [
-    ...Object.values(config.collections),
-    ...Object.values(config.globals ?? {}),
-  ]) {
-    assertRelationshipTargets(content.fields);
+  for (const collection of Object.values(config.collections)) {
+    assertRelationshipTargets(collection.fields, false);
+  }
+  for (const global of Object.values(config.globals ?? {})) {
+    assertRelationshipTargets(global.fields, true);
   }
 
   return {

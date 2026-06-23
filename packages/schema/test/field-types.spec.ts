@@ -13,6 +13,7 @@ import {
   richText,
   select,
   text,
+  upload,
 } from "../src/index.ts";
 import type { FieldDefinition } from "../src/index.ts";
 
@@ -29,6 +30,12 @@ describe("field constructors", () => {
     expect(date({ name: "publishedAt" })).toEqual({
       name: "publishedAt",
       type: "date",
+    });
+    expect(upload({ name: "cover", relationTo: "media", required: true })).toEqual({
+      name: "cover",
+      relationTo: "media",
+      required: true,
+      type: "upload",
     });
   });
 
@@ -77,6 +84,12 @@ describe("field definition validation", () => {
     expect(() =>
       collection({ fields: [text({ name: "slug", minLength: 5, maxLength: 2 })] }),
     ).toThrow("minLength greater than maxLength");
+  });
+
+  it("requires a relationTo on upload fields", () => {
+    expect(() =>
+      collection({ fields: [upload({ name: "cover", relationTo: "" })] }),
+    ).toThrow('Upload field "cover" requires a relationTo collection');
   });
 });
 
@@ -198,6 +211,29 @@ describe("normalizeCollectionData across field types", () => {
 
     expect(() => normalizeCollectionData(config, { tags: ["t1"] })).toThrow(
       "author is required",
+    );
+  });
+
+  it("normalizes single and hasMany upload fields like relationships", () => {
+    const config = fields(
+      upload({ name: "cover", relationTo: "media", required: true }),
+      upload({ name: "gallery", relationTo: "media", hasMany: true }),
+    );
+
+    expect(
+      normalizeCollectionData(config, {
+        cover: " m1 ",
+        gallery: ["g1", "g1", "g2"],
+      }),
+    ).toEqual({ cover: "m1", gallery: ["g1", "g2"] });
+
+    expect(normalizeCollectionData(config, { cover: "m1" })).toEqual({
+      cover: "m1",
+      gallery: null,
+    });
+
+    expect(() => normalizeCollectionData(config, { gallery: ["g1"] })).toThrow(
+      "cover is required",
     );
   });
 
