@@ -7,12 +7,13 @@
 		"dev": "vite dev",
 		"build": "vite build",
 		"sync": "svelte-kit sync",
-		"db:push": "node ../../packages/cli/bin/fieldstone.mjs push",
+		"db:push": "fieldstone push",
 		"setup:e2e": "playwright install --with-deps chromium",
 		"test:e2e": "playwright test",
-		"fieldstone:generate": "node ../../packages/cli/bin/fieldstone.mjs generate"
+		"fieldstone:generate": "fieldstone generate"
 	},
 	"devDependencies": {
+		"@fieldstone/cli": "workspace:*",
 		"@fieldstone/eslint-config": "workspace:*",
 		"@fieldstone/tsconfig": "workspace:*",
 		"@playwright/test": "^1.60.0",
