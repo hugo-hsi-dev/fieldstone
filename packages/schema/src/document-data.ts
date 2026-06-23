@@ -172,7 +172,7 @@ function normalizeRichTextField(
 }
 
 function normalizeRelationshipField(
-  field: Extract<FieldDefinition, { type: "relationship" }>,
+  field: Extract<FieldDefinition, { type: "relationship" | "upload" }>,
   raw: unknown,
 ): string | string[] | null {
   // Only primitive ids coerce cleanly; an object would stringify to
@@ -296,6 +296,7 @@ export function normalizeFieldValue(
     case "boolean":
       return normalizeBooleanField(field, raw);
     case "relationship":
+    case "upload":
       return normalizeRelationshipField(field, raw);
     case "richText":
       return normalizeRichTextField(field, raw);

@@ -12,6 +12,7 @@ import {
   relationship,
   select,
   text,
+  upload,
   type FieldstoneConfig,
 } from "@fieldstone/schema";
 import * as schema from "@fieldstone/schema";
@@ -504,6 +505,176 @@ describe("fieldstone compiler", () => {
         },
       }),
     ).toThrow("points to unknown collection: missing");
+  });
+
+  it("compiles upload fields to text and json columns like relationships", () => {
+    const compiled = compileFieldstoneConfig({
+      db: { dialect: "sqlite", url: ":memory:" },
+      collections: {
+        media: { fields: [], upload: {}, slug: "media" },
+        posts: {
+          fields: [
+            upload({ name: "cover", relationTo: "media", required: true }),
+            upload({ name: "gallery", relationTo: "media", hasMany: true }),
+          ],
+          slug: "posts",
+        },
+      },
+    });
+
+    const posts = compiled.schemaPlan.collectionBySlug.get("posts")!;
+    const byName = Object.fromEntries(
+      posts.columns.map((column) => [column.name, column]),
+    );
+    expect(byName.cover).toMatchObject({
+      sourceExpression: "text",
+      typeScriptType: "string",
+      required: true,
+    });
+    expect(byName.gallery).toMatchObject({
+      sourceExpression: "json",
+      typeScriptType: "string[]",
+      required: false,
+    });
+
+    const source = compiled.renderSchemaSource();
+    expect(source).toContain('cover: text("cover").notNull()');
+    expect(source).toContain("gallery: text(\"gallery\", { mode: 'json' })");
+
+    const types = compiled.renderTypesDeclaration();
+    expect(types).toContain('"cover": string');
+    expect(types).toContain('"gallery": string[] | null');
+  });
+
+  it("injects read-only media metadata fields for upload-enabled collections", () => {
+    const compiled = compileFieldstoneConfig({
+      db: { dialect: "sqlite", url: ":memory:" },
+      collections: {
+        media: { fields: [text({ name: "alt" })], upload: {}, slug: "media" },
+      },
+    });
+
+    const media = compiled.schemaPlan.collectionBySlug.get("media")!;
+    const byName = Object.fromEntries(
+      media.columns.map((column) => [column.name, column]),
+    );
+    for (const name of [
+      "filename",
+      "mimeType",
+      "filesize",
+      "width",
+      "height",
+      "focalX",
+      "focalY",
+    ])
+      expect(byName[name], name).toBeDefined();
+    expect(byName.filename).toMatchObject({
+      sourceExpression: "text",
+      required: false,
+    });
+    expect(byName.filesize).toMatchObject({
+      sourceExpression: "number",
+      required: false,
+    });
+
+    // The injected metadata is nullable + optional on input: the upload pipeline
+    // fills it in, so a hand-written create must never be forced to supply it. A
+    // `required: true` injection would force these onto the media create type.
+    const types = compiled.renderTypesDeclaration();
+    expect(types).toContain('"filename": string | null');
+    expect(types).toContain('"filesize": number | null');
+  });
+
+  it("does not inject media metadata without upload config", () => {
+    const compiled = compileFieldstoneConfig({
+      db: { dialect: "sqlite", url: ":memory:" },
+      collections: {
+        posts: { fields: [text({ name: "title" })], slug: "posts" },
+      },
+    });
+    const posts = compiled.schemaPlan.collectionBySlug.get("posts")!;
+    expect(posts.columns.some((column) => column.name === "filename")).toBe(false);
+  });
+
+  it("rejects a reserved media field name on an upload-enabled collection", () => {
+    expect(() =>
+      compileFieldstoneConfig({
+        db: { dialect: "sqlite", url: ":memory:" },
+        collections: {
+          media: {
+            fields: [text({ name: "filename" })],
+            upload: {},
+            slug: "media",
+          },
+        },
+      }),
+    ).toThrow("Reserved field name on an upload-enabled collection: filename");
+  });
+
+  it("rejects upload fields pointing to a non-upload-enabled collection", () => {
+    expect(() =>
+      compileFieldstoneConfig({
+        db: { dialect: "sqlite", url: ":memory:" },
+        collections: {
+          authors: { fields: [text({ name: "name" })], slug: "authors" },
+          posts: {
+            fields: [upload({ name: "cover", relationTo: "authors" })],
+            slug: "posts",
+          },
+        },
+      }),
+    ).toThrow("must point to an upload-enabled collection: authors");
+  });
+
+  it("rejects upload fields pointing to unknown collections", () => {
+    expect(() =>
+      compileFieldstoneConfig({
+        db: { dialect: "sqlite", url: ":memory:" },
+        collections: {
+          posts: {
+            fields: [upload({ name: "cover", relationTo: "missing" })],
+            slug: "posts",
+          },
+        },
+      }),
+    ).toThrow('Upload field "cover" points to unknown collection: missing');
+  });
+
+  it("rejects upload fields on globals", () => {
+    expect(() =>
+      compileFieldstoneConfig({
+        db: { dialect: "sqlite", url: ":memory:" },
+        collections: {
+          media: { fields: [], upload: {}, slug: "media" },
+        },
+        globals: {
+          settings: {
+            fields: [upload({ name: "logo", relationTo: "media" })],
+            slug: "settings",
+          },
+        },
+      }),
+    ).toThrow('Upload field "logo" is not supported on globals');
+  });
+
+  it("includes injected media fields in the fingerprint so toggling upload re-migrates", () => {
+    const without = compileFieldstoneConfig({
+      db: { dialect: "sqlite", url: ":memory:" },
+      collections: {
+        media: { fields: [text({ name: "alt" })], slug: "media" },
+      },
+    }).schemaPlan.fingerprintPayload.collections[0];
+    const withUpload = compileFieldstoneConfig({
+      db: { dialect: "sqlite", url: ":memory:" },
+      collections: {
+        media: { fields: [text({ name: "alt" })], upload: {}, slug: "media" },
+      },
+    }).schemaPlan.fingerprintPayload.collections[0];
+
+    expect(without.fields.some((field) => field.name === "filename")).toBe(false);
+    expect(withUpload.fields.some((field) => field.name === "filename")).toBe(true);
+    // A different fingerprint is what makes `db:push` apply the new columns.
+    expect(withUpload).not.toEqual(without);
   });
 
   it("rejects a select defaultValue that is not one of its options", () => {

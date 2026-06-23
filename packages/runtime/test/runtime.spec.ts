@@ -15,6 +15,7 @@ import {
   relationship,
   select,
   text,
+  upload,
   type FieldstoneConfig,
 } from "@fieldstone/schema";
 import { getFieldstone } from "../src/index.ts";
@@ -508,6 +509,88 @@ describe("fieldstone runtime", () => {
         data: { title: "Solo", author: grace.id },
       });
       expect(noEditors.editors).toBeNull();
+    } finally {
+      await rm(tempDir, { force: true, recursive: true });
+    }
+  });
+
+  it("creates media docs and references them through upload fields", async () => {
+    const tempDir = await mkdtemp(path.join(tmpdir(), "fieldstone-upload-"));
+    const dbPath = path.join(tempDir, "test.db");
+    const client = createClient({ url: `file:${dbPath}` });
+    await client.executeMultiple(`
+      create table media (
+        id text primary key not null,
+        alt text,
+        filename text,
+        mimeType text,
+        filesize real,
+        width real,
+        height real,
+        focalX real,
+        focalY real,
+        created_at integer not null,
+        updated_at integer not null
+      );
+      create table posts (
+        id text primary key not null,
+        title text not null,
+        cover text not null,
+        gallery text,
+        created_at integer not null,
+        updated_at integer not null
+      );
+    `);
+    client.close();
+
+    const config: FieldstoneConfig = {
+      db: { dialect: "sqlite", url: dbPath },
+      collections: {
+        media: {
+          ...collection({ fields: [text({ name: "alt" })], upload: {} }),
+          slug: "media",
+        },
+        posts: {
+          ...collection({
+            fields: [
+              text({ name: "title", required: true }),
+              upload({ name: "cover", relationTo: "media", required: true }),
+              upload({ name: "gallery", relationTo: "media", hasMany: true }),
+            ],
+          }),
+          slug: "posts",
+        },
+      },
+    };
+
+    try {
+      const stone = await getFieldstone({ config });
+      // A media doc is created with no injected metadata — the upload pipeline
+      // populates it, so the create path must never force filename/mimeType/etc.
+      const logo = await stone.create({
+        collection: "media",
+        data: { alt: "Logo" },
+      });
+      expect(logo.filename).toBeNull();
+      const hero = await stone.create({
+        collection: "media",
+        data: { alt: "Hero" },
+      });
+
+      const post = await stone.create({
+        collection: "posts",
+        data: { title: "Hello", cover: logo.id, gallery: [logo.id, hero.id] },
+      });
+      expect(post.cover).toBe(logo.id);
+      expect(post.gallery).toEqual([logo.id, hero.id]);
+
+      const fetched = await stone.findById({ collection: "posts", id: post.id });
+      expect(fetched?.cover).toBe(logo.id);
+      expect(fetched?.gallery).toEqual([logo.id, hero.id]);
+
+      await expect(
+        stone.create({ collection: "posts", data: { title: "No cover" } }),
+      ).rejects.toThrow("cover is required");
     } finally {
       await rm(tempDir, { force: true, recursive: true });
     }

@@ -66,6 +66,16 @@ export type RelationshipFieldDefinition = CommonFieldOptions & {
   hasMany?: boolean;
 };
 
+// An `upload` field is a single-id (or hasMany) reference to an upload-enabled
+// collection — it stores media ids exactly like a relationship, but the target
+// must be a media collection (validated by the compiler) and the admin renders it
+// as a file picker rather than a plain relation select.
+export type UploadFieldDefinition = CommonFieldOptions & {
+  type: "upload";
+  relationTo: string;
+  hasMany?: boolean;
+};
+
 export type RichTextFieldDefinition = CommonFieldOptions & {
   type: "richText";
   defaultValue?: string;
@@ -96,6 +106,7 @@ export type FieldDefinition =
   | SelectFieldDefinition
   | BooleanFieldDefinition
   | RelationshipFieldDefinition
+  | UploadFieldDefinition
   | RichTextFieldDefinition
   | GroupFieldDefinition
   | ArrayFieldDefinition;
@@ -175,6 +186,44 @@ export type DocumentStatus = "draft" | "published";
 
 export const STATUS_FIELD_NAME = "_status";
 
+// Media-metadata fields the compiler injects into every upload-enabled
+// collection. Reserved: a user field of the same name would shadow the injected
+// column and corrupt upload bookkeeping. (`sizes` is added with image variants in
+// a later slice; `url` is derived from `filename` + the serve route, not stored.)
+export const UPLOAD_FIELD_NAMES = [
+  "filename",
+  "mimeType",
+  "filesize",
+  "width",
+  "height",
+  "focalX",
+  "focalY",
+] as const;
+
+export type UploadImageSize = {
+  name: string;
+  width?: number;
+  height?: number;
+  fit?: "cover" | "contain" | "fill" | "inside" | "outside";
+};
+
+export type UploadOptions = {
+  /** Directory (relative to the app root) where original files are stored. */
+  staticDir?: string;
+  /** URL prefix the serving route is mounted at (defaults to "/media"). */
+  staticURL?: string;
+  /** Allowed MIME types, e.g. ["image/*"] or ["image/png", "application/pdf"]. */
+  mimeTypes?: string[];
+  /** Maximum accepted upload size, in bytes. */
+  maxFileSize?: number;
+  /** Named image variants, generated when `sharp` is installed. */
+  imageSizes?: UploadImageSize[];
+  /** Named size (or "filename") used as the admin thumbnail. */
+  adminThumbnail?: string;
+  /** Enable per-document focal point selection (requires `sharp`). */
+  focalPoint?: boolean;
+};
+
 export type ContentDefinition = {
   fields: FieldDefinition[];
   drafts?: boolean;
@@ -186,6 +235,10 @@ export type ContentDefinition = {
 export type CollectionDefinition = ContentDefinition & {
   hooks?: CollectionHooks;
   access?: CollectionAccess;
+  // Marks this as a media collection: the compiler injects upload metadata fields
+  // and the admin renders upload/serve affordances. Upload is collection-only —
+  // globals have no hook/access seam for file cleanup, so they can't be media.
+  upload?: UploadOptions;
 };
 export type GlobalDefinition = ContentDefinition;
 

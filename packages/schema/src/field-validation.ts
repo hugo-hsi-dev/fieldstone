@@ -155,6 +155,13 @@ function validateFieldDefinition(field: FieldDefinition) {
         );
       break;
     }
+    case "upload": {
+      if (!field.relationTo || field.relationTo.trim() === "")
+        throw new Error(
+          `Upload field "${field.name}" requires a relationTo collection`,
+        );
+      break;
+    }
     case "group":
     case "array": {
       if (!field.fields || field.fields.length === 0)

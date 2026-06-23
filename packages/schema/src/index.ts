@@ -23,10 +23,12 @@ import type {
   SelectFieldDefinition,
   SelectOptionInput,
   TextFieldDefinition,
+  UploadFieldDefinition,
+  UploadOptions,
 } from "./types.ts";
 
 export { validateCollectionFields, normalizeSelectOptions } from "./field-validation.ts";
-export { STATUS_FIELD_NAME } from "./types.ts";
+export { STATUS_FIELD_NAME, UPLOAD_FIELD_NAMES } from "./types.ts";
 export {
   normalizeBooleanFieldValue,
   normalizeCollectionData,
@@ -86,6 +88,9 @@ export type {
   SelectOptionInput,
   SystemFieldName,
   TextFieldDefinition,
+  UploadFieldDefinition,
+  UploadImageSize,
+  UploadOptions,
 } from "./types.ts";
 
 export function text(
@@ -136,6 +141,12 @@ export function relationship(
   return { ...config, type: "relationship" };
 }
 
+export function upload(
+  config: Omit<UploadFieldDefinition, "type">,
+): UploadFieldDefinition {
+  return { ...config, type: "upload" };
+}
+
 export function richText(
   config: Omit<RichTextFieldDefinition, "type">,
 ): RichTextFieldDefinition {
@@ -159,6 +170,7 @@ export function collection(config: {
   hooks?: CollectionHooks;
   access?: CollectionAccess;
   drafts?: boolean;
+  upload?: UploadOptions;
 }): CollectionDefinition {
   validateCollectionFields(config.fields);
 
@@ -167,6 +179,7 @@ export function collection(config: {
     ...(config.hooks ? { hooks: config.hooks } : {}),
     ...(config.access ? { access: config.access } : {}),
     ...(config.drafts ? { drafts: true } : {}),
+    ...(config.upload ? { upload: config.upload } : {}),
   };
 }
 
