@@ -31,12 +31,16 @@ SvelteKit app that consumes the content.
 Fieldstone composes onto a SvelteKit app — it doesn't replace `sv create`. Start from a
 new (or existing) SvelteKit project, then scaffold Fieldstone into it:
 
+This quick start assumes a **brand-new** app, where `--force` may freely overwrite the
+trivial `sv create` boilerplate. For an **existing** app, run `fieldstone init` _without_
+`--force` (see below).
+
 ```bash
-npx sv create my-app          # or use an existing SvelteKit app
+npx sv create my-app          # a brand-new SvelteKit app
 cd my-app
 
 npm install -D @fieldstone/cli
-npx fieldstone init --force    # scaffold Fieldstone (--force lets it own a fresh app's boilerplate)
+npx fieldstone init --force    # scaffold Fieldstone over the fresh-app boilerplate
 
 npm install                    # install the dependencies init added
 echo "BETTER_AUTH_SECRET=$(openssl rand -hex 32)" >> .env
