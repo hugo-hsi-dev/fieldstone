@@ -86,6 +86,7 @@ export type {
   SelectFieldDefinition,
   SelectOption,
   SelectOptionInput,
+  StorageConfig,
   SystemFieldName,
   TextFieldDefinition,
   UploadFieldDefinition,

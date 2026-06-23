@@ -1,5 +1,6 @@
 import { compileFieldstoneConfig } from "@fieldstone/compiler";
 import type { FieldstoneConfig } from "@fieldstone/schema";
+import { resolveStorage } from "@fieldstone/storage";
 
 export function normalizeSqliteUrl(url: string) {
   if (/^[a-z]+:/i.test(url)) return url;
@@ -17,6 +18,9 @@ export async function createDatabase(config: FieldstoneConfig) {
   const compiled = compiledConfig.renderRuntimeSchema();
   const client = createClient({ url: normalizeSqliteUrl(config.db.url) });
   const database = drizzle(client, { schema: compiled.schema });
+  // Resolved from the declarative storage config; consumed by the upload pipeline
+  // and the media-serving route in later slices.
+  const storage = resolveStorage(config);
 
   return {
     collections: compiledConfig.createCollectionRuntimeConfigs(),
@@ -25,6 +29,7 @@ export async function createDatabase(config: FieldstoneConfig) {
     compiledConfig,
     config,
     database,
+    storage,
     and,
     asc,
     count,

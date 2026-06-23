@@ -12,6 +12,7 @@
       "@fieldstone/routes",
       "@fieldstone/runtime",
       "@fieldstone/schema",
+      "@fieldstone/storage",
       "@fieldstone/ui",
       "@fieldstone/vite-plugin"
     ]
