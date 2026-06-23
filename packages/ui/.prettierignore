@@ -7,3 +7,7 @@ bun.lockb
 
 # Miscellaneous
 /node_modules/
+
+# Build output
+dist
+.svelte-kit

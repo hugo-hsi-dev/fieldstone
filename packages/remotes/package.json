@@ -1,8 +1,13 @@
 {
   "name": "@fieldstone/remotes",
   "version": "0.0.1",
-  "private": true,
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src"
+  ],
   "exports": {
     ".": {
       "types": "./src/index.ts",
@@ -11,6 +16,7 @@
   },
   "scripts": {
     "test": "vitest --run --passWithNoTests",
+    "check:publish": "publint && attw --pack . --profile esm-only",
     "typecheck": "tsgo -p tsconfig.json",
     "lint": "oxlint .",
     "format": "oxfmt -c ../../config/oxfmt/oxfmt.json ."
