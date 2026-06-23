@@ -5,6 +5,7 @@
 		CollectionRuntimeConfig,
 		CollectionSlug
 	} from '@fieldstone/schema';
+	import { UPLOAD_FIELD_NAMES } from '@fieldstone/schema';
 
 	import { getCollectionLabel, getFieldLabel, getFieldValue } from './labels';
 	import Button from './primitives/Button.svelte';
@@ -41,12 +42,16 @@
 	}
 
 	// Up to two scalar summary columns (skip the title field and anything that
-	// renders as long/structured content — rich text, groups, arrays).
+	// renders as long/structured content — rich text, groups, arrays). Upload
+	// collections title by `filename` (not field[0]), so they start at 0; and their
+	// injected metadata (filename/mimeType/…) is hidden — it's noise in a list.
 	const SUMMARY_TYPES = ['text', 'email', 'number', 'select', 'boolean', 'date'];
+	const UPLOAD_METADATA = new Set<string>(UPLOAD_FIELD_NAMES);
 	const summaryFields = $derived(
 		collection.fields
-			.slice(1)
+			.slice(isUpload ? 0 : 1)
 			.filter((field) => SUMMARY_TYPES.includes(field.type))
+			.filter((field) => !isUpload || !UPLOAD_METADATA.has(field.name))
 			.slice(0, 2)
 	);
 

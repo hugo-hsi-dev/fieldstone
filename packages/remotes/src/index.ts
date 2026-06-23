@@ -361,6 +361,9 @@ export function createFieldstoneAdminRemotes({
         const { collection, fieldstoneAdmin } = await getAdminCollection(
           input.collection,
         );
+        // Reject a crafted submit to a non-upload collection as a form error,
+        // before buffering the body, rather than letting it 500 downstream.
+        if (!collection.upload) invalid("Collection does not support uploads");
         const bytes = new Uint8Array(await input.file.arrayBuffer());
 
         let document: { id: string };
