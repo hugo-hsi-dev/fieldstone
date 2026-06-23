@@ -63,6 +63,10 @@ export type CreateInput<TCollection extends CollectionSlug = CollectionSlug> =
   MutationInput<TCollection> & {
     createdAt?: Date;
     updatedAt?: Date;
+    // Trusted, server-only fields applied AFTER normalization (which strips
+    // read-only fields). The upload pipeline uses this to set system-managed media
+    // metadata. NEVER populate it from request data — user paths only fill `data`.
+    system?: Record<string, unknown>;
   };
 
 // PATCH merge data is recursively partial: top-level fields and nested group

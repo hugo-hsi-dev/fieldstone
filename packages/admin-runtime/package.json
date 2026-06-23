@@ -24,7 +24,8 @@
   },
   "dependencies": {
     "@fieldstone/runtime": "workspace:*",
-    "@fieldstone/schema": "workspace:*"
+    "@fieldstone/schema": "workspace:*",
+    "@fieldstone/storage": "workspace:*"
   },
   "devDependencies": {
     "@fieldstone/oxfmt-config": "workspace:*",

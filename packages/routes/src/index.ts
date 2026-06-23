@@ -84,3 +84,22 @@ export function adminEditDocumentPath(
 export function adminGlobalPath(global: string, basePath = "") {
   return withBase(`/admin/globals/${encodeURIComponent(global)}`, basePath);
 }
+
+// The catch-all route the media-serving handler is mounted at. The default
+// prefix is "/media"; a host can move it via storage.staticURL.
+export const mediaRouteId = "/media/[...path]";
+
+export const DEFAULT_MEDIA_PREFIX = "/media";
+
+// Build the public URL for a stored file from its key (the media doc's
+// `filename`). Each path segment is encoded; the prefix is the configured
+// staticURL (optionally already including the app's base path).
+export function mediaPath(key: string, prefix: string = DEFAULT_MEDIA_PREFIX) {
+  const base = prefix.endsWith("/") ? prefix.slice(0, -1) : prefix;
+  const encoded = key
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+  return `${base}/${encoded}`;
+}

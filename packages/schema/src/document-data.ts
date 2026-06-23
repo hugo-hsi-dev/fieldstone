@@ -322,6 +322,11 @@ export function normalizeCollectionData(
   }
 
   for (const field of collection.fields) {
+    // Read-only fields are system-managed (e.g. the injected upload metadata) and
+    // are never writable from user input on any path — a user can't point a media
+    // doc's `filename` at another record's file. The trusted pipeline sets them
+    // directly (the runtime's `system` channel), bypassing this normalizer.
+    if (field.admin?.readOnly) continue;
     normalized[field.name] = normalizeFieldValue(field, data[field.name]);
   }
 
