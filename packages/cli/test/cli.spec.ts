@@ -56,6 +56,22 @@ function runFieldstoneGenerate(cwd: string) {
   return runFieldstone("generate", cwd);
 }
 
+function runFieldstoneBin(args: string[], cwd: string) {
+  return new Promise<{ code: number; stdout: string; stderr: string }>(
+    (resolve) => {
+      const child = spawn(process.execPath, [cliPath, ...args], {
+        cwd,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      let stdout = "";
+      let stderr = "";
+      child.stdout.on("data", (chunk) => (stdout += chunk));
+      child.stderr.on("data", (chunk) => (stderr += chunk));
+      child.on("close", (code) => resolve({ code: code ?? 0, stdout, stderr }));
+    },
+  );
+}
+
 describe("fieldstone cli", () => {
   it("loads collections with the app Vite config", async () => {
     const tmpRoot = path.join(packageRoot, ".tmp");
@@ -217,6 +233,37 @@ export default collection({
           "utf-8",
         ),
       ).toContain("betterAuth");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("routes init through the bin with --cwd and honours --no-install", async () => {
+    const tmpRoot = path.join(packageRoot, ".tmp");
+    await mkdir(tmpRoot, { recursive: true });
+    const root = await mkdtemp(path.join(tmpRoot, "fieldstone-init-bin-"));
+
+    try {
+      await writeFile(
+        path.join(root, "package.json"),
+        JSON.stringify({
+          name: "host-app",
+          devDependencies: { "@sveltejs/kit": "^2.0.0" },
+        }),
+      );
+
+      // Run from packageRoot, targeting `root` via --cwd.
+      const result = await runFieldstoneBin(
+        ["init", "--cwd", root, "--force", "--no-install"],
+        packageRoot,
+      );
+
+      expect(result.code).toBe(0);
+      // --no-install suppresses the install suggestion.
+      expect(result.stdout).not.toContain("install dependencies");
+      expect(
+        await readFile(path.join(root, "vite.config.ts"), "utf-8"),
+      ).toContain("@fieldstone/vite-plugin");
     } finally {
       await rm(root, { recursive: true, force: true });
     }

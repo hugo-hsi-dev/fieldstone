@@ -196,11 +196,9 @@ export async function runInit({ cwd, force, install }) {
       "merge the Fieldstone Vite config into your vite.config.ts (the fieldstone() plugin + experimental flags — see the skipped template)",
     );
   }
-  log(
-    install
-      ? "install dependencies (e.g. `pnpm install`)"
-      : "`pnpm install` to fetch the new dependencies",
-  );
+  if (install) {
+    log("install dependencies (e.g. `pnpm install`)");
+  }
   log("set BETTER_AUTH_SECRET in .env (copy .env.example) — the dev fallback is insecure");
   log("`fieldstone push` to create the SQLite schema, then start your dev server");
   log("open /admin and register the first account");

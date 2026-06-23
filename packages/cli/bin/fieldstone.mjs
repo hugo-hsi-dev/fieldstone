@@ -30,8 +30,15 @@ function parseArgs(argv) {
   const flags = { cwd: process.cwd(), force: false, install: true };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (arg === "--cwd") flags.cwd = path.resolve(argv[++i] ?? ".");
-    else if (arg === "--force") flags.force = true;
+    if (arg === "--cwd") {
+      const next = argv[i + 1];
+      if (!next || next.startsWith("-")) {
+        console.error("Missing value for --cwd");
+        process.exit(1);
+      }
+      flags.cwd = path.resolve(next);
+      i++;
+    } else if (arg === "--force") flags.force = true;
     else if (arg === "--no-install") flags.install = false;
     else if (arg === "--help" || arg === "-h") flags.help = true;
     else if (arg === "--version" || arg === "-v") flags.version = true;
@@ -55,7 +62,7 @@ if (flags.version) {
 
 if (flags.help || !command || command === "help") {
   console.log(HELP);
-  process.exit(command && command !== "help" ? 1 : 0);
+  process.exit(0);
 }
 
 if (command === "init") {

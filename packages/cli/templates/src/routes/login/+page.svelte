@@ -42,6 +42,8 @@
 				return;
 			}
 			await goto(resolve(redirectTo as `/${string}`));
+		} catch (caught) {
+			error = caught instanceof Error ? caught.message : 'Authentication failed';
 		} finally {
 			pending = false;
 		}
@@ -80,7 +82,7 @@
 				class="login__input"
 				type="password"
 				bind:value={password}
-				autocomplete="current-password"
+				autocomplete={mode === 'signup' ? 'new-password' : 'current-password'}
 				required
 			/>
 		</label>
