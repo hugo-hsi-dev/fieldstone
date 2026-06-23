@@ -67,7 +67,13 @@ function runFieldstoneBin(args: string[], cwd: string) {
       let stderr = "";
       child.stdout.on("data", (chunk) => (stdout += chunk));
       child.stderr.on("data", (chunk) => (stderr += chunk));
-      child.on("close", (code) => resolve({ code: code ?? 0, stdout, stderr }));
+      child.on("error", (err) => {
+        stderr += `\n${String(err)}`;
+        resolve({ code: 1, stdout, stderr });
+      });
+      child.on("close", (code, signal) =>
+        resolve({ code: code ?? (signal ? 1 : 0), stdout, stderr }),
+      );
     },
   );
 }
