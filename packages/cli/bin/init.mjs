@@ -4,9 +4,8 @@ import { fileURLToPath } from "node:url";
 
 const TEMPLATES_DIR = fileURLToPath(new URL("../templates", import.meta.url));
 
-// Unpublished today; bumped in the release slice. The smoke/validation flow overrides
-// these to local tarballs.
-const FIELDSTONE_VERSION = "^0.0.1";
+// The lockstep version of the @fieldstone/* packages a scaffolded app depends on.
+const FIELDSTONE_VERSION = "^0.1.0";
 
 /** @type {Record<string, string>} */
 const DEPENDENCIES = {
