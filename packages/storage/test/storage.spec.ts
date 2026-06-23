@@ -74,5 +74,12 @@ describe("resolveStorage", () => {
     expect(() => resolveStorage({ storage: { adapter: "s3" } })).toThrow(
       "Unsupported storage adapter: s3",
     );
+    // A falsy non-local value (e.g. "" from untyped JS) must also fail loudly
+    // rather than silently falling back to local disk.
+    expect(() =>
+      resolveStorage({ storage: { adapter: "" } } as Parameters<
+        typeof resolveStorage
+      >[0]),
+    ).toThrow("Unsupported storage adapter:");
   });
 });

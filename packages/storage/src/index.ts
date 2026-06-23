@@ -101,9 +101,11 @@ export function resolveStorage(config: {
   storage?: StorageConfig;
 }): StorageAdapter {
   const storage = config.storage ?? {};
-  if (storage.adapter && storage.adapter !== "local")
-    // Remote (S3) adapters arrive in a later slice. Fail loudly rather than
-    // silently writing to local disk when a remote backend was requested.
+  // Only an unset adapter falls back to local. Any other value — including a
+  // falsy "" from untyped JS — is an explicit, unsupported choice: remote (S3)
+  // adapters arrive in a later slice, so fail loudly rather than silently
+  // writing to local disk.
+  if (storage.adapter !== undefined && storage.adapter !== "local")
     throw new Error(
       `Unsupported storage adapter: ${storage.adapter}. Only "local" is available today.`,
     );
