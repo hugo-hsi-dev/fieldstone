@@ -16,6 +16,9 @@ const oxlintPackages = [
 ];
 
 export default [
+  // CLI scaffold templates are copied verbatim into a host app; they reference that
+  // app's $app/$lib aliases, so they aren't linted here.
+  { ignores: ["packages/cli/templates/**"] },
   ...svelteKitConfig({
     gitignorePath,
     tsconfigRootDir: import.meta.dirname,

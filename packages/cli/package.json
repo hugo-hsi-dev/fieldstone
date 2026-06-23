@@ -9,7 +9,8 @@
     "fieldstone": "./bin/fieldstone.mjs"
   },
   "files": [
-    "bin"
+    "bin",
+    "templates"
   ],
   "scripts": {
     "test": "vitest --run",

@@ -1,4 +1,5 @@
 {
   "$schema": "../../config/oxlint/node_modules/oxlint/configuration_schema.json",
-  "extends": ["../../config/oxlint/oxlint.json"]
+  "extends": ["../../config/oxlint/oxlint.json"],
+  "ignorePatterns": ["templates"]
 }
