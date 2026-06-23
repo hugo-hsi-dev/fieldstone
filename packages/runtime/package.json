@@ -1,15 +1,22 @@
 {
   "name": "@fieldstone/runtime",
   "version": "0.0.1",
-  "private": true,
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ],
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     }
   },
   "scripts": {
+    "build": "tsc -p tsconfig.build.json && node ../../scripts/rewrite-dts-extensions.mjs dist",
+    "check:publish": "publint && attw --pack . --profile esm-only",
     "test": "vitest --run",
     "typecheck": "tsgo -p tsconfig.json",
     "lint": "oxlint .",
