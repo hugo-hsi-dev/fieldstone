@@ -82,7 +82,9 @@
 			{field}
 			formField={formFields.data[field.identifier]}
 			id={`create-${collection.slug}-${field.identifier}`}
-			options={field.type === 'relationship' ? (relationOptions[field.relationTo] ?? []) : []}
+			options={field.type === 'relationship' || field.type === 'upload'
+				? (relationOptions[field.relationTo] ?? [])
+				: []}
 			{relationOptions}
 		/>
 	{/each}

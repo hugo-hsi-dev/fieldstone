@@ -37,6 +37,10 @@ export function assertUploadAllowed(
   file: UploadFile,
   options: UploadValidationOptions,
 ): void {
+  // An empty upload is never valid — reject it even on a collection with no
+  // mimeTypes/maxFileSize set (a direct POST could otherwise persist a 0-byte file).
+  if (file.bytes.byteLength === 0) throw new UploadError("File is empty");
+
   // Validate against the ACTUAL byte length, never a caller-supplied size, so a
   // mismatched UploadFile can't bypass the cap. Checked post-buffer (the form
   // transport materializes the whole body first); bodySizeLimit is the pre-buffer

@@ -6,7 +6,11 @@ import { resolve } from "$app/paths";
 import { error, invalid, redirect } from "@sveltejs/kit";
 import * as v from "valibot";
 
-import { createFieldstoneAdmin, isForbiddenError } from "@fieldstone/admin-runtime";
+import {
+  createFieldstoneAdmin,
+  isForbiddenError,
+  isUploadError,
+} from "@fieldstone/admin-runtime";
 import type {
   AccessUser,
   CollectionData,
@@ -64,6 +68,14 @@ const listSchema = v.object({
 const findByIdSchema = v.object({
   collection: v.string(),
   id: v.string(),
+});
+
+// The upload form submits a File (carried by SvelteKit's binary form transport)
+// plus its target media collection. Kept separate from the strict per-field
+// createDocument schema, which is JSON-through-valibot and never sees a File.
+const uploadMediaSchema = v.object({
+  collection: v.string(),
+  file: v.instance(File),
 });
 
 const globalSchema = v.object({
@@ -331,6 +343,39 @@ export function createFieldstoneAdminRemotes({
             user,
           })
           .catch(rethrowAsHttp);
+
+        redirect(
+          303,
+          resolveAdminPath(adminDocumentPath(collection.slug, document.id)),
+        );
+      },
+    ),
+
+    uploadMedia: form(
+      uploadMediaSchema,
+      async (input: { collection: string; file: File }) => {
+        // Read the request user synchronously before any await — getRequestEvent()
+        // is only reliable pre-await on adapters without AsyncLocalStorage, and the
+        // large arrayBuffer() read below makes the ordering especially fragile here.
+        const user = currentUser();
+        const { collection, fieldstoneAdmin } = await getAdminCollection(
+          input.collection,
+        );
+        const bytes = new Uint8Array(await input.file.arrayBuffer());
+
+        let document: { id: string };
+        try {
+          document = await fieldstoneAdmin.uploadMedia({
+            collection: collection.slug as CollectionSlug,
+            file: { name: input.file.name, type: input.file.type, bytes },
+            user,
+          });
+        } catch (caught) {
+          if (isForbiddenError(caught)) error(403, "Forbidden");
+          // A bad mime/oversize file is a form validation problem, not a 500.
+          if (isUploadError(caught)) invalid(caught.message);
+          throw caught;
+        }
 
         redirect(
           303,

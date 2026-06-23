@@ -4,6 +4,8 @@
 	import StarterKit from '@tiptap/starter-kit';
 	import type { CollectionRuntimeConfig, DocumentDataValue } from '@fieldstone/schema';
 
+	import { mediaPath } from '@fieldstone/routes';
+
 	import { getFieldLabel, shouldUseTextarea, toDatetimeLocalValue, toInputValue } from './labels';
 	import Label from './primitives/Label.svelte';
 	import NestedFields from './NestedFields.svelte';
@@ -86,6 +88,15 @@
 			.filter((id) => id && !present.has(id))
 			.map((id) => ({ value: id, label: id }));
 		return [...options, ...missing];
+	});
+
+	// For an upload field, the selected option's label is the media's filename
+	// (storage key); build a thumbnail URL from it. Skip the id-only fallback
+	// (label === id), which has no real filename.
+	const uploadThumb = $derived.by(() => {
+		if (field.type !== 'upload') return null;
+		const filename = relationOptionsMerged.find((option) => option.value === stringValue)?.label;
+		return filename && filename !== stringValue ? mediaPath(filename) : null;
 	});
 
 	// Rich text uses TipTap. The editor is created client-side (it needs the DOM)
@@ -259,6 +270,32 @@
 				<option value={option.value} selected={option.value === stringValue}>{option.label}</option>
 			{/each}
 		</select>
+	{:else if field.type === 'upload'}
+		<!-- An upload field references an existing media doc by id; upload new files on
+		     the media collection's own page. A thumbnail previews the current value. -->
+		{#if readOnly}
+			<input type="hidden" name={`data.${field.identifier}`} value={stringValue} />
+		{/if}
+		<div class="fs-admin__upload">
+			{#if uploadThumb}
+				<img class="fs-admin__upload-thumb" src={uploadThumb} alt="" />
+			{/if}
+			<select
+				class="fs-admin__select"
+				{...formField.as('select', stringValue)}
+				{id}
+				disabled={readOnly}
+			>
+				{#if !field.required}
+					<option value="">—</option>
+				{/if}
+				{#each relationOptionsMerged as option (option.value)}
+					<option value={option.value} selected={option.value === stringValue}
+						>{option.label}</option
+					>
+				{/each}
+			</select>
+		</div>
 	{:else if field.type === 'richText'}
 		<div class="fs-admin__richtext">
 			{#if !readOnly}

@@ -38,7 +38,16 @@ export async function createFieldstoneAdmin({
     globals: stone.globals,
 
     getCollection(slug: string): CollectionRuntimeConfig | null {
-      return stone.getCollection(slug);
+      const runtime = stone.getCollection(slug);
+      if (!runtime) return null;
+      // Surface the collection's upload options to the admin (the runtime config
+      // from the compiler carries only fields + slug).
+      const configCollection = Object.values(config.collections).find(
+        (candidate) => candidate.slug === slug,
+      );
+      return configCollection?.upload
+        ? { ...runtime, upload: configCollection.upload }
+        : runtime;
     },
 
     getGlobalConfig(slug: string): GlobalRuntimeConfig | null {
@@ -65,15 +74,21 @@ export async function createFieldstoneAdmin({
         if (isForbiddenError(error)) return [];
         throw error;
       }
-      const labelField =
-        collection.fields.find(
-          (field) =>
-            field.type === "text" ||
-            field.type === "email" ||
-            field.type === "select",
-        )?.name ??
-        collection.fields[0]?.name ??
-        "id";
+      // Upload (media) collections are labeled by their stored filename — the
+      // first user field (e.g. an optional `alt`) is often blank.
+      const isUpload = Object.values(config.collections).some(
+        (candidate) => candidate.slug === slug && Boolean(candidate.upload),
+      );
+      const labelField = isUpload
+        ? "filename"
+        : (collection.fields.find(
+            (field) =>
+              field.type === "text" ||
+              field.type === "email" ||
+              field.type === "select",
+          )?.name ??
+          collection.fields[0]?.name ??
+          "id");
       return documents.map((document) => ({
         value: String(document.id),
         label: String(document[labelField] ?? document.id),
