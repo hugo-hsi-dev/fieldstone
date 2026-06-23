@@ -36,6 +36,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Build the publishable packages first: typecheck, unit tests, and the app
+      # build all resolve `@fieldstone/*` through their built `dist`.
+      - name: Build packages
+        run: pnpm build:packages
+
       - name: Lint
         run: pnpm lint
 
@@ -45,10 +50,14 @@ jobs:
       - name: Unit tests
         run: pnpm test:unit
 
+      # Validate the packages are publishable (publint + are-the-types-wrong).
+      - name: Check publishability
+        run: pnpm check:publish
+
       # The production/SSR build is otherwise never exercised (e2e runs against
       # `vite dev`), so gate it here. The Vite plugin reads DATABASE_URL at config time.
-      - name: Build
-        run: pnpm build
+      - name: Build app
+        run: pnpm --dir test/minimal build
         env:
           DATABASE_URL: local.db
 
