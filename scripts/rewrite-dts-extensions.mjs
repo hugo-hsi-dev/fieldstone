@@ -15,7 +15,9 @@ if (!dir) {
   process.exit(1);
 }
 
-const RELATIVE_TS = /((?:from\s*|import\s*\(\s*)["'])(\.\.?\/[^"']+)\.ts(["'])/g;
+// The optional `.d` group keeps `./x.d.ts` specifiers intact (they must stay
+// declaration references) while plain `./x.ts` becomes `./x.js`.
+const RELATIVE_TS = /((?:from\s*|import\s*\(\s*)["'])(\.\.?\/[^"']+?)(\.d)?\.ts(["'])/g;
 
 async function walk(d) {
   for (const entry of await readdir(d, { withFileTypes: true })) {
@@ -24,7 +26,9 @@ async function walk(d) {
       await walk(p);
     } else if (entry.name.endsWith(".d.ts")) {
       const src = await readFile(p, "utf8");
-      const out = src.replace(RELATIVE_TS, "$1$2.js$3");
+      const out = src.replace(RELATIVE_TS, (_m, prefix, specifier, dtsMarker, quote) =>
+        dtsMarker ? `${prefix}${specifier}.d.ts${quote}` : `${prefix}${specifier}.js${quote}`,
+      );
       if (out !== src) await writeFile(p, out);
     }
   }

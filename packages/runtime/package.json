@@ -15,7 +15,7 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && node ../../scripts/rewrite-dts-extensions.mjs dist && cp src/fieldstone-config.d.ts dist/",
+    "build": "tsc -p tsconfig.build.json && node ../../scripts/rewrite-dts-extensions.mjs dist",
     "check:publish": "publint && attw --pack . --profile esm-only",
     "test": "vitest --run",
     "typecheck": "tsgo -p tsconfig.json",
