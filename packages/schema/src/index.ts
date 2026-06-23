@@ -1,5 +1,10 @@
 import { validateCollectionFields } from "./field-validation.ts";
 import { normalizeSelectOptions } from "./field-validation.ts";
+
+export {
+  FIELDSTONE_ADMIN_REMOTE_NAMES,
+  type FieldstoneAdminRemoteName,
+} from "./admin-remotes.ts";
 import type {
   ArrayFieldDefinition,
   BooleanFieldDefinition,

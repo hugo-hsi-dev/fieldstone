@@ -10,6 +10,8 @@ describe("fieldstone codegen exports", () => {
   it("exposes generation helpers without Vite plugin exports", () => {
     expect(codegen).toHaveProperty("loadFieldstoneConfig");
     expect(codegen).toHaveProperty("writeGeneratedFiles");
+    expect(codegen).toHaveProperty("renderAdminRemotesBarrel");
+    expect(codegen).toHaveProperty("writeAdminRemotesBarrel");
     expect(codegen).not.toHaveProperty("createCollectionScaffold");
     expect(codegen).not.toHaveProperty("scaffoldCollectionFile");
     expect(codegen).not.toHaveProperty("fieldstone");
