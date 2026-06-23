@@ -6,6 +6,7 @@ import {
   adminIndexPath,
   adminRouteSegments,
   getAdminSegments,
+  mediaPath,
   parseAdminRoute,
 } from "../src/index.ts";
 
@@ -68,5 +69,11 @@ describe("admin route helpers", () => {
     expect(adminRouteSegments(adminDocumentPath("blog posts", "doc/1"))).toBe(
       "collections/blog%20posts/doc%2F1",
     );
+  });
+
+  it("builds media URLs from a storage key, encoding each segment", () => {
+    expect(mediaPath("media/abc-photo.jpg")).toBe("/media/media/abc-photo.jpg");
+    expect(mediaPath("a b/c.png", "/files")).toBe("/files/a%20b/c.png");
+    expect(mediaPath("x.gif", "/media/")).toBe("/media/x.gif");
   });
 });

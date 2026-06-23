@@ -58,9 +58,27 @@ function deepMergePatch(
   return result;
 }
 
+function isUploadCollection(config: DatabaseContext["config"], slug: string) {
+  return Object.values(config.collections).some(
+    (collection) => collection.slug === slug && Boolean(collection.upload),
+  );
+}
+
 export function createDocumentRuntime(context: DatabaseContext) {
-  const { compiled, compiledConfig, config, database, and, asc, count, desc, eq, like, or } =
-    context;
+  const {
+    compiled,
+    compiledConfig,
+    config,
+    database,
+    storage,
+    and,
+    asc,
+    count,
+    desc,
+    eq,
+    like,
+    or,
+  } = context;
 
   function getTable(collectionSlug: string) {
     if (!compiledConfig.getCollection(collectionSlug)) {
@@ -172,6 +190,7 @@ export function createDocumentRuntime(context: DatabaseContext) {
       collection: collectionSlug,
       createdAt,
       data,
+      system,
       updatedAt,
       user,
     }: CreateInput<TCollection>) => {
@@ -206,6 +225,9 @@ export function createDocumentRuntime(context: DatabaseContext) {
         .insert(table)
         .values({
           ...document,
+          // Trusted system fields (set by the upload pipeline) override anything
+          // a hook or stripped input could have left, and aren't user-reachable.
+          ...system,
           createdAt: createdAt ?? now,
           updatedAt: updatedAt ?? now,
         })
@@ -311,8 +333,12 @@ export function createDocumentRuntime(context: DatabaseContext) {
       await assertCollectionAccess(config, collectionSlug, "delete", { user: user ?? null, id });
       const hooks = getCollectionHooks(config, collectionSlug);
       const table = getTable(collectionSlug);
+      // Upload collections need the row up front to clean up the stored file —
+      // this is a framework step, not a user hook (afterDelete only fires when a
+      // user registered one), so a media doc never leaks its bytes on delete.
+      const uploadCollection = isUploadCollection(config, collectionSlug);
       let deletedDoc: Doc | null = null;
-      if (hooks?.beforeDelete?.length || hooks?.afterDelete?.length) {
+      if (hooks?.beforeDelete?.length || hooks?.afterDelete?.length || uploadCollection) {
         const [existing] = await database.select().from(table).where(eq(table.id, id)).limit(1);
         deletedDoc = (existing ?? null) as Doc | null;
         // Confirm the row exists before firing hooks, so beforeDelete/afterDelete
@@ -327,7 +353,31 @@ export function createDocumentRuntime(context: DatabaseContext) {
       const [deleted] = deletedRows;
 
       if (!deleted) throw new Error("Document not found");
-      if (deletedDoc) await runAfterDeleteHooks(hooks, collectionSlug, id, deletedDoc);
+
+      const storageKey =
+        uploadCollection &&
+        deletedDoc &&
+        typeof deletedDoc.filename === "string" &&
+        deletedDoc.filename
+          ? deletedDoc.filename
+          : null;
+
+      // The row is already gone, so the file must be cleaned up even if a user
+      // afterDelete hook throws — otherwise the bytes leak. Run hooks, capture any
+      // error, clean up, then resurface the hook error.
+      let afterDeleteError: unknown = null;
+      if (deletedDoc) {
+        try {
+          await runAfterDeleteHooks(hooks, collectionSlug, id, deletedDoc);
+        } catch (caught) {
+          afterDeleteError = caught;
+        }
+      }
+      // Best-effort: a missing file must not fail the delete (the DB is the
+      // source of truth).
+      if (storageKey) await storage.delete(storageKey).catch(() => {});
+      if (afterDeleteError) throw afterDeleteError;
+
       return deleted as { id: string };
     },
   };
