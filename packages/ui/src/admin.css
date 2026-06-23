@@ -411,6 +411,26 @@
 	gap: var(--fs-space-2);
 }
 
+.fs-admin__upload {
+	display: flex;
+	align-items: center;
+	gap: var(--fs-space-3);
+}
+
+.fs-admin__upload .fs-admin__select {
+	flex: 1;
+}
+
+.fs-admin__upload-thumb {
+	display: block;
+	width: 3rem;
+	height: 3rem;
+	object-fit: cover;
+	border-radius: var(--fs-radius-sm);
+	border: 1px solid var(--fs-admin-border);
+	flex: none;
+}
+
 .fs-admin__field-description {
 	margin: 0;
 	color: var(--fs-admin-muted);

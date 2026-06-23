@@ -245,7 +245,11 @@ export type RuntimeConfig = {
   slug: string;
 };
 
-export type CollectionRuntimeConfig = RuntimeConfig;
+// The admin reads `upload` to render a media collection's upload form + thumbnails;
+// it's attached from the collection config (the compiler doesn't carry it).
+export type CollectionRuntimeConfig = RuntimeConfig & {
+  upload?: UploadOptions;
+};
 export type GlobalRuntimeConfig = RuntimeConfig;
 
 export type CollectionConfig = CollectionDefinition & {

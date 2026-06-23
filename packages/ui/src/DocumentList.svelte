@@ -5,6 +5,7 @@
 		CollectionRuntimeConfig,
 		CollectionSlug
 	} from '@fieldstone/schema';
+	import { UPLOAD_FIELD_NAMES } from '@fieldstone/schema';
 
 	import { getCollectionLabel, getFieldLabel, getFieldValue } from './labels';
 	import Button from './primitives/Button.svelte';
@@ -13,7 +14,8 @@
 		adminDocumentPath,
 		adminEditDocumentPath,
 		adminRouteId,
-		adminRouteSegments
+		adminRouteSegments,
+		mediaPath
 	} from '@fieldstone/routes';
 
 	let {
@@ -26,15 +28,30 @@
 		search?: string;
 	} = $props();
 
-	const titleField = $derived(collection.fields[0]?.name ?? 'id');
+	// Media collections lead with a thumbnail and are titled by their filename
+	// (the first user field, e.g. an optional `alt`, is often blank).
+	const isUpload = $derived(Boolean(collection.upload));
+	const titleField = $derived(isUpload ? 'filename' : (collection.fields[0]?.name ?? 'id'));
+
+	function thumbUrl(document: CollectionDocument<CollectionSlug>): string | null {
+		const filename = (document as { filename?: unknown }).filename;
+		const mimeType = (document as { mimeType?: unknown }).mimeType;
+		if (typeof filename !== 'string' || !filename) return null;
+		if (typeof mimeType === 'string' && !mimeType.startsWith('image/')) return null;
+		return mediaPath(filename);
+	}
 
 	// Up to two scalar summary columns (skip the title field and anything that
-	// renders as long/structured content — rich text, groups, arrays).
+	// renders as long/structured content — rich text, groups, arrays). Upload
+	// collections title by `filename` (not field[0]), so they start at 0; and their
+	// injected metadata (filename/mimeType/…) is hidden — it's noise in a list.
 	const SUMMARY_TYPES = ['text', 'email', 'number', 'select', 'boolean', 'date'];
+	const UPLOAD_METADATA = new Set<string>(UPLOAD_FIELD_NAMES);
 	const summaryFields = $derived(
 		collection.fields
-			.slice(1)
+			.slice(isUpload ? 0 : 1)
 			.filter((field) => SUMMARY_TYPES.includes(field.type))
+			.filter((field) => !isUpload || !UPLOAD_METADATA.has(field.name))
 			.slice(0, 2)
 	);
 
@@ -59,6 +76,9 @@
 		<table class="fs-admin__table">
 			<thead>
 				<tr>
+					{#if isUpload}<th scope="col" class="fs-admin__th-thumb"
+							><span class="fs-admin__sr-only">Preview</span></th
+						>{/if}
 					<th scope="col">Title</th>
 					{#each summaryFields as field (field.name)}
 						<th scope="col">{getFieldLabel(field)}</th>
@@ -72,6 +92,16 @@
 			<tbody>
 				{#each documents as document (document.id)}
 					<tr>
+						{#if isUpload}{@const url = thumbUrl(document)}<td
+								data-label="Preview"
+								class="fs-admin__cell-thumb"
+								>{#if url}<img
+										class="fs-admin__list-thumb"
+										src={url}
+										alt=""
+										loading="lazy"
+									/>{/if}</td
+							>{/if}
 						<td data-label="Title" class="fs-admin__cell-title">
 							<a
 								class="fs-admin__doc-link"
@@ -151,6 +181,20 @@
 
 	.fs-admin__th-actions {
 		width: 1%;
+	}
+
+	.fs-admin__th-thumb,
+	.fs-admin__cell-thumb {
+		width: 3rem;
+	}
+
+	.fs-admin__list-thumb {
+		display: block;
+		width: 2.5rem;
+		height: 2.5rem;
+		object-fit: cover;
+		border-radius: var(--fs-radius-sm);
+		border: 1px solid var(--fs-admin-border);
 	}
 
 	.fs-admin__table tbody td {

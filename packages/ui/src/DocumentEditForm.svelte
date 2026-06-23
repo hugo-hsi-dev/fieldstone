@@ -97,7 +97,9 @@
 			formField={formFields.data[field.identifier]}
 			id={`edit-${document.id}-${field.identifier}`}
 			value={getFieldInputValue(document, field.name)}
-			options={field.type === 'relationship' ? (relationOptions[field.relationTo] ?? []) : []}
+			options={field.type === 'relationship' || field.type === 'upload'
+				? (relationOptions[field.relationTo] ?? [])
+				: []}
 			{relationOptions}
 			compact
 		/>

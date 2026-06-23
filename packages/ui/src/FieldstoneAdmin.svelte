@@ -8,6 +8,7 @@
 	import DocumentEditForm from './DocumentEditForm.svelte';
 	import DocumentList from './DocumentList.svelte';
 	import GlobalEditForm from './GlobalEditForm.svelte';
+	import UploadForm from './UploadForm.svelte';
 	import ThemeToggle from './ThemeToggle.svelte';
 	import Icon from './primitives/Icon.svelte';
 	import {
@@ -142,7 +143,7 @@
 		const targets: string[] = [];
 		const collect = (fields: readonly FieldDefinition[]) => {
 			for (const field of fields) {
-				if (field.type === 'relationship') {
+				if (field.type === 'relationship' || field.type === 'upload') {
 					if (!targets.includes(field.relationTo)) targets.push(field.relationTo);
 				} else if (field.type === 'group' || field.type === 'array') {
 					collect(field.fields);
@@ -555,13 +556,22 @@
 
 					<svelte:boundary>
 						{@const collection = await remotes.getCollection({ collection: route.collection })}
-						{@const newRelationOptions = await loadRelationOptions(collection)}
-						<CreateDocumentForm
-							{collection}
-							form={remotes.createDocument.for(collection.slug)}
-							relationOptions={newRelationOptions}
-							onSuccess={() => showToast(`${getCollectionLabel(collection, 'singular')} created`)}
-						/>
+						{#if collection.upload}
+							<UploadForm
+								{collection}
+								form={remotes.uploadMedia.for(collection.slug)}
+								onSuccess={() =>
+									showToast(`${getCollectionLabel(collection, 'singular')} uploaded`)}
+							/>
+						{:else}
+							{@const newRelationOptions = await loadRelationOptions(collection)}
+							<CreateDocumentForm
+								{collection}
+								form={remotes.createDocument.for(collection.slug)}
+								relationOptions={newRelationOptions}
+								onSuccess={() => showToast(`${getCollectionLabel(collection, 'singular')} created`)}
+							/>
+						{/if}
 
 						{#snippet pending()}
 							{@render formSkeleton()}

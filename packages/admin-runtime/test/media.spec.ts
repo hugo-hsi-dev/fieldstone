@@ -137,6 +137,15 @@ describe("createFieldstoneAdmin.uploadMedia", () => {
     await expect(admin2.uploadMedia({ collection: "media", file: gifFile() })).rejects.toThrow(
       "exceeds the maximum size",
     );
+
+    // An empty file is rejected even with no mime/size limits set.
+    const admin3 = await createFieldstoneAdmin({ config: mediaConfig(tempDir) });
+    await expect(
+      admin3.uploadMedia({
+        collection: "media",
+        file: { name: "empty.gif", type: "image/gif", bytes: new Uint8Array(0) },
+      }),
+    ).rejects.toThrow("File is empty");
   });
 
   it("rejects uploads to a non-upload collection", async () => {

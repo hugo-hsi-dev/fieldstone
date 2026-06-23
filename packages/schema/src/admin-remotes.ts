@@ -19,6 +19,7 @@ export const FIELDSTONE_ADMIN_REMOTE_NAMES = [
   "listDocuments",
   "getDocument",
   "createDocument",
+  "uploadMedia",
   "updateDocument",
   "updateGlobal",
   "deleteDocument",
