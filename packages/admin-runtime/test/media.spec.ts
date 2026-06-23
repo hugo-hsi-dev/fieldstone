@@ -69,7 +69,7 @@ async function createMediaTable(dbPath: string) {
 }
 
 function gifFile() {
-  return { name: "Photo One.gif", type: "image/gif", size: GIF_3x2.byteLength, bytes: GIF_3x2 };
+  return { name: "Photo One.gif", type: "image/gif", bytes: GIF_3x2 };
 }
 
 describe("upload helpers", () => {
@@ -168,6 +168,42 @@ describe("createFieldstoneAdmin.uploadMedia", () => {
     await expect(stat(filePath)).rejects.toMatchObject({ code: "ENOENT" });
   });
 
+  it("cleans up the stored file even when an afterDelete hook throws", async () => {
+    const config: FieldstoneConfig = {
+      db: { dialect: "sqlite", url: path.join(tempDir, "test.db") },
+      storage: { staticDir: path.join(tempDir, "uploads") },
+      collections: {
+        media: {
+          ...collection({
+            fields: [text({ name: "alt" })],
+            upload: {},
+            hooks: {
+              afterDelete: [
+                () => {
+                  throw new Error("hook boom");
+                },
+              ],
+            },
+          }),
+          slug: "media",
+        },
+      },
+    };
+    const admin = await createFieldstoneAdmin({ config });
+    const doc = (await admin.uploadMedia({
+      collection: "media",
+      file: gifFile(),
+    })) as Record<string, unknown>;
+    const filePath = path.join(tempDir, "uploads", String(doc.filename));
+
+    await stat(filePath); // exists
+    // The throwing hook surfaces, but the row is gone so the bytes are still cleaned up.
+    await expect(
+      admin.deleteDocument({ collection: "media", id: String(doc.id) }),
+    ).rejects.toThrow("hook boom");
+    await expect(stat(filePath)).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
   it("ignores user-supplied read-only metadata, preventing cross-record file deletion", async () => {
     const config = mediaConfig(tempDir);
     const admin = await createFieldstoneAdmin({ config });
@@ -230,6 +266,7 @@ describe("createFieldstoneMedia serve handler", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toBe("image/gif");
     expect(res.headers.get("content-length")).toBe(String(GIF_3x2.byteLength));
+    expect(res.headers.get("cache-control")).toBeTruthy();
     expect(res.headers.get("etag")).toBeTruthy();
     // A raster image is safe to render inline, but still nosniff'd.
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");
@@ -241,12 +278,7 @@ describe("createFieldstoneMedia serve handler", () => {
     const admin = await createFieldstoneAdmin({ config });
     const svg = (await admin.uploadMedia({
       collection: "media",
-      file: {
-        name: "logo.svg",
-        type: "image/svg+xml",
-        size: 24,
-        bytes: new Uint8Array(24),
-      },
+      file: { name: "logo.svg", type: "image/svg+xml", bytes: new Uint8Array(24) },
     })) as Record<string, unknown>;
 
     const media = createFieldstoneMedia({ config });

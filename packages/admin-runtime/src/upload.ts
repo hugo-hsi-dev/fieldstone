@@ -3,7 +3,6 @@ import { randomUUID } from "node:crypto";
 export type UploadFile = {
   name: string;
   type: string;
-  size: number;
   bytes: Uint8Array;
 };
 
@@ -38,9 +37,14 @@ export function assertUploadAllowed(
   file: UploadFile,
   options: UploadValidationOptions,
 ): void {
-  // Size is checked post-buffer (the form transport materializes the whole body
-  // before this runs); bodySizeLimit is the pre-buffer guard.
-  if (typeof options.maxFileSize === "number" && file.size > options.maxFileSize)
+  // Validate against the ACTUAL byte length, never a caller-supplied size, so a
+  // mismatched UploadFile can't bypass the cap. Checked post-buffer (the form
+  // transport materializes the whole body first); bodySizeLimit is the pre-buffer
+  // guard.
+  if (
+    typeof options.maxFileSize === "number" &&
+    file.bytes.byteLength > options.maxFileSize
+  )
     throw new UploadError(
       `File exceeds the maximum size of ${options.maxFileSize} bytes`,
     );

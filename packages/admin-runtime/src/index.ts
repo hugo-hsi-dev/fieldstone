@@ -141,7 +141,7 @@ export async function createFieldstoneAdmin({
           system: {
             filename: key,
             mimeType: file.type,
-            filesize: file.size,
+            filesize: file.bytes.byteLength,
             width: dimensions?.width ?? null,
             height: dimensions?.height ?? null,
           },

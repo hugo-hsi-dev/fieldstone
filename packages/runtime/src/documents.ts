@@ -353,13 +353,31 @@ export function createDocumentRuntime(context: DatabaseContext) {
       const [deleted] = deletedRows;
 
       if (!deleted) throw new Error("Document not found");
-      if (deletedDoc) await runAfterDeleteHooks(hooks, collectionSlug, id, deletedDoc);
-      // Best-effort: remove the stored file after the row is gone. A missing file
-      // must not fail the delete (the DB is the source of truth).
-      if (uploadCollection && deletedDoc) {
-        const key = deletedDoc.filename;
-        if (typeof key === "string" && key) await storage.delete(key).catch(() => {});
+
+      const storageKey =
+        uploadCollection &&
+        deletedDoc &&
+        typeof deletedDoc.filename === "string" &&
+        deletedDoc.filename
+          ? deletedDoc.filename
+          : null;
+
+      // The row is already gone, so the file must be cleaned up even if a user
+      // afterDelete hook throws — otherwise the bytes leak. Run hooks, capture any
+      // error, clean up, then resurface the hook error.
+      let afterDeleteError: unknown = null;
+      if (deletedDoc) {
+        try {
+          await runAfterDeleteHooks(hooks, collectionSlug, id, deletedDoc);
+        } catch (caught) {
+          afterDeleteError = caught;
+        }
       }
+      // Best-effort: a missing file must not fail the delete (the DB is the
+      // source of truth).
+      if (storageKey) await storage.delete(storageKey).catch(() => {});
+      if (afterDeleteError) throw afterDeleteError;
+
       return deleted as { id: string };
     },
   };
