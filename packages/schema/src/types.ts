@@ -207,11 +207,9 @@ export type UploadImageSize = {
   fit?: "cover" | "contain" | "fill" | "inside" | "outside";
 };
 
+// Per-collection upload rules. Where bytes are stored is a backend concern set
+// once on the global `storage` config; these are per-media-collection knobs.
 export type UploadOptions = {
-  /** Directory (relative to the app root) where original files are stored. */
-  staticDir?: string;
-  /** URL prefix the serving route is mounted at (defaults to "/media"). */
-  staticURL?: string;
   /** Allowed MIME types, e.g. ["image/*"] or ["image/png", "application/pdf"]. */
   mimeTypes?: string[];
   /** Maximum accepted upload size, in bytes. */
@@ -258,11 +256,24 @@ export type GlobalConfig = GlobalDefinition & {
   slug: string;
 };
 
+// Storage backend for uploaded files. Declarative (serialized into
+// $fieldstone-config); the live adapter is resolved from it at runtime by
+// @fieldstone/storage. The mime/size limits are per-collection (UploadOptions).
+export type StorageConfig = {
+  /** Backend. "local" (default) writes to staticDir; "s3" uses a remote adapter (a later slice). */
+  adapter?: "local" | "s3";
+  /** Directory (relative to the app root) for local files. Defaults to ".fieldstone/uploads". */
+  staticDir?: string;
+  /** URL prefix the media-serving route is mounted at. Defaults to "/media". */
+  staticURL?: string;
+};
+
 export type FieldstoneConfigInput = {
   db: {
     dialect: "sqlite";
     url: string;
   };
+  storage?: StorageConfig;
 };
 
 export type FieldstoneConfig = FieldstoneConfigInput & {

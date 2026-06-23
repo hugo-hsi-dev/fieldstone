@@ -103,6 +103,28 @@ describe("fieldstone codegen exports", () => {
     }
   });
 
+  it("serializes the storage block into the virtual config only when set", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "fieldstone-codegen-"));
+    await mkdir(path.join(root, "src", "cms"), { recursive: true });
+
+    try {
+      const withStorage = await codegen.loadVirtualConfig(root, {
+        db: { dialect: "sqlite", url: "fallback.db" },
+        storage: { adapter: "local", staticDir: "uploads", staticURL: "/files" },
+      });
+      expect(withStorage).toContain(
+        'storage: {"adapter":"local","staticDir":"uploads","staticURL":"/files"}',
+      );
+
+      const withoutStorage = await codegen.loadVirtualConfig(root, {
+        db: { dialect: "sqlite", url: "fallback.db" },
+      });
+      expect(withoutStorage).not.toContain("storage:");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("rejects duplicate collection slugs case-insensitively", () => {
     expect(() =>
       validateCollectionEntries([

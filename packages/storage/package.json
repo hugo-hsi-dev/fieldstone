@@ -1,5 +1,5 @@
 {
-  "name": "@fieldstone/runtime",
+  "name": "@fieldstone/storage",
   "version": "0.0.1",
   "type": "module",
   "publishConfig": {
@@ -23,11 +23,7 @@
     "format": "oxfmt -c ../../config/oxfmt/oxfmt.json ."
   },
   "dependencies": {
-    "@fieldstone/compiler": "workspace:*",
-    "@fieldstone/schema": "workspace:*",
-    "@fieldstone/storage": "workspace:*",
-    "@libsql/client": "^0.15.15",
-    "drizzle-orm": "^0.45.2"
+    "@fieldstone/schema": "workspace:*"
   },
   "devDependencies": {
     "@fieldstone/oxfmt-config": "workspace:*",

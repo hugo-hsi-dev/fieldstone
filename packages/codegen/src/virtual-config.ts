@@ -38,5 +38,11 @@ export async function loadVirtualConfig(
     .map(({ slug }, index) => `${JSON.stringify(slug)}: runtimeGlobal${index}`)
     .join(",\n");
 
-  return `${imports}\n\nconst databaseURL = process.env.DATABASE_URL ?? ${JSON.stringify(options.db.url)};\n\nexport default {\n  db: {\n    dialect: ${JSON.stringify(options.db.dialect)},\n    url: databaseURL\n  },\n  collections: {\n${collectionEntries}\n  },\n  globals: {\n${globalEntries}\n  }\n};\n`;
+  // The storage block is declarative data; the live adapter is resolved from it
+  // at runtime (a function can't ride in the serialized config module).
+  const storageBlock = options.storage
+    ? `  storage: ${JSON.stringify(options.storage)},\n`
+    : "";
+
+  return `${imports}\n\nconst databaseURL = process.env.DATABASE_URL ?? ${JSON.stringify(options.db.url)};\n\nexport default {\n  db: {\n    dialect: ${JSON.stringify(options.db.dialect)},\n    url: databaseURL\n  },\n${storageBlock}  collections: {\n${collectionEntries}\n  },\n  globals: {\n${globalEntries}\n  }\n};\n`;
 }

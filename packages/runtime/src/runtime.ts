@@ -12,6 +12,7 @@ export async function createFieldstoneRuntime(config: FieldstoneConfig) {
   return {
     collections: database.collections,
     globals: database.globals,
+    storage: database.storage,
 
     getCollection: (slug: string) =>
       database.compiledConfig.getCollection(slug),
