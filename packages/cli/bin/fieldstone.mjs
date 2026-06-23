@@ -24,7 +24,13 @@ try {
   const generatorModulePath = require.resolve("@fieldstone/codegen");
   const coreModulePath = require.resolve("@fieldstone/compiler");
   const [
-    { CONFIG_ID, loadFieldstoneConfig, pushSchema, writeGeneratedFiles },
+    {
+      CONFIG_ID,
+      loadFieldstoneConfig,
+      pushSchema,
+      writeAdminRemotesBarrel,
+      writeGeneratedFiles,
+    },
     { compileFieldstoneConfig },
   ] = await Promise.all([
     server.ssrLoadModule(generatorModulePath),
@@ -43,10 +49,8 @@ try {
     const didPush = await pushSchema(config, compiled);
     if (!didPush) process.exitCode = 1;
   } else {
-    await writeGeneratedFiles({
-      compiled,
-      root,
-    });
+    await writeGeneratedFiles({ compiled, root });
+    await writeAdminRemotesBarrel(root);
   }
 } finally {
   await server.close();

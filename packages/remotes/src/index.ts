@@ -22,6 +22,7 @@ import type {
   NormalizedDocumentData,
 } from "@fieldstone/schema";
 import { normalizeBooleanFieldValue, normalizeFieldValue } from "@fieldstone/schema";
+import type { FieldstoneAdminRemoteName } from "@fieldstone/schema";
 import { compileFieldstoneConfig } from "@fieldstone/compiler";
 
 import {
@@ -411,3 +412,16 @@ export function createFieldstoneAdminRemotes({
 export type FieldstoneAdminRemotes = ReturnType<
   typeof createFieldstoneAdminRemotes
 >;
+
+// Compile-time guard: the generated `dashboard.remote.ts` barrel re-exports exactly the
+// names in FIELDSTONE_ADMIN_REMOTE_NAMES (@fieldstone/schema). If a remote is added to or
+// removed from createFieldstoneAdminRemotes without updating that list, this errors with
+// the offending name(s) in the type.
+type _UnlistedAdminRemotes = Exclude<
+  keyof FieldstoneAdminRemotes,
+  FieldstoneAdminRemoteName
+>;
+const _allAdminRemotesAreListed: [_UnlistedAdminRemotes] extends [never]
+  ? true
+  : { addToFIELDSTONE_ADMIN_REMOTE_NAMES: _UnlistedAdminRemotes } = true;
+void _allAdminRemotesAreListed;
