@@ -49,6 +49,13 @@ export type ListInput<TCollection extends CollectionSlug = CollectionSlug> =
      * fields are stored as JSON and cannot be filtered.
      */
     where?: CollectionWhere<TCollection>;
+    /**
+     * Relationship depth. `0` (default) returns relation/upload fields as ids; `≥ 1`
+     * replaces each top-level relation field with the target document(s),
+     * access-checked. One level deep — values `> 1` are treated as `1` for now (the
+     * populated docs' own relations stay ids).
+     */
+    depth?: number;
   };
 
 export type ListResult<TCollection extends CollectionSlug = CollectionSlug> = {
@@ -61,6 +68,7 @@ export type ListResult<TCollection extends CollectionSlug = CollectionSlug> = {
 export type DocumentInput<TCollection extends CollectionSlug = CollectionSlug> =
   CollectionInput<TCollection> & {
     id: string;
+    depth?: number;
   };
 
 export type MutationInput<TCollection extends CollectionSlug = CollectionSlug> =

@@ -27,6 +27,19 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+// Shared by the list + single-document GET handlers. Rejects a malformed depth
+// (non-integer / negative) rather than silently dropping it, like status/where —
+// the throw is mapped to a 400 by the handler's error wrapper.
+function parseDepth(params: URLSearchParams): number | undefined {
+  if (!params.has("depth")) return undefined;
+  const raw = params.get("depth");
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 0) {
+    throw new Error(`Invalid depth: ${raw}`);
+  }
+  return value;
+}
+
 async function readBody(request: Request): Promise<Record<string, unknown>> {
   const text = await request.text();
   if (!text) return {};
@@ -198,6 +211,7 @@ export function createFieldstoneRest({
           }
           where = parsed as CollectionWhere<CollectionSlug>;
         }
+        const depth = parseDepth(params);
         const input = {
           collection: collectionSlug as CollectionSlug,
           user,
@@ -207,6 +221,7 @@ export function createFieldstoneRest({
           ...(offset !== undefined ? { offset } : {}),
           ...(sort ? { sort } : {}),
           ...(where ? { where } : {}),
+          ...(depth !== undefined ? { depth } : {}),
         };
         const [docs, total] = await Promise.all([
           admin.listDocuments(input),
@@ -229,10 +244,12 @@ export function createFieldstoneRest({
     if (path.length === 2) {
       const id = path[1]!;
       if (method === "GET") {
+        const depth = parseDepth(url.searchParams);
         const doc = await admin.getDocument({
           collection: collectionSlug as CollectionSlug,
           id,
           user,
+          ...(depth !== undefined ? { depth } : {}),
         });
         if (!doc) return errorResponse(404, "Document not found");
         return json(doc);

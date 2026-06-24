@@ -224,6 +224,74 @@ describe("fieldstone runtime", () => {
     expect(diagnostics).toEqual([]);
   });
 
+  it("types `depth`-populated relations as the target document", () => {
+    const source = `
+			import { getFieldstone } from '@hugo-hsi-dev/runtime';
+			import type { FieldstoneConfig } from '@hugo-hsi-dev/schema';
+
+			declare module '@hugo-hsi-dev/schema' {
+				interface GeneratedCollections {
+					"authors": { id: string; name: string; createdAt: Date; updatedAt: Date; };
+					"posts": {
+						id: string;
+						title: string;
+						author: string;
+						editors: string[];
+						createdAt: Date;
+						updatedAt: Date;
+					};
+				}
+				interface GeneratedCollectionRelations {
+					"authors": {};
+					"posts": {
+						"author": { to: "authors"; many: false };
+						"editors": { to: "authors"; many: true };
+					};
+				}
+			}
+
+			const config = {
+				db: { dialect: 'sqlite', url: ':memory:' },
+				collections: {}
+			} satisfies FieldstoneConfig;
+
+			async function run() {
+				const stone = await getFieldstone({ config });
+
+				// depth 0 (default): relations are ids
+				const plain = await stone.find({ collection: 'posts' });
+				const authorId: string = plain[0].author;
+				const editorIds: string[] = plain[0].editors;
+				const plainTitle: string = plain[0].title;
+
+				// depth 1: relations become the target document(s)
+				const populated = await stone.find({ collection: 'posts', depth: 1 });
+				const author = populated[0].author;
+				if (author) {
+					const authorName: string = author.name;
+				}
+				// hasMany relations are Doc[] | null (an unset hasMany stays null)
+				const editors = populated[0].editors;
+				if (editors) {
+					const editorName: string = editors[0].name;
+				}
+				const populatedTitle: string = populated[0].title;
+
+				// findById depth 1
+				const doc = await stone.findById({ collection: 'posts', id: 'x', depth: 1 });
+				if (doc && doc.author) {
+					const n: string = doc.author.name;
+				}
+
+				// @ts-expect-error at depth 0, author is a string id, not a document
+				const wrong: string = plain[0].author.name;
+			}
+		`;
+    const diagnostics = getDiagnostics(source);
+
+    expect(diagnostics).toEqual([]);
+  });
+
   it("handles Document reads, mutations, validation, timestamps, and missing rows", async () => {
     const { cleanup, config } = await createRuntimeFixture();
 
@@ -572,6 +640,185 @@ describe("fieldstone runtime", () => {
         data: { title: "Solo", author: grace.id },
       });
       expect(noEditors.editors).toBeNull();
+    } finally {
+      await rm(tempDir, { force: true, recursive: true });
+    }
+  });
+
+  it("populates relationship fields with depth (access-checked, missing → null)", async () => {
+    const tempDir = await mkdtemp(path.join(tmpdir(), "fieldstone-populate-"));
+    const dbPath = path.join(tempDir, "test.db");
+    const client = createClient({ url: `file:${dbPath}` });
+    await client.executeMultiple(`
+      create table authors (
+        id text primary key not null,
+        name text not null,
+        created_at integer not null,
+        updated_at integer not null
+      );
+      create table posts (
+        id text primary key not null,
+        title text not null,
+        author text,
+        editors text,
+        created_at integer not null,
+        updated_at integer not null
+      );
+    `);
+    client.close();
+
+    const config: FieldstoneConfig = {
+      db: { dialect: "sqlite", url: dbPath },
+      collections: {
+        authors: {
+          ...collection({
+            fields: [text({ name: "name", required: true })],
+            access: { read: ({ user }) => Boolean(user) },
+          }),
+          slug: "authors",
+        },
+        posts: {
+          ...collection({
+            fields: [
+              text({ name: "title", required: true }),
+              relationship({ name: "author", relationTo: "authors" }),
+              relationship({ name: "editors", relationTo: "authors", hasMany: true }),
+            ],
+          }),
+          slug: "posts",
+        },
+      },
+    };
+
+    const user = { id: "u1" };
+    try {
+      const stone = await getFieldstone({ config });
+      const ada = await stone.create({ collection: "authors", data: { name: "Ada" } });
+      const grace = await stone.create({ collection: "authors", data: { name: "Grace" } });
+      const post = await stone.create({
+        collection: "posts",
+        data: { title: "Hello", author: ada.id, editors: [ada.id, grace.id] },
+      });
+
+      // depth 0 (default) → ids unchanged
+      const plain = await stone.findById({ collection: "posts", id: post.id, user });
+      expect(plain?.author).toBe(ada.id);
+      expect(plain?.editors).toEqual([ada.id, grace.id]);
+
+      // depth 1 → relation fields become the target documents
+      const populated = await stone.findById({ collection: "posts", id: post.id, depth: 1, user });
+      expect((populated!.author as { name: string }).name).toBe("Ada");
+      expect((populated!.editors as { name: string }[]).map((editor) => editor.name)).toEqual([
+        "Ada",
+        "Grace",
+      ]);
+
+      // find() populates too
+      const [listed] = await stone.find({ collection: "posts", depth: 1, user });
+      expect((listed.author as { name: string }).name).toBe("Ada");
+
+      // an unset (non-required) hasMany relation stays null at depth 1, not []
+      const solo = await stone.create({
+        collection: "posts",
+        data: { title: "Solo", author: ada.id },
+      });
+      const soloPopulated = await stone.findById({
+        collection: "posts",
+        id: solo.id,
+        depth: 1,
+        user,
+      });
+      expect(soloPopulated!.editors).toBeNull();
+      expect((soloPopulated!.author as { name: string }).name).toBe("Ada");
+
+      // read-forbidden target (no user) → single null, hasMany []
+      const forbidden = await stone.findById({ collection: "posts", id: post.id, depth: 1 });
+      expect(forbidden?.author).toBeNull();
+      expect(forbidden?.editors).toEqual([]);
+
+      // missing ids → single null, hasMany drops the missing entry
+      await stone.update({
+        collection: "posts",
+        id: post.id,
+        merge: true,
+        data: { author: "missing-id", editors: [ada.id, "missing-id"] },
+      });
+      const withMissing = await stone.findById({ collection: "posts", id: post.id, depth: 1, user });
+      expect(withMissing!.author).toBeNull();
+      expect((withMissing!.editors as { name: string }[]).map((editor) => editor.name)).toEqual([
+        "Ada",
+      ]);
+    } finally {
+      await rm(tempDir, { force: true, recursive: true });
+    }
+  });
+
+  it("applies row-grain read rules to populated relations (drops forbidden ids)", async () => {
+    const tempDir = await mkdtemp(path.join(tmpdir(), "fieldstone-populate-row-"));
+    const dbPath = path.join(tempDir, "test.db");
+    const client = createClient({ url: `file:${dbPath}` });
+    await client.executeMultiple(`
+      create table authors (
+        id text primary key not null,
+        name text not null,
+        created_at integer not null,
+        updated_at integer not null
+      );
+      create table posts (
+        id text primary key not null,
+        title text not null,
+        author text,
+        editors text,
+        created_at integer not null,
+        updated_at integer not null
+      );
+    `);
+    client.close();
+
+    let blockedId = "__none__";
+    const config: FieldstoneConfig = {
+      db: { dialect: "sqlite", url: dbPath },
+      collections: {
+        authors: {
+          ...collection({
+            fields: [text({ name: "name", required: true })],
+            // Row-grain read rule: deny one author by id. Collection-grain listing
+            // is allowed (the `!id` branch), so only populate's per-row check drops it.
+            access: { read: ({ id }) => !id || id !== blockedId },
+          }),
+          slug: "authors",
+        },
+        posts: {
+          ...collection({
+            fields: [
+              text({ name: "title", required: true }),
+              relationship({ name: "author", relationTo: "authors" }),
+              relationship({ name: "editors", relationTo: "authors", hasMany: true }),
+            ],
+          }),
+          slug: "posts",
+        },
+      },
+    };
+
+    try {
+      const stone = await getFieldstone({ config });
+      const ada = await stone.create({ collection: "authors", data: { name: "Ada" } });
+      const blocked = await stone.create({ collection: "authors", data: { name: "Blocked" } });
+      blockedId = blocked.id;
+
+      const post = await stone.create({
+        collection: "posts",
+        data: { title: "Hello", author: blocked.id, editors: [ada.id, blocked.id] },
+      });
+
+      const populated = await stone.findById({ collection: "posts", id: post.id, depth: 1 });
+      // The blocked author is dropped per-row — populate can't embed a row the
+      // caller couldn't read via findById.
+      expect(populated!.author).toBeNull();
+      expect((populated!.editors as { name: string }[]).map((editor) => editor.name)).toEqual([
+        "Ada",
+      ]);
     } finally {
       await rm(tempDir, { force: true, recursive: true });
     }

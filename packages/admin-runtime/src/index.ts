@@ -96,8 +96,8 @@ export async function createFieldstoneAdmin({
       }));
     },
 
-    listDocuments<TCollection extends CollectionSlug>(
-      input: ListInput<TCollection>,
+    listDocuments<TCollection extends CollectionSlug, TDepth extends number = 0>(
+      input: ListInput<TCollection> & { depth?: TDepth },
     ) {
       return stone.find(input);
     },
@@ -108,8 +108,8 @@ export async function createFieldstoneAdmin({
       return stone.count(input);
     },
 
-    getDocument<TCollection extends CollectionSlug>(
-      input: DocumentInput<TCollection>,
+    getDocument<TCollection extends CollectionSlug, TDepth extends number = 0>(
+      input: DocumentInput<TCollection> & { depth?: TDepth },
     ) {
       return stone.findById(input);
     },
