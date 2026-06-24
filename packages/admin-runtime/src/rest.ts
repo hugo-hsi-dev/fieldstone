@@ -185,11 +185,18 @@ export function createFieldstoneRest({
         const whereParam = params.get("where");
         let where: CollectionWhere<CollectionSlug> | undefined;
         if (whereParam) {
+          let parsed: unknown;
           try {
-            where = JSON.parse(whereParam) as CollectionWhere<CollectionSlug>;
+            parsed = JSON.parse(whereParam);
           } catch {
             return errorResponse(400, "Invalid where parameter: must be URL-encoded JSON");
           }
+          // A primitive (e.g. ?where=123) would parse fine and then silently
+          // produce no predicate — reject it like an invalid status.
+          if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+            return errorResponse(400, "Invalid where parameter: must be a JSON object");
+          }
+          where = parsed as CollectionWhere<CollectionSlug>;
         }
         const input = {
           collection: collectionSlug as CollectionSlug,

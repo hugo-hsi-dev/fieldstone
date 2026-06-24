@@ -178,6 +178,13 @@ describe("fieldstone REST handler", () => {
     expect(((await malformedRes.json()) as { error: string }).error).toContain(
       "Invalid where",
     );
+
+    // a non-object (valid JSON, but a primitive) must 400, not silently no-op
+    const primitiveRes = await rest.handle(
+      new Request("http://localhost/api/posts?where=123", { method: "GET" }),
+      ["posts"],
+    );
+    expect(primitiveRes.status).toBe(400);
   });
 
   it("handles globals, unknown routes, and method errors", async () => {
