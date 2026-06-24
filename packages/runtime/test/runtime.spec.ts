@@ -231,7 +231,7 @@ describe("fieldstone runtime", () => {
 
 			declare module '@hugo-hsi-dev/schema' {
 				interface GeneratedCollections {
-					"authors": { id: string; name: string; createdAt: Date; updatedAt: Date; };
+					"authors": { id: string; name: string; mentor: string; createdAt: Date; updatedAt: Date; };
 					"posts": {
 						id: string;
 						title: string;
@@ -242,7 +242,7 @@ describe("fieldstone runtime", () => {
 					};
 				}
 				interface GeneratedCollectionRelations {
-					"authors": {};
+					"authors": { "mentor": { to: "authors"; many: false }; };
 					"posts": {
 						"author": { to: "authors"; many: false };
 						"editors": { to: "authors"; many: true };
@@ -281,6 +281,20 @@ describe("fieldstone runtime", () => {
 				const doc = await stone.findById({ collection: 'posts', id: 'x', depth: 1 });
 				if (doc && doc.author) {
 					const n: string = doc.author.name;
+				}
+
+				// depth 2: author.mentor becomes the mentor document
+				const deep = await stone.find({ collection: 'posts', depth: 2 });
+				const deepAuthor = deep[0].author;
+				if (deepAuthor && deepAuthor.mentor) {
+					const mentorName: string = deepAuthor.mentor.name;
+				}
+
+				// depth 1: author.mentor stays a string id
+				const shallow = populated[0].author;
+				if (shallow) {
+					// @ts-expect-error author.mentor is a string id at depth 1, not a document
+					const wrongMentor: string = shallow.mentor.name;
 				}
 
 				// @ts-expect-error at depth 0, author is a string id, not a document
@@ -819,6 +833,97 @@ describe("fieldstone runtime", () => {
       expect((populated!.editors as { name: string }[]).map((editor) => editor.name)).toEqual([
         "Ada",
       ]);
+    } finally {
+      await rm(tempDir, { force: true, recursive: true });
+    }
+  });
+
+  it("populates recursively to the requested depth and bounds circular relations", async () => {
+    const tempDir = await mkdtemp(path.join(tmpdir(), "fieldstone-populate-deep-"));
+    const dbPath = path.join(tempDir, "test.db");
+    const client = createClient({ url: `file:${dbPath}` });
+    await client.executeMultiple(`
+      create table authors (
+        id text primary key not null,
+        name text not null,
+        mentor text,
+        created_at integer not null,
+        updated_at integer not null
+      );
+      create table posts (
+        id text primary key not null,
+        title text not null,
+        author text,
+        created_at integer not null,
+        updated_at integer not null
+      );
+    `);
+    client.close();
+
+    const config: FieldstoneConfig = {
+      db: { dialect: "sqlite", url: dbPath },
+      collections: {
+        authors: {
+          ...collection({
+            fields: [
+              text({ name: "name", required: true }),
+              relationship({ name: "mentor", relationTo: "authors" }),
+            ],
+          }),
+          slug: "authors",
+        },
+        posts: {
+          ...collection({
+            fields: [
+              text({ name: "title", required: true }),
+              relationship({ name: "author", relationTo: "authors" }),
+            ],
+          }),
+          slug: "posts",
+        },
+      },
+    };
+
+    try {
+      const stone = await getFieldstone({ config });
+      const mentor = await stone.create({ collection: "authors", data: { name: "Mentor" } });
+      const ada = await stone.create({
+        collection: "authors",
+        data: { name: "Ada", mentor: mentor.id },
+      });
+      const post = await stone.create({
+        collection: "posts",
+        data: { title: "Hello", author: ada.id },
+      });
+
+      // depth 1: author is a doc, but author.mentor stays an id
+      const d1 = await stone.findById({ collection: "posts", id: post.id, depth: 1 });
+      const d1Author = d1!.author as { name: string; mentor: unknown };
+      expect(d1Author.name).toBe("Ada");
+      expect(d1Author.mentor).toBe(mentor.id);
+
+      // depth 2: author.mentor is now the mentor document
+      const d2 = await stone.findById({ collection: "posts", id: post.id, depth: 2 });
+      const d2Author = d2!.author as { mentor: { name: string } };
+      expect(d2Author.mentor.name).toBe("Mentor");
+
+      // circular relation (mentor mentors Ada) terminates — depth bounds it
+      await stone.update({
+        collection: "authors",
+        id: mentor.id,
+        merge: true,
+        data: { mentor: ada.id },
+      });
+      const cyclic = await stone.findById({ collection: "posts", id: post.id, depth: 5 });
+      expect((cyclic!.author as { name: string }).name).toBe("Ada");
+
+      // a non-integer / Infinity depth is rejected (would otherwise recurse forever)
+      await expect(
+        stone.findById({ collection: "posts", id: post.id, depth: Infinity }),
+      ).rejects.toThrow(/depth/);
+      await expect(
+        stone.findById({ collection: "posts", id: post.id, depth: 1.5 }),
+      ).rejects.toThrow(/depth/);
     } finally {
       await rm(tempDir, { force: true, recursive: true });
     }

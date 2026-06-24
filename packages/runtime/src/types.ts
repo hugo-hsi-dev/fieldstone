@@ -50,10 +50,10 @@ export type ListInput<TCollection extends CollectionSlug = CollectionSlug> =
      */
     where?: CollectionWhere<TCollection>;
     /**
-     * Relationship depth. `0` (default) returns relation/upload fields as ids; `≥ 1`
-     * replaces each top-level relation field with the target document(s),
-     * access-checked. One level deep — values `> 1` are treated as `1` for now (the
-     * populated docs' own relations stay ids).
+     * Relationship depth. `0` (default) returns relation/upload fields as ids; `n ≥ 1`
+     * recursively replaces each top-level relation field with the target
+     * document(s), `n` levels deep, access-checked. The recursion is bounded by
+     * `depth`, so it terminates even with circular relations.
      */
     depth?: number;
   };

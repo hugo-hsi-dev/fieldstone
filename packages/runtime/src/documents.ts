@@ -38,7 +38,7 @@ type ReadResult<
   ? CollectionDocument<TCollection>
   : TDepth extends 0
     ? CollectionDocument<TCollection>
-    : PopulatedDocument<TCollection>;
+    : PopulatedDocument<TCollection, TDepth>;
 
 // Drop the runtime-managed system columns so a stored row can be used as a merge
 // base for a partial update without the normalizer rejecting them as unknown.
@@ -155,6 +155,7 @@ export function createDocumentRuntime(context: DatabaseContext) {
     targetSlug: string,
     ids: string[],
     user: AccessUser | null | undefined,
+    depth: number,
   ): Promise<Doc[]> {
     try {
       await assertCollectionAccess(config, targetSlug, "read", { user: user ?? null });
@@ -191,8 +192,12 @@ export function createDocumentRuntime(context: DatabaseContext) {
     }
 
     const hooks = getCollectionHooks(config, targetSlug);
-    if (!hooks?.afterRead?.length) return allowed;
-    return Promise.all(allowed.map((row) => runAfterReadHooks(hooks, targetSlug, row)));
+    const result = hooks?.afterRead?.length
+      ? await Promise.all(allowed.map((row) => runAfterReadHooks(hooks, targetSlug, row)))
+      : allowed;
+    // Recurse into the fetched docs' own relations with the remaining depth.
+    await populateIfNeeded(targetSlug, result, depth, user);
+    return result;
   }
 
   async function populateIfNeeded(
@@ -201,9 +206,18 @@ export function createDocumentRuntime(context: DatabaseContext) {
     depth: number | undefined,
     user: AccessUser | null | undefined,
   ) {
-    if (!depth || depth < 1 || !docs.length) return;
+    if (depth === undefined || depth === 0 || !docs.length) return;
+    // Reject non-integers / Infinity up front: `Infinity - 1` is still Infinity, so
+    // it would never bottom out and a circular relation would recurse forever.
+    if (!Number.isSafeInteger(depth) || depth < 0) {
+      throw new Error(`Relationship depth must be a non-negative integer (got ${depth})`);
+    }
     const fields = compiledConfig.getCollection(collectionSlug)?.fields ?? [];
-    await populateDocuments(docs, fields, user, fetchRelated);
+    // Each relation field fetches its targets one depth shallower; depth bounds the
+    // recursion (it reaches 0 even with circular relations).
+    await populateDocuments(docs, fields, user, (target, ids, fetchUser) =>
+      fetchRelated(target, ids, fetchUser, depth - 1),
+    );
   }
 
   function buildConditions(
