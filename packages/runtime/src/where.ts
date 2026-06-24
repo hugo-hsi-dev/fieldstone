@@ -136,16 +136,22 @@ function resolveColumn(
     throw new Error(`Use the "status" option to filter drafts, not a where clause`);
   }
 
-  // hasOwn guard: a bare `SYSTEM_COLUMN_KINDS[key]` would return inherited
-  // Object.prototype members (constructor, toString, …) for crafted keys.
+  // hasOwn guards: a bare `obj[key]` would return inherited Object.prototype
+  // members (constructor, toString, …) for crafted keys, on both the kind map and
+  // the drizzle table (whose columns are own properties — same assumption the sort
+  // guard in documents.ts relies on).
   const systemKind = hasOwn(SYSTEM_COLUMN_KINDS, key) ? SYSTEM_COLUMN_KINDS[key] : undefined;
-  if (systemKind) return { column: table[key], kind: systemKind };
+  if (systemKind) {
+    const column = hasOwn(table, key) ? table[key] : undefined;
+    if (column == null) throw new Error(`No column for field "${key}"`);
+    return { column, kind: systemKind };
+  }
 
   const field = fields.find((candidate) => candidate.name === key);
   if (!field) throw new Error(`Unknown field in where clause: "${key}"`);
 
   const kind = fieldKind(field, key);
-  const column = table[key];
+  const column = hasOwn(table, key) ? table[key] : undefined;
   if (column == null) {
     throw new Error(`No column for field "${key}"`);
   }
@@ -153,10 +159,17 @@ function resolveColumn(
 }
 
 function coerce(value: unknown, kind: ColumnKind): unknown {
-  if (value === null) return null;
+  // null is only meaningful through equals/not_equals (handled before coerce) and
+  // exists; every other path must reject it rather than emit `op NULL`.
+  if (value === null) {
+    throw new Error(`Invalid ${kind} value in where clause: null`);
+  }
   if (kind === "date") {
+    if (!(value instanceof Date) && typeof value !== "string" && typeof value !== "number") {
+      throw new Error(`Invalid date value in where clause: ${String(value)}`);
+    }
     // Numeric inputs are epoch milliseconds (JS Date semantics).
-    const date = value instanceof Date ? value : new Date(value as string | number);
+    const date = value instanceof Date ? value : new Date(value);
     if (Number.isNaN(date.getTime())) {
       throw new Error(`Invalid date value in where clause: ${String(value)}`);
     }
@@ -183,6 +196,10 @@ function coerce(value: unknown, kind: ColumnKind): unknown {
     if (value === "true" || value === "1" || value === 1) return true;
     if (value === "false" || value === "0" || value === 0) return false;
     throw new Error(`Invalid boolean value in where clause: ${String(value)}`);
+  }
+  // text-backed columns (text/email/select/richText/single relation/id)
+  if (typeof value !== "string") {
+    throw new Error(`Invalid text value in where clause: ${String(value)}`);
   }
   return value;
 }
@@ -230,7 +247,7 @@ function buildOperatorCondition(
     case "like":
       // `%`/`_` in the value act as LIKE wildcards (Payload `like` parity). The
       // value is parameter-bound by drizzle, so this is not an injection surface.
-      return ops.like(column, `%${String(value)}%`);
+      return ops.like(column, `%${coerce(value, "text") as string}%`);
     case "exists":
       return coerce(value, "boolean") ? ops.isNotNull(column) : ops.isNull(column);
     default:

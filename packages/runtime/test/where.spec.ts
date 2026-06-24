@@ -185,6 +185,18 @@ describe("buildWhere — hardening (adversarial review fixes)", () => {
     );
   });
 
+  it("rejects null in non-null operators and wrong-typed values", () => {
+    // null only special-cased for equals/not_equals (→ IS [NOT] NULL), not others.
+    expect(() => sqlFor({ views: { greater_than: null } })).toThrow(/Invalid number/);
+    expect(() => sqlFor({ title: { exists: null as unknown as boolean } })).toThrow(
+      /Invalid boolean/,
+    );
+    // wrong types must not slip into predicates (e.g. boolean → new Date)
+    expect(() => sqlFor({ publishedAt: { equals: true } })).toThrow(/Invalid date/);
+    expect(() => sqlFor({ title: { equals: {} } })).toThrow(/Invalid text/);
+    expect(() => sqlFor({ title: { like: 123 } })).toThrow(/Invalid text/);
+  });
+
   it("rejects malformed and/or entries with a clear message", () => {
     expect(() => buildWhere({ and: [null] } as unknown as WhereClause, table, fields, ops)).toThrow(
       /must be a where-clause object/,
