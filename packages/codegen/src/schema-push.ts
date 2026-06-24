@@ -48,6 +48,24 @@ export function decidePush(
   return { action: "prompt" };
 }
 
+/**
+ * Retry guidance for an aborted push. Pure so it stays in lockstep with
+ * {@link decidePush}: a destructive change needs `--allow-data-loss`, and any
+ * unattended (no-TTY) run additionally needs `--yes`.
+ */
+export function abortMessage(
+  reason: "data-loss" | "no-tty",
+  hasDataLoss: boolean,
+  interactive: boolean,
+): string {
+  if (reason === "data-loss") {
+    const flags = interactive ? "--allow-data-loss" : "--yes --allow-data-loss";
+    return `Refusing to push: this change may lose data. Re-run with ${flags} to apply.`;
+  }
+  const flags = hasDataLoss ? "--yes --allow-data-loss" : "--yes";
+  return `Schema push has warnings and there is no terminal to confirm. Re-run with ${flags} to apply.`;
+}
+
 export function normalizeSqliteUrl(url: string) {
   if (/^[a-z]+:/i.test(url)) return url;
   return `file:${url}`;
@@ -79,13 +97,7 @@ async function confirmWarnings(
 
   if (decision.action === "abort") {
     console.error(formatWarnings(warnings, hasDataLoss));
-    console.error(
-      decision.reason === "data-loss"
-        ? "\nRefusing to push: this change may lose data. Re-run with --allow-data-loss to apply."
-        : `\nSchema push has warnings and there is no terminal to confirm. Re-run with --yes${
-            hasDataLoss ? " --allow-data-loss" : ""
-          } to apply.`,
-    );
+    console.error(`\n${abortMessage(decision.reason, hasDataLoss, interactive)}`);
     return false;
   }
 

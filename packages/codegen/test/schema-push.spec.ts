@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { decidePush, normalizeSqliteUrl } from "../src/schema-push.ts";
+import { abortMessage, decidePush, normalizeSqliteUrl } from "../src/schema-push.ts";
 
 describe("decidePush", () => {
   it("applies when there are no warnings, whatever the context", () => {
@@ -42,6 +42,26 @@ describe("decidePush", () => {
     expect(decidePush(["w"], true, { yes: true, allowDataLoss: true }, false)).toEqual({
       action: "apply",
     });
+  });
+});
+
+describe("abortMessage", () => {
+  it("tells a non-interactive destructive push to pass BOTH flags", () => {
+    // The regression: a no-TTY data-loss abort needs --yes too, not just --allow-data-loss.
+    const msg = abortMessage("data-loss", true, false);
+    expect(msg).toContain("--yes --allow-data-loss");
+  });
+
+  it("only asks for --allow-data-loss when already interactive (--yes given in a TTY)", () => {
+    const msg = abortMessage("data-loss", true, true);
+    expect(msg).toContain("--allow-data-loss");
+    expect(msg).not.toContain("--yes");
+  });
+
+  it("asks for just --yes on a plain no-TTY warning, plus --allow-data-loss if destructive", () => {
+    expect(abortMessage("no-tty", false, false)).toContain("--yes");
+    expect(abortMessage("no-tty", false, false)).not.toContain("--allow-data-loss");
+    expect(abortMessage("no-tty", true, false)).toContain("--yes --allow-data-loss");
   });
 });
 
