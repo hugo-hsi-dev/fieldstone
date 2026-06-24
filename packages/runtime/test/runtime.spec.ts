@@ -161,6 +161,69 @@ describe("fieldstone runtime", () => {
     expect(diagnostics).toEqual([]);
   });
 
+  it("types `where` clauses against generated collection fields", () => {
+    const source = `
+			import { getFieldstone } from '@hugo-hsi-dev/runtime';
+			import type { FieldstoneConfig } from '@hugo-hsi-dev/schema';
+
+			declare module '@hugo-hsi-dev/schema' {
+				interface GeneratedCollections {
+					"posts": {
+						id: string;
+						title: string;
+						views: number;
+						publishedAt: Date;
+						featured: boolean;
+						category: "news" | "blog";
+						tags: string[];
+						seo: { title: string };
+						_status?: "draft" | "published";
+						createdAt: Date;
+						updatedAt: Date;
+					};
+				}
+			}
+
+			const config = {
+				db: { dialect: 'sqlite', url: ':memory:' },
+				collections: {}
+			} satisfies FieldstoneConfig;
+
+			async function run() {
+				const stone = await getFieldstone({ config });
+
+				await stone.find({ collection: 'posts', where: { title: { equals: 'x', like: 'y' } } });
+				await stone.find({ collection: 'posts', where: { views: { greater_than: 10, in: [1, 2] } } });
+				await stone.find({ collection: 'posts', where: { publishedAt: { less_than: new Date() } } });
+				await stone.find({ collection: 'posts', where: { publishedAt: { less_than: '2020-01-01' } } });
+				await stone.find({ collection: 'posts', where: { featured: { equals: true } } });
+				await stone.find({ collection: 'posts', where: { category: { equals: 'news' } } });
+				await stone.find({ collection: 'posts', where: { id: { equals: 'x' }, createdAt: { greater_than: new Date() } } });
+				await stone.count({ collection: 'posts', where: { and: [{ views: { greater_than: 1 } }], or: [{ featured: { equals: false } }] } });
+
+				// @ts-expect-error greater_than is not valid on a boolean field
+				await stone.find({ collection: 'posts', where: { featured: { greater_than: 1 } } });
+				// @ts-expect-error wrong value type for a number field
+				await stone.find({ collection: 'posts', where: { views: { equals: 'nope' } } });
+				// @ts-expect-error unknown field
+				await stone.find({ collection: 'posts', where: { missing: { equals: 1 } } });
+				// @ts-expect-error group field is not filterable
+				await stone.find({ collection: 'posts', where: { seo: { equals: 'x' } } });
+				// @ts-expect-error hasMany field is not filterable
+				await stone.find({ collection: 'posts', where: { tags: { equals: 'x' } } });
+				// @ts-expect-error _status is excluded from where (use the status option)
+				await stone.find({ collection: 'posts', where: { _status: { equals: 'draft' } } });
+				// @ts-expect-error value outside the select union
+				await stone.find({ collection: 'posts', where: { category: { equals: 'other' } } });
+				// @ts-expect-error like is not valid on a number field
+				await stone.find({ collection: 'posts', where: { views: { like: 'x' } } });
+			}
+		`;
+    const diagnostics = getDiagnostics(source);
+
+    expect(diagnostics).toEqual([]);
+  });
+
   it("handles Document reads, mutations, validation, timestamps, and missing rows", async () => {
     const { cleanup, config } = await createRuntimeFixture();
 

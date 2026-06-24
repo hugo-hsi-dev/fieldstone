@@ -2,6 +2,7 @@ import type {
   AccessUser,
   CollectionData,
   CollectionSlug,
+  CollectionWhere,
   DocumentStatus,
   FieldstoneConfig,
   GlobalData,
@@ -179,6 +180,17 @@ export function createFieldstoneRest({
         const sort = sortField
           ? { field: sortField, direction: params.get("order") === "asc" ? ("asc" as const) : ("desc" as const) }
           : undefined;
+        // `where` is a URL-encoded JSON object; the runtime validates its shape
+        // (and a bad field/operator surfaces as a 400 via the error wrapper).
+        const whereParam = params.get("where");
+        let where: CollectionWhere<CollectionSlug> | undefined;
+        if (whereParam) {
+          try {
+            where = JSON.parse(whereParam) as CollectionWhere<CollectionSlug>;
+          } catch {
+            return errorResponse(400, "Invalid where parameter: must be URL-encoded JSON");
+          }
+        }
         const input = {
           collection: collectionSlug as CollectionSlug,
           user,
@@ -187,6 +199,7 @@ export function createFieldstoneRest({
           ...(limit !== undefined ? { limit } : {}),
           ...(offset !== undefined ? { offset } : {}),
           ...(sort ? { sort } : {}),
+          ...(where ? { where } : {}),
         };
         const [docs, total] = await Promise.all([
           admin.listDocuments(input),
