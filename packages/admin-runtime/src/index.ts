@@ -158,7 +158,11 @@ export async function createFieldstoneAdmin({
         imageSizes: collectionConfig.upload.imageSizes,
         put: (variantKey, body, meta) => stone.storage.put(variantKey, body, meta),
       });
-      const probe = probeImageDimensions(file.bytes);
+      // Only decode for dimensions if sharp didn't already provide them.
+      const probe =
+        generated.width == null || generated.height == null
+          ? probeImageDimensions(file.bytes)
+          : null;
 
       try {
         return await stone.create({
