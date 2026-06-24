@@ -15,19 +15,27 @@ Commands:
   push        Apply the schema to the database
 
 Options:
-  --cwd <dir>     Run in a different directory
-  --force         (init) Overwrite existing files instead of skipping them
-  --no-install    (init) Don't suggest installing dependencies afterward
-  -h, --help      Show this help
-  -v, --version   Show the version
+  --cwd <dir>         Run in a different directory
+  --force             (init) Overwrite existing files instead of skipping them
+  --no-install        (init) Don't suggest installing dependencies afterward
+  -y, --yes           (push) Apply schema changes without prompting (CI-safe)
+  --allow-data-loss   (push) Allow destructive changes during a non-interactive push
+  -h, --help          Show this help
+  -v, --version       Show the version
 `;
 
 /** @param {string[]} argv */
 function parseArgs(argv) {
   /** @type {string[]} */
   const positional = [];
-  /** @type {{ cwd: string, force: boolean, install: boolean, help?: boolean, version?: boolean }} */
-  const flags = { cwd: process.cwd(), force: false, install: true };
+  /** @type {{ cwd: string, force: boolean, install: boolean, yes: boolean, allowDataLoss: boolean, help?: boolean, version?: boolean }} */
+  const flags = {
+    cwd: process.cwd(),
+    force: false,
+    install: true,
+    yes: false,
+    allowDataLoss: false,
+  };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--cwd") {
@@ -40,6 +48,8 @@ function parseArgs(argv) {
       i++;
     } else if (arg === "--force") flags.force = true;
     else if (arg === "--no-install") flags.install = false;
+    else if (arg === "--yes" || arg === "-y") flags.yes = true;
+    else if (arg === "--allow-data-loss") flags.allowDataLoss = true;
     else if (arg === "--help" || arg === "-h") flags.help = true;
     else if (arg === "--version" || arg === "-v") flags.version = true;
     else if (arg.startsWith("-")) {
@@ -115,7 +125,10 @@ try {
   const compiled = compileFieldstoneConfig(config);
 
   if (command === "push") {
-    const didPush = await pushSchema(config, compiled);
+    const didPush = await pushSchema(config, compiled, {
+      yes: flags.yes,
+      allowDataLoss: flags.allowDataLoss,
+    });
     if (!didPush) process.exitCode = 1;
   } else {
     await writeGeneratedFiles({ compiled, root });
