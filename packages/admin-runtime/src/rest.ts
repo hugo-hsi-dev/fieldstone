@@ -198,6 +198,11 @@ export function createFieldstoneRest({
           }
           where = parsed as CollectionWhere<CollectionSlug>;
         }
+        const depthParam = params.has("depth") ? Number(params.get("depth")) : undefined;
+        const depth =
+          depthParam !== undefined && Number.isInteger(depthParam) && depthParam >= 0
+            ? depthParam
+            : undefined;
         const input = {
           collection: collectionSlug as CollectionSlug,
           user,
@@ -207,6 +212,7 @@ export function createFieldstoneRest({
           ...(offset !== undefined ? { offset } : {}),
           ...(sort ? { sort } : {}),
           ...(where ? { where } : {}),
+          ...(depth !== undefined ? { depth } : {}),
         };
         const [docs, total] = await Promise.all([
           admin.listDocuments(input),
@@ -229,10 +235,18 @@ export function createFieldstoneRest({
     if (path.length === 2) {
       const id = path[1]!;
       if (method === "GET") {
+        const depthParam = url.searchParams.has("depth")
+          ? Number(url.searchParams.get("depth"))
+          : undefined;
+        const depth =
+          depthParam !== undefined && Number.isInteger(depthParam) && depthParam >= 0
+            ? depthParam
+            : undefined;
         const doc = await admin.getDocument({
           collection: collectionSlug as CollectionSlug,
           id,
           user,
+          ...(depth !== undefined ? { depth } : {}),
         });
         if (!doc) return errorResponse(404, "Document not found");
         return json(doc);

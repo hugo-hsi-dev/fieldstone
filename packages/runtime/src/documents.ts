@@ -1,6 +1,12 @@
-import type { CollectionDocument, CollectionSlug } from "@hugo-hsi-dev/schema";
+import type {
+  AccessUser,
+  CollectionDocument,
+  CollectionSlug,
+  PopulatedDocument,
+} from "@hugo-hsi-dev/schema";
 
-import { assertCollectionAccess } from "./access.ts";
+import { assertCollectionAccess, ForbiddenError } from "./access.ts";
+import { populateDocuments } from "./populate.ts";
 import type { createDatabase } from "./database.ts";
 import {
   getCollectionHooks,
@@ -21,6 +27,18 @@ import { buildWhere, type WhereClause } from "./where.ts";
 
 type DatabaseContext = Awaited<ReturnType<typeof createDatabase>>;
 type Doc = Record<string, unknown>;
+
+// depth 0 keeps relations as ids; a literal depth >= 1 returns them populated. A
+// non-literal `number` depth degrades to the conservative id-shape (it may resolve
+// to 0 at runtime), so a computed depth never over-promises populated docs.
+type ReadResult<
+  TCollection extends CollectionSlug,
+  TDepth extends number,
+> = number extends TDepth
+  ? CollectionDocument<TCollection>
+  : TDepth extends 0
+    ? CollectionDocument<TCollection>
+    : PopulatedDocument<TCollection>;
 
 // Drop the runtime-managed system columns so a stored row can be used as a merge
 // base for a partial update without the normalizer rejecting them as unknown.
@@ -128,6 +146,66 @@ export function createDocumentRuntime(context: DatabaseContext) {
     return compiled.tables[collectionSlug];
   }
 
+  // Access-checked, afterRead-honoring fetch of related docs by id — single level,
+  // no nested populate. Enforces the target's read access at the SAME grain as
+  // findById: a collection-grain denial drops everything, and a row-grain rule
+  // (`read: ({ id }) => …`) is applied per related doc so populate can never embed
+  // a row the caller couldn't read directly. Forbidden rows resolve to null/[].
+  async function fetchRelated(
+    targetSlug: string,
+    ids: string[],
+    user: AccessUser | null | undefined,
+  ): Promise<Doc[]> {
+    try {
+      await assertCollectionAccess(config, targetSlug, "read", { user: user ?? null });
+    } catch (error) {
+      if (error instanceof ForbiddenError) return [];
+      throw error;
+    }
+    const table = compiled.tables[targetSlug];
+    if (!table) return [];
+
+    // Chunk to stay under SQLite's bound-parameter limit (≈999 on older builds).
+    const rows: Doc[] = [];
+    const CHUNK = 500;
+    for (let start = 0; start < ids.length; start += CHUNK) {
+      const batch = ids.slice(start, start + CHUNK);
+      rows.push(
+        ...((await database.select().from(table).where(inArray(table.id, batch))) as Doc[]),
+      );
+    }
+
+    // Per-row read rule (drops rows a row-grain rule denies).
+    const allowed: Doc[] = [];
+    for (const row of rows) {
+      try {
+        await assertCollectionAccess(config, targetSlug, "read", {
+          user: user ?? null,
+          id: row.id as string,
+        });
+        allowed.push(row);
+      } catch (error) {
+        if (error instanceof ForbiddenError) continue;
+        throw error;
+      }
+    }
+
+    const hooks = getCollectionHooks(config, targetSlug);
+    if (!hooks?.afterRead?.length) return allowed;
+    return Promise.all(allowed.map((row) => runAfterReadHooks(hooks, targetSlug, row)));
+  }
+
+  async function populateIfNeeded(
+    collectionSlug: string,
+    docs: Doc[],
+    depth: number | undefined,
+    user: AccessUser | null | undefined,
+  ) {
+    if (!depth || depth < 1 || !docs.length) return;
+    const fields = compiledConfig.getCollection(collectionSlug)?.fields ?? [];
+    await populateDocuments(docs, fields, user, fetchRelated);
+  }
+
   function buildConditions(
     collectionSlug: string,
     table: Record<string, any>,
@@ -170,7 +248,7 @@ export function createDocumentRuntime(context: DatabaseContext) {
   }
 
   return {
-    find: async <TCollection extends CollectionSlug>({
+    find: async <TCollection extends CollectionSlug, TDepth extends number = 0>({
       collection: collectionSlug,
       status,
       limit,
@@ -178,8 +256,13 @@ export function createDocumentRuntime(context: DatabaseContext) {
       sort,
       search,
       where,
+      depth,
       user,
-    }: ListInput<TCollection>) => {
+    }: ListInput<TCollection> & { depth?: TDepth }): Promise<
+      Array<
+        ReadResult<TCollection, TDepth>
+      >
+    > => {
       await assertCollectionAccess(config, collectionSlug, "read", { user: user ?? null });
       const table = getTable(collectionSlug);
       const conditions = buildConditions(
@@ -201,13 +284,13 @@ export function createDocumentRuntime(context: DatabaseContext) {
       if (typeof offset === "number") query = query.offset(offset);
       const rows = (await query) as Doc[];
       const hooks = getCollectionHooks(config, collectionSlug);
-      if (!hooks?.afterRead?.length) {
-        return rows as unknown as CollectionDocument<TCollection>[];
-      }
-      const read = await Promise.all(
-        rows.map((row) => runAfterReadHooks(hooks, collectionSlug, row)),
-      );
-      return read as unknown as CollectionDocument<TCollection>[];
+      const result = hooks?.afterRead?.length
+        ? await Promise.all(rows.map((row) => runAfterReadHooks(hooks, collectionSlug, row)))
+        : rows;
+      await populateIfNeeded(collectionSlug, result, depth, user);
+      return result as unknown as Array<
+        ReadResult<TCollection, TDepth>
+      >;
     },
 
     count: async <TCollection extends CollectionSlug>({
@@ -233,18 +316,24 @@ export function createDocumentRuntime(context: DatabaseContext) {
       return Number(row?.value ?? 0);
     },
 
-    findById: async <TCollection extends CollectionSlug>({
+    findById: async <TCollection extends CollectionSlug, TDepth extends number = 0>({
       collection: collectionSlug,
       id,
+      depth,
       user,
-    }: DocumentInput<TCollection>) => {
+    }: DocumentInput<TCollection> & { depth?: TDepth }): Promise<
+      | (ReadResult<TCollection, TDepth>)
+      | null
+    > => {
       await assertCollectionAccess(config, collectionSlug, "read", { user: user ?? null, id });
       const table = getTable(collectionSlug);
       const [document] = await database.select().from(table).where(eq(table.id, id)).limit(1);
       if (!document) return null;
       const hooks = getCollectionHooks(config, collectionSlug);
-      const read = await runAfterReadHooks(hooks, collectionSlug, document as Doc);
-      return read as unknown as CollectionDocument<TCollection>;
+      const read = (await runAfterReadHooks(hooks, collectionSlug, document as Doc)) as Doc;
+      await populateIfNeeded(collectionSlug, [read], depth, user);
+      return read as unknown as
+        | (ReadResult<TCollection, TDepth>);
     },
 
     create: async <TCollection extends CollectionSlug>({

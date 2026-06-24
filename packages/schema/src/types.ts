@@ -288,6 +288,9 @@ export type FieldstoneConfig = FieldstoneConfigInput & {
 
 export interface GeneratedCollections {}
 export interface GeneratedGlobals {}
+// Per-collection map of relation/upload field → { target slug, hasMany }, emitted
+// by codegen and consumed by PopulatedDocument<T>.
+export interface GeneratedCollectionRelations {}
 
 type GeneratedCollectionSlug = keyof GeneratedCollections & string;
 type GeneratedGlobalSlug = keyof GeneratedGlobals & string;
@@ -393,6 +396,31 @@ export type GlobalDocument<TGlobal extends string> =
   TGlobal extends keyof GeneratedGlobals
     ? DocumentShape<GeneratedGlobals[TGlobal]>
     : FallbackDocument;
+
+// A `depth`-populated read replaces each top-level relation/upload field with the
+// target document(s): single → `Doc | null` (null when missing or read-forbidden),
+// many → `Doc[]`. One level deep; the populated docs' own relations stay as ids.
+type PopulatedField<TRelation> = TRelation extends {
+  to: infer TTarget extends string;
+  many: infer TMany;
+}
+  ? TMany extends true
+    ? // An unset non-required hasMany relation is stored as null, not [].
+      CollectionDocument<TTarget>[] | null
+    : CollectionDocument<TTarget> | null
+  : never;
+
+export type PopulatedDocument<TCollection extends string> =
+  TCollection extends keyof GeneratedCollectionRelations
+    ? Omit<
+        CollectionDocument<TCollection>,
+        keyof GeneratedCollectionRelations[TCollection]
+      > & {
+        [K in keyof GeneratedCollectionRelations[TCollection]]: PopulatedField<
+          GeneratedCollectionRelations[TCollection][K]
+        >;
+      }
+    : CollectionDocument<TCollection>;
 
 type FallbackDataValue =
   | boolean
