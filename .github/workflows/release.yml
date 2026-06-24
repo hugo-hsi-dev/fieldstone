@@ -31,9 +31,19 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # OIDC trusted publishing needs npm CLI >= 11.5.1 for the OIDC handshake.
+      # The npm bundled with Node (incl. 24.x) is older; without this, npm
+      # publishes anonymously and the registry returns a misleading E404.
+      # changeset publish shells out to `npm publish`, so the npm version is what
+      # matters here (not pnpm's). See npm/cli#8976.
+      - name: Upgrade npm for OIDC trusted publishing
+        run: |
+          npm install -g npm@latest
+          npm --version
+
       # While changesets are pending this opens/updates a "Version Packages" PR;
       # once that PR merges (no pending changesets) it builds and publishes via
-      # OIDC trusted publishing. No NODE_AUTH_TOKEN — pnpm detects the OIDC env.
+      # OIDC trusted publishing. No NODE_AUTH_TOKEN — npm detects the OIDC env.
       - name: Changesets
         uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
         with:
