@@ -1,5 +1,12 @@
 # @hugo-hsi-dev/storage
 
+## 0.1.2
+
+### Patch Changes
+
+- Updated dependencies [2c73af1]
+  - @hugo-hsi-dev/schema@0.1.2
+
 ## 0.1.0
 
 ### Patch Changes
