@@ -422,19 +422,23 @@ type PopulatedField<TRelation, TDepth extends number> = TRelation extends {
 export type PopulatedDocument<
   TCollection extends string,
   TDepth extends number = 1,
-> = [TDepth] extends [0]
+> = number extends TDepth
   ? CollectionDocument<TCollection>
-  : TCollection extends keyof GeneratedCollectionRelations
-    ? Omit<
-        CollectionDocument<TCollection>,
-        keyof GeneratedCollectionRelations[TCollection]
-      > & {
-        [K in keyof GeneratedCollectionRelations[TCollection]]: PopulatedField<
-          GeneratedCollectionRelations[TCollection][K],
-          NextDepth<TDepth>
-        >;
-      }
-    : CollectionDocument<TCollection>;
+  : // Distributive (naked TDepth) so a union depth like `0 | 1` resolves to the
+    // union of shapes instead of collapsing into the populated branch.
+    TDepth extends 0
+    ? CollectionDocument<TCollection>
+    : TCollection extends keyof GeneratedCollectionRelations
+      ? Omit<
+          CollectionDocument<TCollection>,
+          keyof GeneratedCollectionRelations[TCollection]
+        > & {
+          [K in keyof GeneratedCollectionRelations[TCollection]]: PopulatedField<
+            GeneratedCollectionRelations[TCollection][K],
+            NextDepth<TDepth>
+          >;
+        }
+      : CollectionDocument<TCollection>;
 
 type FallbackDataValue =
   | boolean

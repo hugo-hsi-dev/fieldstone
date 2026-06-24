@@ -206,7 +206,12 @@ export function createDocumentRuntime(context: DatabaseContext) {
     depth: number | undefined,
     user: AccessUser | null | undefined,
   ) {
-    if (!depth || depth < 1 || !docs.length) return;
+    if (depth === undefined || depth === 0 || !docs.length) return;
+    // Reject non-integers / Infinity up front: `Infinity - 1` is still Infinity, so
+    // it would never bottom out and a circular relation would recurse forever.
+    if (!Number.isSafeInteger(depth) || depth < 0) {
+      throw new Error(`Relationship depth must be a non-negative integer (got ${depth})`);
+    }
     const fields = compiledConfig.getCollection(collectionSlug)?.fields ?? [];
     // Each relation field fetches its targets one depth shallower; depth bounds the
     // recursion (it reaches 0 even with circular relations).

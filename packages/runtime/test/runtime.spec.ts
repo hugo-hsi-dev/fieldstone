@@ -916,6 +916,14 @@ describe("fieldstone runtime", () => {
       });
       const cyclic = await stone.findById({ collection: "posts", id: post.id, depth: 5 });
       expect((cyclic!.author as { name: string }).name).toBe("Ada");
+
+      // a non-integer / Infinity depth is rejected (would otherwise recurse forever)
+      await expect(
+        stone.findById({ collection: "posts", id: post.id, depth: Infinity }),
+      ).rejects.toThrow(/depth/);
+      await expect(
+        stone.findById({ collection: "posts", id: post.id, depth: 1.5 }),
+      ).rejects.toThrow(/depth/);
     } finally {
       await rm(tempDir, { force: true, recursive: true });
     }
