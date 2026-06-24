@@ -17,6 +17,7 @@ import type {
   ListInput,
   UpdateInput,
 } from "./types.ts";
+import { buildWhere } from "./where.ts";
 
 type DatabaseContext = Awaited<ReturnType<typeof createDatabase>>;
 type Doc = Record<string, unknown>;
@@ -90,9 +91,35 @@ export function createDocumentRuntime(context: DatabaseContext) {
     count,
     desc,
     eq,
+    gt,
+    gte,
+    inArray,
+    isNotNull,
+    isNull,
     like,
+    lt,
+    lte,
+    ne,
+    notInArray,
     or,
   } = context;
+
+  // Operator bundle for the typed where-builder (drizzle-orm fns from the context).
+  const whereOps = {
+    and,
+    or,
+    eq,
+    ne,
+    gt,
+    gte,
+    lt,
+    lte,
+    like,
+    inArray,
+    notInArray,
+    isNull,
+    isNotNull,
+  };
 
   function getTable(collectionSlug: string) {
     if (!compiledConfig.getCollection(collectionSlug)) {
@@ -106,6 +133,7 @@ export function createDocumentRuntime(context: DatabaseContext) {
     table: Record<string, any>,
     status: ListInput["status"],
     search: string | undefined,
+    where: ListInput["where"],
   ) {
     const conditions: unknown[] = [];
     if (status) {
@@ -133,6 +161,11 @@ export function createDocumentRuntime(context: DatabaseContext) {
       if (likes.length === 1) conditions.push(likes[0]);
       else if (likes.length > 1) conditions.push(or(...likes));
     }
+    if (where) {
+      const fields = compiledConfig.getCollection(collectionSlug)?.fields ?? [];
+      const condition = buildWhere(where, table, fields, whereOps);
+      if (condition !== undefined) conditions.push(condition);
+    }
     return conditions;
   }
 
@@ -144,11 +177,12 @@ export function createDocumentRuntime(context: DatabaseContext) {
       offset,
       sort,
       search,
+      where,
       user,
     }: ListInput<TCollection>) => {
       await assertCollectionAccess(config, collectionSlug, "read", { user: user ?? null });
       const table = getTable(collectionSlug);
-      const conditions = buildConditions(collectionSlug, table, status, search);
+      const conditions = buildConditions(collectionSlug, table, status, search, where);
       let query = database.select().from(table).$dynamic();
       if (conditions.length === 1) query = query.where(conditions[0] as any);
       else if (conditions.length > 1) query = query.where(and(...(conditions as any[])));
@@ -174,11 +208,12 @@ export function createDocumentRuntime(context: DatabaseContext) {
       collection: collectionSlug,
       status,
       search,
+      where,
       user,
     }: ListInput<TCollection>) => {
       await assertCollectionAccess(config, collectionSlug, "read", { user: user ?? null });
       const table = getTable(collectionSlug);
-      const conditions = buildConditions(collectionSlug, table, status, search);
+      const conditions = buildConditions(collectionSlug, table, status, search, where);
       let query = database.select({ value: count() }).from(table).$dynamic();
       if (conditions.length === 1) query = query.where(conditions[0] as any);
       else if (conditions.length > 1) query = query.where(and(...(conditions as any[])));

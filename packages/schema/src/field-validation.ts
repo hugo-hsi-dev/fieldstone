@@ -11,6 +11,10 @@ const reservedFieldNames = new Set([
   "updatedAt",
   "created_at",
   "updated_at",
+  // `and`/`or` are where-clause logical keys; a field with either name would be
+  // shadowed and unfilterable, so reject it at definition time.
+  "and",
+  "or",
 ]);
 
 export function normalizeSelectOptions(
