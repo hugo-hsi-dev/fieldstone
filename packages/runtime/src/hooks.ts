@@ -2,7 +2,7 @@ import type {
   CollectionHooks,
   FieldstoneConfig,
   HookOperation,
-} from "@fieldstone/schema";
+} from "@hugo-hsi-dev/schema";
 
 type Doc = Record<string, unknown>;
 

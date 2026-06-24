@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { collection, global, number, text } from "@fieldstone/schema";
+import { collection, global, number, text } from "@hugo-hsi-dev/schema";
 
 import { createFieldstoneRest } from "../src/index.ts";
 

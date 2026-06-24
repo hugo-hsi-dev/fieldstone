@@ -2,9 +2,9 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { Editor } from '@tiptap/core';
 	import StarterKit from '@tiptap/starter-kit';
-	import type { CollectionRuntimeConfig, DocumentDataValue } from '@fieldstone/schema';
+	import type { CollectionRuntimeConfig, DocumentDataValue } from '@hugo-hsi-dev/schema';
 
-	import { mediaPath } from '@fieldstone/routes';
+	import { mediaPath } from '@hugo-hsi-dev/routes';
 
 	import { getFieldLabel, shouldUseTextarea, toDatetimeLocalValue, toInputValue } from './labels';
 	import Label from './primitives/Label.svelte';

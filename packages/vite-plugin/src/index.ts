@@ -7,8 +7,8 @@ import path from "node:path";
 import type {
   FieldstoneConfig,
   FieldstoneConfigInput,
-} from "@fieldstone/schema";
-import { compileFieldstoneConfig } from "@fieldstone/compiler";
+} from "@hugo-hsi-dev/schema";
+import { compileFieldstoneConfig } from "@hugo-hsi-dev/compiler";
 import type { Plugin, ViteDevServer } from "vite";
 
 import {
@@ -21,7 +21,7 @@ import {
   isWatchedGlobalFile,
   loadVirtualConfig,
   pushSchema,
-} from "@fieldstone/codegen";
+} from "@hugo-hsi-dev/codegen";
 
 type FieldstonePluginOptions = FieldstoneConfigInput;
 

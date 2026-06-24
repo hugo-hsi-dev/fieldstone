@@ -4,16 +4,16 @@ import { fileURLToPath } from "node:url";
 
 const TEMPLATES_DIR = fileURLToPath(new URL("../templates", import.meta.url));
 
-// The lockstep version of the @fieldstone/* packages a scaffolded app depends on.
+// The lockstep version of the @hugo-hsi-dev/* packages a scaffolded app depends on.
 const FIELDSTONE_VERSION = "^0.1.0";
 
 /** @type {Record<string, string>} */
 const DEPENDENCIES = {
-  "@fieldstone/admin-runtime": FIELDSTONE_VERSION,
-  "@fieldstone/remotes": FIELDSTONE_VERSION,
-  "@fieldstone/schema": FIELDSTONE_VERSION,
-  "@fieldstone/ui": FIELDSTONE_VERSION,
-  "@fieldstone/vite-plugin": FIELDSTONE_VERSION,
+  "@hugo-hsi-dev/admin-runtime": FIELDSTONE_VERSION,
+  "@hugo-hsi-dev/remotes": FIELDSTONE_VERSION,
+  "@hugo-hsi-dev/schema": FIELDSTONE_VERSION,
+  "@hugo-hsi-dev/ui": FIELDSTONE_VERSION,
+  "@hugo-hsi-dev/vite-plugin": FIELDSTONE_VERSION,
   "@libsql/client": "^0.15.15",
   "better-auth": "^1.6.19",
   "drizzle-orm": "^0.45.2",
@@ -22,7 +22,7 @@ const DEPENDENCIES = {
 
 /** @type {Record<string, string>} */
 const DEV_DEPENDENCIES = {
-  "@fieldstone/cli": FIELDSTONE_VERSION,
+  "@hugo-hsi-dev/cli": FIELDSTONE_VERSION,
   "drizzle-kit": "^0.31.10",
 };
 

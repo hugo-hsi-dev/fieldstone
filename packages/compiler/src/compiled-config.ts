@@ -1,9 +1,9 @@
-import type { NormalizedDocumentData } from "@fieldstone/schema";
+import type { NormalizedDocumentData } from "@hugo-hsi-dev/schema";
 import type {
   CollectionRuntimeConfig,
   FieldstoneConfig,
   GlobalRuntimeConfig,
-} from "@fieldstone/schema";
+} from "@hugo-hsi-dev/schema";
 import {
   buildSchemaPlan,
   createCollectionRuntimeConfigs,

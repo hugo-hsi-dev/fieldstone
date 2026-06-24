@@ -4,14 +4,14 @@
 		CollectionDocument,
 		CollectionRuntimeConfig,
 		CollectionSlug
-	} from '@fieldstone/schema';
-	import { UPLOAD_FIELD_NAMES } from '@fieldstone/schema';
+	} from '@hugo-hsi-dev/schema';
+	import { UPLOAD_FIELD_NAMES } from '@hugo-hsi-dev/schema';
 
 	import FieldInput from './FieldInput.svelte';
 	import { getCollectionLabel, getFieldInputValue } from './labels';
 	import Button from './primitives/Button.svelte';
 	import { createFormGuard } from './form-guard.svelte';
-	import { adminDocumentPath, adminRouteId, adminRouteSegments } from '@fieldstone/routes';
+	import { adminDocumentPath, adminRouteId, adminRouteSegments } from '@hugo-hsi-dev/routes';
 
 	type RemoteFormField = {
 		as: (

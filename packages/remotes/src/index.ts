@@ -10,7 +10,7 @@ import {
   createFieldstoneAdmin,
   isForbiddenError,
   isUploadError,
-} from "@fieldstone/admin-runtime";
+} from "@hugo-hsi-dev/admin-runtime";
 import type {
   AccessUser,
   CollectionData,
@@ -24,10 +24,10 @@ import type {
   GlobalRuntimeConfig,
   GlobalSlug,
   NormalizedDocumentData,
-} from "@fieldstone/schema";
-import { normalizeBooleanFieldValue, normalizeFieldValue } from "@fieldstone/schema";
-import type { FieldstoneAdminRemoteName } from "@fieldstone/schema";
-import { compileFieldstoneConfig } from "@fieldstone/compiler";
+} from "@hugo-hsi-dev/schema";
+import { normalizeBooleanFieldValue, normalizeFieldValue } from "@hugo-hsi-dev/schema";
+import type { FieldstoneAdminRemoteName } from "@hugo-hsi-dev/schema";
+import { compileFieldstoneConfig } from "@hugo-hsi-dev/compiler";
 
 import {
   adminCollectionPath,
@@ -35,7 +35,7 @@ import {
   adminGlobalPath,
   adminRouteId,
   adminRouteSegments,
-} from "@fieldstone/routes";
+} from "@hugo-hsi-dev/routes";
 
 function currentUser(): AccessUser {
   try {
@@ -462,7 +462,7 @@ export type FieldstoneAdminRemotes = ReturnType<
 >;
 
 // Compile-time guard: the generated `dashboard.remote.ts` barrel re-exports exactly the
-// names in FIELDSTONE_ADMIN_REMOTE_NAMES (@fieldstone/schema). If a remote is added to or
+// names in FIELDSTONE_ADMIN_REMOTE_NAMES (@hugo-hsi-dev/schema). If a remote is added to or
 // removed from createFieldstoneAdminRemotes without updating that list, this errors with
 // the offending name(s) in the type.
 type _UnlistedAdminRemotes = Exclude<

@@ -1,6 +1,6 @@
-import { compileFieldstoneConfig } from "@fieldstone/compiler";
-import type { FieldstoneConfig } from "@fieldstone/schema";
-import { resolveStorage } from "@fieldstone/storage";
+import { compileFieldstoneConfig } from "@hugo-hsi-dev/compiler";
+import type { FieldstoneConfig } from "@hugo-hsi-dev/schema";
+import { resolveStorage } from "@hugo-hsi-dev/storage";
 
 export function normalizeSqliteUrl(url: string) {
   if (/^[a-z]+:/i.test(url)) return url;

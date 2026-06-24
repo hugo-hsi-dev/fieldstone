@@ -1,5 +1,5 @@
 import config from '$fieldstone-config';
-import { createFieldstoneMedia } from '@fieldstone/admin-runtime';
+import { createFieldstoneMedia } from '@hugo-hsi-dev/admin-runtime';
 import type { RequestHandler } from './$types';
 
 // Serves uploaded files from the configured storage. Files are public by default;

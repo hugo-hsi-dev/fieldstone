@@ -1,6 +1,6 @@
 <script lang="ts">
-	import '@fieldstone/ui/admin.css';
-	import { FieldstoneAdmin } from '@fieldstone/ui';
+	import '@hugo-hsi-dev/ui/admin.css';
+	import { FieldstoneAdmin } from '@hugo-hsi-dev/ui';
 
 	import * as remotes from '../dashboard.remote';
 </script>

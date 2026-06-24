@@ -2,7 +2,7 @@ import type {
   AccessOperation,
   AccessUser,
   FieldstoneConfig,
-} from "@fieldstone/schema";
+} from "@hugo-hsi-dev/schema";
 
 export class ForbiddenError extends Error {
   readonly status = 403;

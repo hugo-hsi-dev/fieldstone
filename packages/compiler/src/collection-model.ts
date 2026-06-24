@@ -1,20 +1,20 @@
 import {
   normalizeCollectionData,
   type NormalizedDocumentData,
-} from "@fieldstone/schema";
+} from "@hugo-hsi-dev/schema";
 import type {
   CollectionRuntimeConfig,
   FieldDefinition,
   FieldstoneConfig,
   GlobalRuntimeConfig,
   UploadOptions,
-} from "@fieldstone/schema";
+} from "@hugo-hsi-dev/schema";
 import {
   normalizeSelectOptions,
   STATUS_FIELD_NAME,
   UPLOAD_FIELD_NAMES,
   validateCollectionFields,
-} from "@fieldstone/schema";
+} from "@hugo-hsi-dev/schema";
 import { toUniqueIdentifier } from "./identifiers.ts";
 
 export type CompiledCollectionField = Readonly<

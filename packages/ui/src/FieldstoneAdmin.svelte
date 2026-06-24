@@ -21,8 +21,8 @@
 		globalLabelFromSlug
 	} from './labels';
 	import Button from './primitives/Button.svelte';
-	import type { CollectionRuntimeConfig, FieldDefinition } from '@fieldstone/schema';
-	import type { FieldstoneAdminRemotes } from '@fieldstone/remotes';
+	import type { CollectionRuntimeConfig, FieldDefinition } from '@hugo-hsi-dev/schema';
+	import type { FieldstoneAdminRemotes } from '@hugo-hsi-dev/remotes';
 	import {
 		adminCollectionPath,
 		adminDocumentPath,
@@ -35,7 +35,7 @@
 		getAdminSegments,
 		parseAdminRoute,
 		type AdminRoute
-	} from '@fieldstone/routes';
+	} from '@hugo-hsi-dev/routes';
 
 	let { remotes }: { remotes: FieldstoneAdminRemotes } = $props();
 

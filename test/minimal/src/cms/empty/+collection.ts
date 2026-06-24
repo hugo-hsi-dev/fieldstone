@@ -1,4 +1,4 @@
-import { collection } from '@fieldstone/schema';
+import { collection } from '@hugo-hsi-dev/schema';
 
 export default collection({
 	fields: []

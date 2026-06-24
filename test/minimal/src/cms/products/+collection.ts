@@ -7,7 +7,7 @@ import {
 	relationship,
 	select,
 	text
-} from '@fieldstone/schema';
+} from '@hugo-hsi-dev/schema';
 
 export default collection({
 	fields: [

@@ -1,4 +1,4 @@
-import type { GlobalDocument, GlobalSlug } from "@fieldstone/schema";
+import type { GlobalDocument, GlobalSlug } from "@hugo-hsi-dev/schema";
 
 import type { createDatabase } from "./database.ts";
 import type { GlobalInput, UpdateGlobalInput } from "./types.ts";

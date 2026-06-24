@@ -6,8 +6,8 @@ import path from "node:path";
 import sharp from "sharp";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { collection, text } from "@fieldstone/schema";
-import type { FieldstoneConfig, UploadOptions } from "@fieldstone/schema";
+import { collection, text } from "@hugo-hsi-dev/schema";
+import type { FieldstoneConfig, UploadOptions } from "@hugo-hsi-dev/schema";
 
 import {
   createFieldstoneAdmin,

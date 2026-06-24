@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import adapter from '@sveltejs/adapter-auto';
 import { sveltekit } from '@sveltejs/kit/vite';
-import { fieldstone } from '@fieldstone/vite-plugin';
+import { fieldstone } from '@hugo-hsi-dev/vite-plugin';
 
 export default defineConfig(() => {
 	return {

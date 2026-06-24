@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { FieldDefinition } from '@fieldstone/schema';
+	import type { FieldDefinition } from '@hugo-hsi-dev/schema';
 
 	import { getFieldLabel } from './labels';
 	import Label from './primitives/Label.svelte';

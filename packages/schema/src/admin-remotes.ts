@@ -1,13 +1,13 @@
 // The names of the admin remote functions that `createFieldstoneAdminRemotes`
-// (in @fieldstone/remotes) returns.
+// (in @hugo-hsi-dev/remotes) returns.
 //
 // This list is the single source of truth for the generated `dashboard.remote.ts`
-// barrel. It lives in @fieldstone/schema — the shared leaf both ends can reach —
-// because neither side can import the other: @fieldstone/remotes is raw, $app-coupled
-// source (so @fieldstone/codegen can't import it at build time), and @fieldstone/codegen
-// is build-time tooling (so @fieldstone/remotes shouldn't import it at runtime).
+// barrel. It lives in @hugo-hsi-dev/schema — the shared leaf both ends can reach —
+// because neither side can import the other: @hugo-hsi-dev/remotes is raw, $app-coupled
+// source (so @hugo-hsi-dev/codegen can't import it at build time), and @hugo-hsi-dev/codegen
+// is build-time tooling (so @hugo-hsi-dev/remotes shouldn't import it at runtime).
 //
-// @fieldstone/remotes asserts at compile time that this list matches the actual return
+// @hugo-hsi-dev/remotes asserts at compile time that this list matches the actual return
 // shape, so adding/removing a remote without updating this list fails the build.
 export const FIELDSTONE_ADMIN_REMOTE_NAMES = [
   "listCollections",

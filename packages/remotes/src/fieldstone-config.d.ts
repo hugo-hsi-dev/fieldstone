@@ -1,4 +1,4 @@
 declare module "$fieldstone-config" {
-  const config: import("@fieldstone/schema").FieldstoneConfig;
+  const config: import("@hugo-hsi-dev/schema").FieldstoneConfig;
   export default config;
 }

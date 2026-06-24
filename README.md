@@ -6,7 +6,7 @@ typed access, and ships a batteries-included admin UI — all running inside the
 SvelteKit app that consumes the content.
 
 > **Status: early / experimental.** The data layer (schema → compiler → runtime Local
-> API), the admin UI, the publishable `@fieldstone/*` packages, and the `fieldstone init`
+> API), the admin UI, the publishable `@hugo-hsi-dev/*` packages, and the `fieldstone init`
 > scaffolder are real and tested. The packages are not on npm yet (the release is the
 > last step of the current milestone) — until then you can use Fieldstone from a local
 > checkout (see [Contributing](#contributing)). Image/upload support is still
@@ -39,7 +39,7 @@ trivial `sv create` boilerplate. For an **existing** app, run `fieldstone init` 
 npx sv create my-app          # a brand-new SvelteKit app
 cd my-app
 
-npm install -D @fieldstone/cli
+npm install -D @hugo-hsi-dev/cli
 npx fieldstone init --force    # scaffold Fieldstone over the fresh-app boilerplate
 
 npm install                    # install the dependencies init added
@@ -67,7 +67,7 @@ scripts into your `package.json`, and adds the Fieldstone entries to `.gitignore
 Collections live in `src/cms/<slug>/+collection.ts`; globals in `+global.ts`:
 
 ```ts
-import { collection, text, richText } from '@fieldstone/schema';
+import { collection, text, richText } from '@hugo-hsi-dev/schema';
 
 export default collection({
   fields: [
@@ -101,7 +101,7 @@ In dev, the Vite plugin regenerates types automatically as you edit collections.
 2. **Admin remotes** (`src/routes/admin/dashboard.remote.ts`, generated) expose the Local
    API to the admin UI via `createFieldstoneAdminRemotes({ config })`.
 3. **Admin route** (`src/routes/admin/[...segments]/+page.svelte`) renders
-   `<FieldstoneAdmin {remotes} />` from `@fieldstone/ui` (+ `@fieldstone/ui/admin.css`).
+   `<FieldstoneAdmin {remotes} />` from `@hugo-hsi-dev/ui` (+ `@hugo-hsi-dev/ui/admin.css`).
 4. **Auth** (`src/lib/auth.ts` + `src/hooks.server.ts`) protects `/admin` and serves
    `/api/auth/*` (Better Auth, email + password). An optional REST API mounts at
    `src/routes/api/[...path]/+server.ts` via `createFieldstoneRest`.
@@ -139,7 +139,7 @@ config/           shared eslint / prettier / tsconfig / oxlint presets (private)
 | --- | --- |
 | `pnpm dev` | build packages, run the example app |
 | `pnpm build` | build packages + production build of the example app |
-| `pnpm build:packages` | build the publishable `@fieldstone/*` packages |
+| `pnpm build:packages` | build the publishable `@hugo-hsi-dev/*` packages |
 | `pnpm typecheck` | typecheck every package |
 | `pnpm test` | unit tests + e2e |
 | `pnpm test:unit` / `pnpm test:e2e` | package unit tests / Playwright admin tests |
@@ -156,10 +156,10 @@ CI gates lint, typecheck, unit, `check:publish`, build, and e2e on every push an
 
 Current focus — "make it consumable":
 
-1. ✅ Publishable `@fieldstone/*` packages.
+1. ✅ Publishable `@hugo-hsi-dev/*` packages.
 2. ✅ Easy setup — `fieldstone init` + a documented manual path.
 3. ✅ SQLite only.
 4. ⬜ Image / upload support, mirroring Payload's feature set.
 
 Then: versioned production migrations, a typed `where` query builder, relationship
-population, and extracting the Better Auth stack into `@fieldstone/auth`.
+population, and extracting the Better Auth stack into `@hugo-hsi-dev/auth`.

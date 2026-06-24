@@ -14,8 +14,8 @@ import {
   text,
   upload,
   type FieldstoneConfig,
-} from "@fieldstone/schema";
-import * as schema from "@fieldstone/schema";
+} from "@hugo-hsi-dev/schema";
+import * as schema from "@hugo-hsi-dev/schema";
 import * as compiler from "../src/index.ts";
 import { compileFieldstoneConfig } from "../src/index.ts";
 
@@ -208,7 +208,7 @@ describe("fieldstone compiler", () => {
       },
     }).renderTypesDeclaration();
 
-    expect(output).toContain("declare module '@fieldstone/schema'");
+    expect(output).toContain("declare module '@hugo-hsi-dev/schema'");
     expect(output).toContain('"posts"');
     expect(output).toContain("    id: string;");
     expect(output).toContain('"title": string');

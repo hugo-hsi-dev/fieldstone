@@ -1,4 +1,4 @@
-import type { CollectionDocument, CollectionSlug } from "@fieldstone/schema";
+import type { CollectionDocument, CollectionSlug } from "@hugo-hsi-dev/schema";
 
 import { assertCollectionAccess } from "./access.ts";
 import type { createDatabase } from "./database.ts";

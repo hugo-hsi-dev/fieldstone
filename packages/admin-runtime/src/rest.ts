@@ -6,8 +6,8 @@ import type {
   FieldstoneConfig,
   GlobalData,
   GlobalSlug,
-} from "@fieldstone/schema";
-import { isForbiddenError } from "@fieldstone/runtime";
+} from "@hugo-hsi-dev/schema";
+import { isForbiddenError } from "@hugo-hsi-dev/runtime";
 
 import { createFieldstoneAdmin } from "./index.ts";
 

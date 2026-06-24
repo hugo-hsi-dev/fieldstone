@@ -37,7 +37,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # Build the publishable packages first: typecheck, unit tests, and the app
-      # build all resolve `@fieldstone/*` through their built `dist`.
+      # build all resolve `@hugo-hsi-dev/*` through their built `dist`.
       - name: Build packages
         run: pnpm build:packages
 

@@ -1,4 +1,4 @@
-import type { UploadImageSize } from "@fieldstone/schema";
+import type { UploadImageSize } from "@hugo-hsi-dev/schema";
 
 // One generated image variant, stored as a row in the media doc's `sizes` array.
 export type ImageVariant = {
