@@ -23,6 +23,8 @@ export type {
   MutationInput,
   UpdateGlobalInput,
   UpdateInput,
+  WhereClause,
+  WhereOperators,
 } from "./types.ts";
 
 export { ForbiddenError, isForbiddenError } from "./access.ts";

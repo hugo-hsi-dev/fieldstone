@@ -9,6 +9,10 @@ import type {
   GlobalSlug,
 } from "@hugo-hsi-dev/schema";
 
+import type { WhereClause } from "./where.ts";
+
+export type { WhereClause, WhereOperators } from "./where.ts";
+
 export type DocumentData = Record<string, boolean | string | null>;
 export type FieldstoneCollectionSlug = CollectionSlug;
 export type FieldstoneDocument<TCollection extends CollectionSlug> =
@@ -40,6 +44,12 @@ export type ListInput<TCollection extends CollectionSlug = CollectionSlug> =
     offset?: number;
     sort?: ListSort;
     search?: string;
+    /**
+     * Typed field filter (Payload-style operators, AND/OR groups). Combined with
+     * `status`/`search` via AND. Scalar columns only — group/array/hasMany relation
+     * fields are stored as JSON and cannot be filtered.
+     */
+    where?: WhereClause;
   };
 
 export type ListResult<TCollection extends CollectionSlug = CollectionSlug> = {
