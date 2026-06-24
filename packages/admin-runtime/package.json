@@ -27,6 +27,14 @@
     "@fieldstone/schema": "workspace:*",
     "@fieldstone/storage": "workspace:*"
   },
+  "peerDependencies": {
+    "sharp": ">=0.33.0"
+  },
+  "peerDependenciesMeta": {
+    "sharp": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@fieldstone/oxfmt-config": "workspace:*",
     "@fieldstone/oxlint-config": "workspace:*",
@@ -36,6 +44,7 @@
     "@typescript/native-preview": "7.0.0-dev.20260611.2",
     "oxfmt": "^0.17.0",
     "oxlint": "^1.29.0",
+    "sharp": "^0.35.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.8"
   }

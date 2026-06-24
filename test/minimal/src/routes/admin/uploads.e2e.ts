@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 
-// A valid 1x1 transparent PNG (the dimension probe + serve handler read it).
-const PNG_1x1 = Buffer.from(
-	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+// A solid 8x8 PNG that sharp can fully decode (so a variant is generated).
+const PNG_8x8 = Buffer.from(
+	'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAEUlEQVQImWMIqDiBFTEMLQkA9QJkAZ/vRFcAAAAASUVORK5CYII=',
 	'base64'
 );
 
@@ -12,7 +12,7 @@ test('uploads media and references it from a post', async ({ page }) => {
 	await page.locator('input[type=file]').setInputFiles({
 		name: 'pixel.png',
 		mimeType: 'image/png',
-		buffer: PNG_1x1
+		buffer: PNG_8x8
 	});
 	await page.getByRole('button', { name: /upload/i }).click();
 	await expect(page).toHaveURL(/\/admin\/collections\/media\/[0-9a-f-]{8,}$/);
@@ -25,6 +25,8 @@ test('uploads media and references it from a post', async ({ page }) => {
 	await expect(thumb).toBeVisible();
 	const src = (await thumb.getAttribute('src')) ?? '';
 	expect(src).toMatch(/^\/media\//);
+	// The list uses the sharp-generated `thumbnail` variant (adminThumbnail).
+	expect(src).toContain('-thumbnail');
 	const served = await page.request.get(src);
 	expect(served.status()).toBe(200);
 	expect(served.headers()['content-type']).toContain('image/png');

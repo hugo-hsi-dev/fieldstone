@@ -368,6 +368,22 @@ function withUploadFields(content: {
   }
   const meta = (name: string, type: "text" | "number"): FieldDefinition =>
     ({ name, type, admin: { readOnly: true } }) as FieldDefinition;
+  // Generated image variants. Modeled as a read-only array (a json column) so the
+  // type is sound whether empty (no sharp / no imageSizes) or populated; the upload
+  // pipeline sets it via the trusted `system` channel.
+  const sizes: FieldDefinition = {
+    name: "sizes",
+    type: "array",
+    admin: { readOnly: true },
+    fields: [
+      { name: "name", type: "text", required: true },
+      { name: "filename", type: "text", required: true },
+      { name: "width", type: "number" },
+      { name: "height", type: "number" },
+      { name: "mimeType", type: "text" },
+      { name: "filesize", type: "number" },
+    ],
+  };
   return [
     ...content.fields,
     meta("filename", "text"),
@@ -377,6 +393,7 @@ function withUploadFields(content: {
     meta("height", "number"),
     meta("focalX", "number"),
     meta("focalY", "number"),
+    sizes,
   ];
 }
 

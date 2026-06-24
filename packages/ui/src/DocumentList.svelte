@@ -34,10 +34,20 @@
 	const titleField = $derived(isUpload ? 'filename' : (collection.fields[0]?.name ?? 'id'));
 
 	function thumbUrl(document: CollectionDocument<CollectionSlug>): string | null {
-		const filename = (document as { filename?: unknown }).filename;
 		const mimeType = (document as { mimeType?: unknown }).mimeType;
-		if (typeof filename !== 'string' || !filename) return null;
 		if (typeof mimeType === 'string' && !mimeType.startsWith('image/')) return null;
+		// Prefer the configured adminThumbnail variant (smaller); fall back to the original.
+		const adminThumbnail = collection.upload?.adminThumbnail;
+		const sizes = (document as { sizes?: unknown }).sizes;
+		if (adminThumbnail && Array.isArray(sizes)) {
+			const variant = sizes.find(
+				(entry) => (entry as { name?: unknown } | null)?.name === adminThumbnail
+			) as { filename?: unknown } | undefined;
+			if (typeof variant?.filename === 'string' && variant.filename)
+				return mediaPath(variant.filename);
+		}
+		const filename = (document as { filename?: unknown }).filename;
+		if (typeof filename !== 'string' || !filename) return null;
 		return mediaPath(filename);
 	}
 

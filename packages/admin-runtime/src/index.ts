@@ -25,6 +25,7 @@ import {
   probeImageDimensions,
   type UploadFile,
 } from "./upload.ts";
+import { generateVariants, loadSharp } from "./variants.ts";
 
 export async function createFieldstoneAdmin({
   config,
@@ -146,7 +147,23 @@ export async function createFieldstoneAdmin({
       const key = buildStorageKey(slug, file.name);
       await stone.storage.put(key, file.bytes, { contentType: file.type });
 
-      const dimensions = probeImageDimensions(file.bytes);
+      // Generate image variants (when sharp is installed); sharp's dimensions are
+      // authoritative, with the pure-JS probe as the no-sharp fallback.
+      const sharp = await loadSharp();
+      const generated = await generateVariants({
+        sharp,
+        bytes: file.bytes,
+        mimeType: file.type,
+        originalKey: key,
+        imageSizes: collectionConfig.upload.imageSizes,
+        put: (variantKey, body, meta) => stone.storage.put(variantKey, body, meta),
+      });
+      // Only decode for dimensions if sharp didn't already provide them.
+      const probe =
+        generated.width == null || generated.height == null
+          ? probeImageDimensions(file.bytes)
+          : null;
+
       try {
         return await stone.create({
           collection: slug as CollectionSlug,
@@ -157,13 +174,17 @@ export async function createFieldstoneAdmin({
             filename: key,
             mimeType: file.type,
             filesize: file.bytes.byteLength,
-            width: dimensions?.width ?? null,
-            height: dimensions?.height ?? null,
+            width: generated.width ?? probe?.width ?? null,
+            height: generated.height ?? probe?.height ?? null,
+            sizes: generated.variants,
           },
           user,
         });
       } catch (caught) {
+        // Don't orphan the original or any generated variant on a failed write.
         await stone.storage.delete(key).catch(() => {});
+        for (const variant of generated.variants)
+          await stone.storage.delete(variant.filename).catch(() => {});
         throw caught;
       }
     },
@@ -194,6 +215,14 @@ export async function createFieldstoneAdmin({
 
 export { createFieldstoneRest } from "./rest.ts";
 export { createFieldstoneMedia, type FieldstoneMedia } from "./media.ts";
+export {
+  generateVariants,
+  loadSharp,
+  resetSharpForTests,
+  type GenerateVariantsResult,
+  type ImageVariant,
+  type SharpModule,
+} from "./variants.ts";
 export {
   assertUploadAllowed,
   buildStorageKey,

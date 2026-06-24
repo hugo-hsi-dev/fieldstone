@@ -188,8 +188,8 @@ export const STATUS_FIELD_NAME = "_status";
 
 // Media-metadata fields the compiler injects into every upload-enabled
 // collection. Reserved: a user field of the same name would shadow the injected
-// column and corrupt upload bookkeeping. (`sizes` is added with image variants in
-// a later slice; `url` is derived from `filename` + the serve route, not stored.)
+// column and corrupt upload bookkeeping. (`url` is derived from `filename` + the
+// serve route, not stored. `sizes` holds the generated image variants.)
 export const UPLOAD_FIELD_NAMES = [
   "filename",
   "mimeType",
@@ -198,6 +198,7 @@ export const UPLOAD_FIELD_NAMES = [
   "height",
   "focalX",
   "focalY",
+  "sizes",
 ] as const;
 
 export type UploadImageSize = {
