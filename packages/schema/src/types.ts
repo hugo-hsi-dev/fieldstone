@@ -400,24 +400,38 @@ export type GlobalDocument<TGlobal extends string> =
 // A `depth`-populated read replaces each top-level relation/upload field with the
 // target document(s): single → `Doc | null` (null when missing or read-forbidden),
 // many → `Doc[]`. One level deep; the populated docs' own relations stay as ids.
-type PopulatedField<TRelation> = TRelation extends {
+// Depth countdown for recursive populate typing. Multi-level types up to index 10;
+// deeper levels degrade to ids (the runtime still populates, bounded by depth).
+type DepthPrev = [never, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+type NextDepth<TDepth extends number> = DepthPrev[TDepth] extends number
+  ? DepthPrev[TDepth]
+  : 0;
+
+type PopulatedField<TRelation, TDepth extends number> = TRelation extends {
   to: infer TTarget extends string;
   many: infer TMany;
 }
   ? TMany extends true
     ? // An unset non-required hasMany relation is stored as null, not [].
-      CollectionDocument<TTarget>[] | null
-    : CollectionDocument<TTarget> | null
+      PopulatedDocument<TTarget, TDepth>[] | null
+    : PopulatedDocument<TTarget, TDepth> | null
   : never;
 
-export type PopulatedDocument<TCollection extends string> =
-  TCollection extends keyof GeneratedCollectionRelations
+// `TDepth` levels deep: relation fields become the target document (recursively
+// populated one level shallower); at depth 0 they stay ids.
+export type PopulatedDocument<
+  TCollection extends string,
+  TDepth extends number = 1,
+> = [TDepth] extends [0]
+  ? CollectionDocument<TCollection>
+  : TCollection extends keyof GeneratedCollectionRelations
     ? Omit<
         CollectionDocument<TCollection>,
         keyof GeneratedCollectionRelations[TCollection]
       > & {
         [K in keyof GeneratedCollectionRelations[TCollection]]: PopulatedField<
-          GeneratedCollectionRelations[TCollection][K]
+          GeneratedCollectionRelations[TCollection][K],
+          NextDepth<TDepth>
         >;
       }
     : CollectionDocument<TCollection>;
