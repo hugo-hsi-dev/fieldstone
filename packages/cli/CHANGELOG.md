@@ -1,5 +1,14 @@
 # @hugo-hsi-dev/cli
 
+## 0.2.0
+
+### Patch Changes
+
+- Updated dependencies [5b766de]
+  - @hugo-hsi-dev/schema@0.2.0
+  - @hugo-hsi-dev/codegen@0.2.0
+  - @hugo-hsi-dev/compiler@0.2.0
+
 ## 0.1.2
 
 ### Patch Changes
