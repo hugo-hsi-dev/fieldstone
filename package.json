@@ -4,7 +4,7 @@
 	"description": "monorepo for fieldstone",
 	"private": true,
 	"type": "module",
-	"packageManager": "pnpm@11.6.0",
+	"packageManager": "pnpm@11.9.0",
 	"scripts": {
 		"dev": "pnpm build:packages && pnpm --dir test/minimal dev",
 		"build": "pnpm build:packages && pnpm --dir test/minimal build",

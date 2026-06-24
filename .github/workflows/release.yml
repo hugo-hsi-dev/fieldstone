@@ -9,15 +9,15 @@ concurrency: release-${{ github.ref }}
 permissions:
   contents: write
   pull-requests: write
+  # Lets pnpm exchange a GitHub OIDC token for npm trusted publishing — no
+  # long-lived NPM_TOKEN. Requires a Trusted Publisher configured per package on
+  # npmjs.com (repo hugo-hsi-dev/fieldstone, workflow release.yml).
+  id-token: write
 
 jobs:
   release:
     name: Version or publish
     runs-on: ubuntu-latest
-    env:
-      # Surfaced as an env var so the publish step can be gated on its presence —
-      # secrets aren't usable directly in an `if:` condition.
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
@@ -27,21 +27,17 @@ jobs:
         with:
           node-version-file: .node-version
           cache: pnpm
-          registry-url: https://registry.npmjs.org
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # Only runs once NPM_TOKEN is configured, so the workflow is a green no-op
-      # until publishing is set up. While changesets are pending it opens/updates a
-      # "Version Packages" PR; once that PR merges (no pending changesets) it builds
-      # and publishes. (The @hugo-hsi-dev scope is the publisher's own npm scope.)
+      # While changesets are pending this opens/updates a "Version Packages" PR;
+      # once that PR merges (no pending changesets) it builds and publishes via
+      # OIDC trusted publishing. No NODE_AUTH_TOKEN — pnpm detects the OIDC env.
       - name: Changesets
-        if: ${{ env.NPM_TOKEN != '' }}
         uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
         with:
           version: pnpm changeset version
           publish: pnpm release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ env.NPM_TOKEN }}

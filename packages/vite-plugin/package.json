@@ -1,6 +1,11 @@
 {
   "name": "@hugo-hsi-dev/vite-plugin",
   "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hugo-hsi-dev/fieldstone.git",
+    "directory": "packages/vite-plugin"
+  },
   "type": "module",
   "publishConfig": {
     "access": "public"
