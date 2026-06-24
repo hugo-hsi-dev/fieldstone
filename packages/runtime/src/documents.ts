@@ -17,7 +17,7 @@ import type {
   ListInput,
   UpdateInput,
 } from "./types.ts";
-import { buildWhere } from "./where.ts";
+import { buildWhere, type WhereClause } from "./where.ts";
 
 type DatabaseContext = Awaited<ReturnType<typeof createDatabase>>;
 type Doc = Record<string, unknown>;
@@ -133,7 +133,7 @@ export function createDocumentRuntime(context: DatabaseContext) {
     table: Record<string, any>,
     status: ListInput["status"],
     search: string | undefined,
-    where: ListInput["where"],
+    where: WhereClause | undefined,
   ) {
     const conditions: unknown[] = [];
     if (status) {
@@ -182,7 +182,13 @@ export function createDocumentRuntime(context: DatabaseContext) {
     }: ListInput<TCollection>) => {
       await assertCollectionAccess(config, collectionSlug, "read", { user: user ?? null });
       const table = getTable(collectionSlug);
-      const conditions = buildConditions(collectionSlug, table, status, search, where);
+      const conditions = buildConditions(
+        collectionSlug,
+        table,
+        status,
+        search,
+        where as WhereClause | undefined,
+      );
       let query = database.select().from(table).$dynamic();
       if (conditions.length === 1) query = query.where(conditions[0] as any);
       else if (conditions.length > 1) query = query.where(and(...(conditions as any[])));
@@ -213,7 +219,13 @@ export function createDocumentRuntime(context: DatabaseContext) {
     }: ListInput<TCollection>) => {
       await assertCollectionAccess(config, collectionSlug, "read", { user: user ?? null });
       const table = getTable(collectionSlug);
-      const conditions = buildConditions(collectionSlug, table, status, search, where);
+      const conditions = buildConditions(
+        collectionSlug,
+        table,
+        status,
+        search,
+        where as WhereClause | undefined,
+      );
       let query = database.select({ value: count() }).from(table).$dynamic();
       if (conditions.length === 1) query = query.where(conditions[0] as any);
       else if (conditions.length > 1) query = query.where(and(...(conditions as any[])));

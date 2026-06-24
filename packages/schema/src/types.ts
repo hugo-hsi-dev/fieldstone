@@ -413,3 +413,61 @@ export type GlobalData<TGlobal extends string> =
   TGlobal extends keyof GeneratedGlobals
     ? GeneratedData<GeneratedGlobals, TGlobal>
     : Record<string, FallbackDataValue>;
+
+// --- Typed `where` filter — mirrors the runtime where-builder's OPS_BY_KIND ---
+
+type WhereEquality<T> = { equals?: T; not_equals?: T; exists?: boolean };
+type WhereInclusion<T> = { in?: T[]; not_in?: T[] };
+type WhereComparison<T> = {
+  greater_than?: T;
+  greater_than_equal?: T;
+  less_than?: T;
+  less_than_equal?: T;
+};
+
+type WhereTextOperators<T extends string> = WhereEquality<T> &
+  WhereInclusion<T> & { like?: string };
+type WhereNumberOperators = WhereEquality<number> &
+  WhereInclusion<number> &
+  WhereComparison<number>;
+// Date filters also accept ISO strings (the runtime coerces them).
+type WhereDateOperators = WhereEquality<Date | string> &
+  WhereInclusion<Date | string> &
+  WhereComparison<Date | string>;
+type WhereBooleanOperators = WhereEquality<boolean>;
+
+// Map a field's stored value type to its operators. Non-scalar values
+// (string[]/objects — group/array/hasMany) yield `never` and are dropped. Tuples
+// prevent union distribution so mixed-type values collapse to `never` too.
+type FieldOperators<V> = [V] extends [boolean]
+  ? WhereBooleanOperators
+  : [V] extends [number]
+    ? WhereNumberOperators
+    : [V] extends [Date]
+      ? WhereDateOperators
+      : [V] extends [string]
+        ? WhereTextOperators<V>
+        : never;
+
+// `_status` is filtered through the `status` option, not `where` (matches the
+// runtime), so it is excluded here.
+type WhereFields<TGenerated extends object, TSlug extends keyof TGenerated> = {
+  [K in Exclude<keyof TGenerated[TSlug], typeof STATUS_FIELD_NAME> as [
+    FieldOperators<Exclude<TGenerated[TSlug][K], null | undefined>>,
+  ] extends [never]
+    ? never
+    : K]?: FieldOperators<Exclude<TGenerated[TSlug][K], null | undefined>>;
+};
+
+type FallbackWhere = {
+  and?: FallbackWhere[];
+  or?: FallbackWhere[];
+} & { [field: string]: unknown };
+
+export type CollectionWhere<TCollection extends string> =
+  TCollection extends keyof GeneratedCollections
+    ? WhereFields<GeneratedCollections, TCollection> & {
+        and?: CollectionWhere<TCollection>[];
+        or?: CollectionWhere<TCollection>[];
+      }
+    : FallbackWhere;

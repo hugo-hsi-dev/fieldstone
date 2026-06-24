@@ -3,13 +3,12 @@ import type {
   CollectionData,
   CollectionDocument,
   CollectionSlug,
+  CollectionWhere,
   DocumentStatus,
   GlobalData,
   GlobalDocument,
   GlobalSlug,
 } from "@hugo-hsi-dev/schema";
-
-import type { WhereClause } from "./where.ts";
 
 export type { WhereClause, WhereOperators } from "./where.ts";
 
@@ -49,7 +48,7 @@ export type ListInput<TCollection extends CollectionSlug = CollectionSlug> =
      * `status`/`search` via AND. Scalar columns only — group/array/hasMany relation
      * fields are stored as JSON and cannot be filtered.
      */
-    where?: WhereClause;
+    where?: CollectionWhere<TCollection>;
   };
 
 export type ListResult<TCollection extends CollectionSlug = CollectionSlug> = {

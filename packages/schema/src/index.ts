@@ -47,6 +47,7 @@ export type {
   CollectionRuntimeField,
   CollectionRuntimeConfig,
   CollectionSlug,
+  CollectionWhere,
   FieldstoneConfig,
   GlobalConfig,
   GlobalData,

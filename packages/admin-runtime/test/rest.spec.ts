@@ -143,6 +143,50 @@ describe("fieldstone REST handler", () => {
     expect(((await res.json()) as { error: string }).error).toContain("Invalid status");
   });
 
+  it("filters a collection list with a typed where param", async () => {
+    await call("POST", ["posts"], { title: "Alpha", views: 5 });
+    await call("POST", ["posts"], { title: "Beta", views: 50 });
+    await call("POST", ["posts"], { title: "Gamma", views: 5 });
+
+    const where = encodeURIComponent(JSON.stringify({ views: { greater_than: 10 } }));
+    const res = await rest.handle(
+      new Request(`http://localhost/api/posts?where=${where}`, { method: "GET" }),
+      ["posts"],
+    );
+    expect(res.status).toBe(200);
+    const { docs, total } = (await res.json()) as {
+      docs: { title: string }[];
+      total: number;
+    };
+    expect(docs.map((doc) => doc.title)).toEqual(["Beta"]);
+    expect(total).toBe(1);
+
+    // an invalid field surfaces as a 400 via the runtime validation + error wrapper
+    const badWhere = encodeURIComponent(JSON.stringify({ nope: { equals: 1 } }));
+    const badRes = await rest.handle(
+      new Request(`http://localhost/api/posts?where=${badWhere}`, { method: "GET" }),
+      ["posts"],
+    );
+    expect(badRes.status).toBe(400);
+
+    // malformed JSON → 400
+    const malformedRes = await rest.handle(
+      new Request("http://localhost/api/posts?where=not-json", { method: "GET" }),
+      ["posts"],
+    );
+    expect(malformedRes.status).toBe(400);
+    expect(((await malformedRes.json()) as { error: string }).error).toContain(
+      "Invalid where",
+    );
+
+    // a non-object (valid JSON, but a primitive) must 400, not silently no-op
+    const primitiveRes = await rest.handle(
+      new Request("http://localhost/api/posts?where=123", { method: "GET" }),
+      ["posts"],
+    );
+    expect(primitiveRes.status).toBe(400);
+  });
+
   it("handles globals, unknown routes, and method errors", async () => {
     expect(await (await call("GET", ["globals", "site-settings"])).json()).toBeNull();
 
