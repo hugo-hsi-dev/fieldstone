@@ -143,6 +143,17 @@ describe("fieldstone REST handler", () => {
     expect(((await res.json()) as { error: string }).error).toContain("Invalid status");
   });
 
+  it("rejects an invalid depth query value", async () => {
+    for (const bad of ["abc", "-1", "1.5"]) {
+      const res = await rest.handle(
+        new Request(`http://localhost/api/posts?depth=${bad}`, { method: "GET" }),
+        ["posts"],
+      );
+      expect(res.status).toBe(400);
+      expect(((await res.json()) as { error: string }).error).toContain("Invalid depth");
+    }
+  });
+
   it("filters a collection list with a typed where param", async () => {
     await call("POST", ["posts"], { title: "Alpha", views: 5 });
     await call("POST", ["posts"], { title: "Beta", views: 50 });
