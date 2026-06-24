@@ -6,7 +6,7 @@ import type {
   FieldstoneConfig,
   GlobalRuntimeConfig,
   GlobalSlug,
-} from "@fieldstone/schema";
+} from "@hugo-hsi-dev/schema";
 
 import {
   getFieldstone,
@@ -17,7 +17,7 @@ import {
   type ListInput,
   type UpdateGlobalInput,
   type UpdateInput,
-} from "@fieldstone/runtime";
+} from "@hugo-hsi-dev/runtime";
 
 import {
   assertUploadAllowed,
@@ -233,4 +233,4 @@ export {
   type UploadFile,
   type UploadValidationOptions,
 } from "./upload.ts";
-export { ForbiddenError, isForbiddenError } from "@fieldstone/runtime";
+export { ForbiddenError, isForbiddenError } from "@hugo-hsi-dev/runtime";

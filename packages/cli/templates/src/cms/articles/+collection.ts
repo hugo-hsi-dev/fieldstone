@@ -1,4 +1,4 @@
-import { collection, richText, text } from '@fieldstone/schema';
+import { collection, richText, text } from '@hugo-hsi-dev/schema';
 
 export default collection({
 	fields: [

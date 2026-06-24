@@ -64,23 +64,23 @@ importers:
 
   packages/admin-runtime:
     dependencies:
-      '@fieldstone/runtime':
+      '@hugo-hsi-dev/runtime':
         specifier: workspace:*
         version: link:../runtime
-      '@fieldstone/schema':
+      '@hugo-hsi-dev/schema':
         specifier: workspace:*
         version: link:../schema
-      '@fieldstone/storage':
+      '@hugo-hsi-dev/storage':
         specifier: workspace:*
         version: link:../storage
     devDependencies:
-      '@fieldstone/oxfmt-config':
+      '@hugo-hsi-dev/oxfmt-config':
         specifier: workspace:*
         version: link:../../config/oxfmt
-      '@fieldstone/oxlint-config':
+      '@hugo-hsi-dev/oxlint-config':
         specifier: workspace:*
         version: link:../../config/oxlint
-      '@fieldstone/tsconfig':
+      '@hugo-hsi-dev/tsconfig':
         specifier: workspace:*
         version: link:../../config/tsconfig
       '@libsql/client':
@@ -110,26 +110,26 @@ importers:
 
   packages/cli:
     dependencies:
-      '@fieldstone/codegen':
+      '@hugo-hsi-dev/codegen':
         specifier: workspace:*
         version: link:../codegen
-      '@fieldstone/compiler':
+      '@hugo-hsi-dev/compiler':
         specifier: workspace:*
         version: link:../compiler
-      '@fieldstone/schema':
+      '@hugo-hsi-dev/schema':
         specifier: workspace:*
         version: link:../schema
       vite:
         specifier: ^8.0.16
         version: 8.0.16(@types/node@24.13.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)
     devDependencies:
-      '@fieldstone/oxfmt-config':
+      '@hugo-hsi-dev/oxfmt-config':
         specifier: workspace:*
         version: link:../../config/oxfmt
-      '@fieldstone/oxlint-config':
+      '@hugo-hsi-dev/oxlint-config':
         specifier: workspace:*
         version: link:../../config/oxlint
-      '@fieldstone/tsconfig':
+      '@hugo-hsi-dev/tsconfig':
         specifier: workspace:*
         version: link:../../config/tsconfig
       '@types/node':
@@ -153,10 +153,10 @@ importers:
 
   packages/codegen:
     dependencies:
-      '@fieldstone/compiler':
+      '@hugo-hsi-dev/compiler':
         specifier: workspace:*
         version: link:../compiler
-      '@fieldstone/schema':
+      '@hugo-hsi-dev/schema':
         specifier: workspace:*
         version: link:../schema
       '@libsql/client':
@@ -166,13 +166,13 @@ importers:
         specifier: ^0.45.2
         version: 0.45.2(@libsql/client@0.15.15)(@prisma/client@5.22.0)(@types/better-sqlite3@7.6.13)(@types/pg@8.20.0)(better-sqlite3@12.10.0)(kysely@0.28.17)(pg@8.21.0)
     devDependencies:
-      '@fieldstone/oxfmt-config':
+      '@hugo-hsi-dev/oxfmt-config':
         specifier: workspace:*
         version: link:../../config/oxfmt
-      '@fieldstone/oxlint-config':
+      '@hugo-hsi-dev/oxlint-config':
         specifier: workspace:*
         version: link:../../config/oxlint
-      '@fieldstone/tsconfig':
+      '@hugo-hsi-dev/tsconfig':
         specifier: workspace:*
         version: link:../../config/tsconfig
       '@types/node':
@@ -199,20 +199,20 @@ importers:
 
   packages/compiler:
     dependencies:
-      '@fieldstone/schema':
+      '@hugo-hsi-dev/schema':
         specifier: workspace:*
         version: link:../schema
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.2(@libsql/client@0.15.15)(@prisma/client@5.22.0)(@types/better-sqlite3@7.6.13)(@types/pg@8.20.0)(better-sqlite3@12.10.0)(kysely@0.28.17)(pg@8.21.0)
     devDependencies:
-      '@fieldstone/oxfmt-config':
+      '@hugo-hsi-dev/oxfmt-config':
         specifier: workspace:*
         version: link:../../config/oxfmt
-      '@fieldstone/oxlint-config':
+      '@hugo-hsi-dev/oxlint-config':
         specifier: workspace:*
         version: link:../../config/oxlint
-      '@fieldstone/tsconfig':
+      '@hugo-hsi-dev/tsconfig':
         specifier: workspace:*
         version: link:../../config/tsconfig
       '@types/node':
@@ -236,16 +236,16 @@ importers:
 
   packages/remotes:
     dependencies:
-      '@fieldstone/admin-runtime':
+      '@hugo-hsi-dev/admin-runtime':
         specifier: workspace:*
         version: link:../admin-runtime
-      '@fieldstone/compiler':
+      '@hugo-hsi-dev/compiler':
         specifier: workspace:*
         version: link:../compiler
-      '@fieldstone/routes':
+      '@hugo-hsi-dev/routes':
         specifier: workspace:*
         version: link:../routes
-      '@fieldstone/schema':
+      '@hugo-hsi-dev/schema':
         specifier: workspace:*
         version: link:../schema
       svelte:
@@ -255,13 +255,13 @@ importers:
         specifier: ^1.4.1
         version: 1.4.1(typescript@6.0.3)
     devDependencies:
-      '@fieldstone/oxfmt-config':
+      '@hugo-hsi-dev/oxfmt-config':
         specifier: workspace:*
         version: link:../../config/oxfmt
-      '@fieldstone/oxlint-config':
+      '@hugo-hsi-dev/oxlint-config':
         specifier: workspace:*
         version: link:../../config/oxlint
-      '@fieldstone/tsconfig':
+      '@hugo-hsi-dev/tsconfig':
         specifier: workspace:*
         version: link:../../config/tsconfig
       '@sveltejs/kit':
@@ -285,13 +285,13 @@ importers:
 
   packages/routes:
     devDependencies:
-      '@fieldstone/oxfmt-config':
+      '@hugo-hsi-dev/oxfmt-config':
         specifier: workspace:*
         version: link:../../config/oxfmt
-      '@fieldstone/oxlint-config':
+      '@hugo-hsi-dev/oxlint-config':
         specifier: workspace:*
         version: link:../../config/oxlint
-      '@fieldstone/tsconfig':
+      '@hugo-hsi-dev/tsconfig':
         specifier: workspace:*
         version: link:../../config/tsconfig
       '@types/node':
@@ -315,13 +315,13 @@ importers:
 
   packages/runtime:
     dependencies:
-      '@fieldstone/compiler':
+      '@hugo-hsi-dev/compiler':
         specifier: workspace:*
         version: link:../compiler
-      '@fieldstone/schema':
+      '@hugo-hsi-dev/schema':
         specifier: workspace:*
         version: link:../schema
-      '@fieldstone/storage':
+      '@hugo-hsi-dev/storage':
         specifier: workspace:*
         version: link:../storage
       '@libsql/client':
@@ -331,13 +331,13 @@ importers:
         specifier: ^0.45.2
         version: 0.45.2(@libsql/client@0.15.15)(@prisma/client@5.22.0)(@types/better-sqlite3@7.6.13)(@types/pg@8.20.0)(better-sqlite3@12.10.0)(kysely@0.28.17)(pg@8.21.0)
     devDependencies:
-      '@fieldstone/oxfmt-config':
+      '@hugo-hsi-dev/oxfmt-config':
         specifier: workspace:*
         version: link:../../config/oxfmt
-      '@fieldstone/oxlint-config':
+      '@hugo-hsi-dev/oxlint-config':
         specifier: workspace:*
         version: link:../../config/oxlint
-      '@fieldstone/tsconfig':
+      '@hugo-hsi-dev/tsconfig':
         specifier: workspace:*
         version: link:../../config/tsconfig
       '@types/node':
@@ -361,13 +361,13 @@ importers:
 
   packages/schema:
     devDependencies:
-      '@fieldstone/oxfmt-config':
+      '@hugo-hsi-dev/oxfmt-config':
         specifier: workspace:*
         version: link:../../config/oxfmt
-      '@fieldstone/oxlint-config':
+      '@hugo-hsi-dev/oxlint-config':
         specifier: workspace:*
         version: link:../../config/oxlint
-      '@fieldstone/tsconfig':
+      '@hugo-hsi-dev/tsconfig':
         specifier: workspace:*
         version: link:../../config/tsconfig
       '@types/node':
@@ -391,17 +391,17 @@ importers:
 
   packages/storage:
     dependencies:
-      '@fieldstone/schema':
+      '@hugo-hsi-dev/schema':
         specifier: workspace:*
         version: link:../schema
     devDependencies:
-      '@fieldstone/oxfmt-config':
+      '@hugo-hsi-dev/oxfmt-config':
         specifier: workspace:*
         version: link:../../config/oxfmt
-      '@fieldstone/oxlint-config':
+      '@hugo-hsi-dev/oxlint-config':
         specifier: workspace:*
         version: link:../../config/oxlint
-      '@fieldstone/tsconfig':
+      '@hugo-hsi-dev/tsconfig':
         specifier: workspace:*
         version: link:../../config/tsconfig
       '@types/node':
@@ -425,13 +425,13 @@ importers:
 
   packages/ui:
     dependencies:
-      '@fieldstone/remotes':
+      '@hugo-hsi-dev/remotes':
         specifier: workspace:*
         version: link:../remotes
-      '@fieldstone/routes':
+      '@hugo-hsi-dev/routes':
         specifier: workspace:*
         version: link:../routes
-      '@fieldstone/schema':
+      '@hugo-hsi-dev/schema':
         specifier: workspace:*
         version: link:../schema
       '@lucide/svelte':
@@ -453,13 +453,13 @@ importers:
         specifier: ^1.1.0
         version: 1.1.0(svelte@5.56.3(@typescript-eslint/types@8.61.0))
     devDependencies:
-      '@fieldstone/eslint-config':
+      '@hugo-hsi-dev/eslint-config':
         specifier: workspace:*
         version: link:../../config/eslint
-      '@fieldstone/prettier-config':
+      '@hugo-hsi-dev/prettier-config':
         specifier: workspace:*
         version: link:../../config/prettier
-      '@fieldstone/tsconfig':
+      '@hugo-hsi-dev/tsconfig':
         specifier: workspace:*
         version: link:../../config/tsconfig
       '@sveltejs/kit':
@@ -492,23 +492,23 @@ importers:
 
   packages/vite-plugin:
     dependencies:
-      '@fieldstone/codegen':
+      '@hugo-hsi-dev/codegen':
         specifier: workspace:*
         version: link:../codegen
-      '@fieldstone/compiler':
+      '@hugo-hsi-dev/compiler':
         specifier: workspace:*
         version: link:../compiler
-      '@fieldstone/schema':
+      '@hugo-hsi-dev/schema':
         specifier: workspace:*
         version: link:../schema
     devDependencies:
-      '@fieldstone/oxfmt-config':
+      '@hugo-hsi-dev/oxfmt-config':
         specifier: workspace:*
         version: link:../../config/oxfmt
-      '@fieldstone/oxlint-config':
+      '@hugo-hsi-dev/oxlint-config':
         specifier: workspace:*
         version: link:../../config/oxlint
-      '@fieldstone/tsconfig':
+      '@hugo-hsi-dev/tsconfig':
         specifier: workspace:*
         version: link:../../config/tsconfig
       '@types/node':
@@ -535,19 +535,19 @@ importers:
 
   test/minimal:
     dependencies:
-      '@fieldstone/admin-runtime':
+      '@hugo-hsi-dev/admin-runtime':
         specifier: workspace:*
         version: link:../../packages/admin-runtime
-      '@fieldstone/remotes':
+      '@hugo-hsi-dev/remotes':
         specifier: workspace:*
         version: link:../../packages/remotes
-      '@fieldstone/schema':
+      '@hugo-hsi-dev/schema':
         specifier: workspace:*
         version: link:../../packages/schema
-      '@fieldstone/ui':
+      '@hugo-hsi-dev/ui':
         specifier: workspace:*
         version: link:../../packages/ui
-      '@fieldstone/vite-plugin':
+      '@hugo-hsi-dev/vite-plugin':
         specifier: workspace:*
         version: link:../../packages/vite-plugin
       '@libsql/client':
@@ -563,13 +563,13 @@ importers:
         specifier: ^1.1.0
         version: 1.1.0(svelte@5.56.3(@typescript-eslint/types@8.61.0))
     devDependencies:
-      '@fieldstone/cli':
+      '@hugo-hsi-dev/cli':
         specifier: workspace:*
         version: link:../../packages/cli
-      '@fieldstone/eslint-config':
+      '@hugo-hsi-dev/eslint-config':
         specifier: workspace:*
         version: link:../../config/eslint
-      '@fieldstone/tsconfig':
+      '@hugo-hsi-dev/tsconfig':
         specifier: workspace:*
         version: link:../../config/tsconfig
       '@playwright/test':

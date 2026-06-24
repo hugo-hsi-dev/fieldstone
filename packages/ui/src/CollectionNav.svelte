@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { CollectionRuntimeConfig, GlobalRuntimeConfig } from '@fieldstone/schema';
+	import type { CollectionRuntimeConfig, GlobalRuntimeConfig } from '@hugo-hsi-dev/schema';
 
 	import { getCollectionLabel, getGlobalLabel } from './labels';
 	import Icon from './primitives/Icon.svelte';

@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { svelteKitConfig } from '@fieldstone/eslint-config';
+import { svelteKitConfig } from '@hugo-hsi-dev/eslint-config';
 
 const gitignorePath = path.resolve(import.meta.dirname, '../../.gitignore');
 

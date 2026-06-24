@@ -7,7 +7,7 @@ import type {
   GlobalData,
   GlobalDocument,
   GlobalSlug,
-} from "@fieldstone/schema";
+} from "@hugo-hsi-dev/schema";
 
 export type DocumentData = Record<string, boolean | string | null>;
 export type FieldstoneCollectionSlug = CollectionSlug;

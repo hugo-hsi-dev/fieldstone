@@ -1,7 +1,7 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import type { StorageConfig } from "@fieldstone/schema";
+import type { StorageConfig } from "@hugo-hsi-dev/schema";
 
 export type StorageObject = {
   body: Uint8Array;

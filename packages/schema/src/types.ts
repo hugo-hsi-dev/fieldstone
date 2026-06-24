@@ -263,7 +263,7 @@ export type GlobalConfig = GlobalDefinition & {
 
 // Storage backend for uploaded files. Declarative (serialized into
 // $fieldstone-config); the live adapter is resolved from it at runtime by
-// @fieldstone/storage. The mime/size limits are per-collection (UploadOptions).
+// @hugo-hsi-dev/storage. The mime/size limits are per-collection (UploadOptions).
 export type StorageConfig = {
   /** Backend. "local" (default) writes to staticDir; "s3" uses a remote adapter (a later slice). */
   adapter?: "local" | "s3";

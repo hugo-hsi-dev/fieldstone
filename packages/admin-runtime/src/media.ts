@@ -1,5 +1,5 @@
-import type { FieldstoneConfig } from "@fieldstone/schema";
-import { assertSafeStorageKey, resolveStorage } from "@fieldstone/storage";
+import type { FieldstoneConfig } from "@hugo-hsi-dev/schema";
+import { assertSafeStorageKey, resolveStorage } from "@hugo-hsi-dev/storage";
 
 const CONTENT_TYPES: Record<string, string> = {
   jpg: "image/jpeg",

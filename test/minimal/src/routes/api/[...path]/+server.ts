@@ -1,5 +1,5 @@
 import config from '$fieldstone-config';
-import { createFieldstoneRest } from '@fieldstone/admin-runtime';
+import { createFieldstoneRest } from '@hugo-hsi-dev/admin-runtime';
 import type { RequestHandler } from './$types';
 
 import { auth } from '$lib/auth';

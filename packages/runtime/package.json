@@ -1,6 +1,6 @@
 {
-  "name": "@fieldstone/runtime",
-  "version": "0.0.1",
+  "name": "@hugo-hsi-dev/runtime",
+  "version": "0.1.0",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -23,16 +23,16 @@
     "format": "oxfmt -c ../../config/oxfmt/oxfmt.json ."
   },
   "dependencies": {
-    "@fieldstone/compiler": "workspace:*",
-    "@fieldstone/schema": "workspace:*",
-    "@fieldstone/storage": "workspace:*",
+    "@hugo-hsi-dev/compiler": "workspace:*",
+    "@hugo-hsi-dev/schema": "workspace:*",
+    "@hugo-hsi-dev/storage": "workspace:*",
     "@libsql/client": "^0.15.15",
     "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {
-    "@fieldstone/oxfmt-config": "workspace:*",
-    "@fieldstone/oxlint-config": "workspace:*",
-    "@fieldstone/tsconfig": "workspace:*",
+    "@hugo-hsi-dev/oxfmt-config": "workspace:*",
+    "@hugo-hsi-dev/oxlint-config": "workspace:*",
+    "@hugo-hsi-dev/tsconfig": "workspace:*",
     "@types/node": "^24.13.1",
     "@typescript/native-preview": "7.0.0-dev.20260611.2",
     "oxfmt": "^0.17.0",

@@ -1,8 +1,8 @@
 import { createInterface } from "node:readline/promises";
 
 import { createClient } from "@libsql/client";
-import type { FieldstoneConfig } from "@fieldstone/schema";
-import type { FieldstoneCompiledConfig } from "@fieldstone/compiler";
+import type { FieldstoneConfig } from "@hugo-hsi-dev/schema";
+import type { FieldstoneCompiledConfig } from "@hugo-hsi-dev/compiler";
 import { drizzle } from "drizzle-orm/libsql";
 
 export function normalizeSqliteUrl(url: string) {

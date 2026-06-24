@@ -1,6 +1,6 @@
 {
-  "name": "@fieldstone/cli",
-  "version": "0.0.1",
+  "name": "@hugo-hsi-dev/cli",
+  "version": "0.1.0",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -20,15 +20,15 @@
     "format": "oxfmt -c ../../config/oxfmt/oxfmt.json ."
   },
   "dependencies": {
-    "@fieldstone/codegen": "workspace:*",
-    "@fieldstone/compiler": "workspace:*",
-    "@fieldstone/schema": "workspace:*",
+    "@hugo-hsi-dev/codegen": "workspace:*",
+    "@hugo-hsi-dev/compiler": "workspace:*",
+    "@hugo-hsi-dev/schema": "workspace:*",
     "vite": "^8.0.16"
   },
   "devDependencies": {
-    "@fieldstone/oxfmt-config": "workspace:*",
-    "@fieldstone/oxlint-config": "workspace:*",
-    "@fieldstone/tsconfig": "workspace:*",
+    "@hugo-hsi-dev/oxfmt-config": "workspace:*",
+    "@hugo-hsi-dev/oxlint-config": "workspace:*",
+    "@hugo-hsi-dev/tsconfig": "workspace:*",
     "@types/node": "^24.13.1",
     "@typescript/native-preview": "7.0.0-dev.20260611.2",
     "oxfmt": "^0.17.0",

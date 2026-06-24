@@ -1,7 +1,7 @@
 // oxlint-disable-next-line typescript/triple-slash-reference
 /// <reference path="./fieldstone-config.d.ts" />
 
-import type { FieldstoneConfig } from "@fieldstone/schema";
+import type { FieldstoneConfig } from "@hugo-hsi-dev/schema";
 
 import { createFieldstoneRuntime } from "./runtime.ts";
 

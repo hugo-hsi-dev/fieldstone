@@ -17,7 +17,7 @@ import {
   text,
   upload,
   type FieldstoneConfig,
-} from "@fieldstone/schema";
+} from "@hugo-hsi-dev/schema";
 import { getFieldstone } from "../src/index.ts";
 
 describe("fieldstone runtime", () => {
@@ -37,7 +37,7 @@ describe("fieldstone runtime", () => {
 
   it("provides the virtual config module declaration from the client entrypoint", { timeout: 20_000 }, () => {
     const source = `
-			import { getFieldstone } from '@fieldstone/runtime';
+			import { getFieldstone } from '@hugo-hsi-dev/runtime';
 			import config from '$fieldstone-config';
 
 			void getFieldstone({ config });
@@ -51,8 +51,8 @@ describe("fieldstone runtime", () => {
       moduleResolution: ts.ModuleResolutionKind.Bundler,
       noEmit: true,
       paths: {
-        "@fieldstone/runtime": ["packages/runtime/src/index.ts"],
-        "@fieldstone/schema": ["packages/schema/src/index.ts"],
+        "@hugo-hsi-dev/runtime": ["packages/runtime/src/index.ts"],
+        "@hugo-hsi-dev/schema": ["packages/schema/src/index.ts"],
       },
       strict: true,
       target: ts.ScriptTarget.ESNext,
@@ -82,10 +82,10 @@ describe("fieldstone runtime", () => {
 
   it("types collection-specific documents and mutation data from generated collections", () => {
     const source = `
-			import { getFieldstone } from '@fieldstone/runtime';
-			import type { FieldstoneConfig } from '@fieldstone/schema';
+			import { getFieldstone } from '@hugo-hsi-dev/runtime';
+			import type { FieldstoneConfig } from '@hugo-hsi-dev/schema';
 
-			declare module '@fieldstone/schema' {
+			declare module '@hugo-hsi-dev/schema' {
 				interface GeneratedCollections {
 					"posts": {
 						id: string;
@@ -954,8 +954,8 @@ function getDiagnostics(source: string) {
     moduleResolution: ts.ModuleResolutionKind.Bundler,
     noEmit: true,
     paths: {
-      "@fieldstone/runtime": ["packages/runtime/src/index.ts"],
-      "@fieldstone/schema": ["packages/schema/src/index.ts"],
+      "@hugo-hsi-dev/runtime": ["packages/runtime/src/index.ts"],
+      "@hugo-hsi-dev/schema": ["packages/schema/src/index.ts"],
     },
     skipLibCheck: true,
     strict: true,

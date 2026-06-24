@@ -1,6 +1,6 @@
 {
-  "name": "@fieldstone/remotes",
-  "version": "0.0.1",
+  "name": "@hugo-hsi-dev/remotes",
+  "version": "0.1.0",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -22,10 +22,10 @@
     "format": "oxfmt -c ../../config/oxfmt/oxfmt.json ."
   },
   "dependencies": {
-    "@fieldstone/admin-runtime": "workspace:*",
-    "@fieldstone/compiler": "workspace:*",
-    "@fieldstone/routes": "workspace:*",
-    "@fieldstone/schema": "workspace:*",
+    "@hugo-hsi-dev/admin-runtime": "workspace:*",
+    "@hugo-hsi-dev/compiler": "workspace:*",
+    "@hugo-hsi-dev/routes": "workspace:*",
+    "@hugo-hsi-dev/schema": "workspace:*",
     "valibot": "^1.4.1"
   },
   "peerDependencies": {
@@ -33,9 +33,9 @@
     "svelte": "^5.56.1"
   },
   "devDependencies": {
-    "@fieldstone/oxfmt-config": "workspace:*",
-    "@fieldstone/oxlint-config": "workspace:*",
-    "@fieldstone/tsconfig": "workspace:*",
+    "@hugo-hsi-dev/oxfmt-config": "workspace:*",
+    "@hugo-hsi-dev/oxlint-config": "workspace:*",
+    "@hugo-hsi-dev/tsconfig": "workspace:*",
     "@sveltejs/kit": "^2.64.0",
     "@types/node": "^24.13.1",
     "@typescript/native-preview": "7.0.0-dev.20260611.2",

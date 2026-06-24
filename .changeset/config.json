@@ -4,17 +4,17 @@
   "commit": false,
   "fixed": [
     [
-      "@fieldstone/admin-runtime",
-      "@fieldstone/cli",
-      "@fieldstone/codegen",
-      "@fieldstone/compiler",
-      "@fieldstone/remotes",
-      "@fieldstone/routes",
-      "@fieldstone/runtime",
-      "@fieldstone/schema",
-      "@fieldstone/storage",
-      "@fieldstone/ui",
-      "@fieldstone/vite-plugin"
+      "@hugo-hsi-dev/admin-runtime",
+      "@hugo-hsi-dev/cli",
+      "@hugo-hsi-dev/codegen",
+      "@hugo-hsi-dev/compiler",
+      "@hugo-hsi-dev/remotes",
+      "@hugo-hsi-dev/routes",
+      "@hugo-hsi-dev/runtime",
+      "@hugo-hsi-dev/schema",
+      "@hugo-hsi-dev/storage",
+      "@hugo-hsi-dev/ui",
+      "@hugo-hsi-dev/vite-plugin"
     ]
   ],
   "linked": [],
@@ -23,10 +23,10 @@
   "updateInternalDependencies": "patch",
   "ignore": [
     "minimal",
-    "@fieldstone/eslint-config",
-    "@fieldstone/oxfmt-config",
-    "@fieldstone/oxlint-config",
-    "@fieldstone/prettier-config",
-    "@fieldstone/tsconfig"
+    "@hugo-hsi-dev/eslint-config",
+    "@hugo-hsi-dev/oxfmt-config",
+    "@hugo-hsi-dev/oxlint-config",
+    "@hugo-hsi-dev/prettier-config",
+    "@hugo-hsi-dev/tsconfig"
   ]
 }

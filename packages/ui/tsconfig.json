@@ -1,4 +1,4 @@
 {
-	"extends": "@fieldstone/tsconfig/svelte-library.json",
+	"extends": "@hugo-hsi-dev/tsconfig/svelte-library.json",
 	"include": ["src/**/*.ts", "src/**/*.svelte"]
 }

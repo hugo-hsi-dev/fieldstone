@@ -77,7 +77,7 @@ if (command !== "generate" && command !== "push") {
 }
 
 // generate / push: boot Vite against the app's own config so collection modules
-// (and aliases) resolve, then drive @fieldstone/codegen.
+// (and aliases) resolve, then drive @hugo-hsi-dev/codegen.
 const { createServer } = await import("vite");
 const root = flags.cwd;
 const require = createRequire(import.meta.url);
@@ -90,8 +90,8 @@ const server = await createServer({
 });
 
 try {
-  const generatorModulePath = require.resolve("@fieldstone/codegen");
-  const coreModulePath = require.resolve("@fieldstone/compiler");
+  const generatorModulePath = require.resolve("@hugo-hsi-dev/codegen");
+  const coreModulePath = require.resolve("@hugo-hsi-dev/compiler");
   const [
     {
       CONFIG_ID,

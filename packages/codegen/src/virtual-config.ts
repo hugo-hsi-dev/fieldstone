@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import type { FieldstoneConfigInput } from "@fieldstone/schema";
+import type { FieldstoneConfigInput } from "@hugo-hsi-dev/schema";
 
 import {
   discoverCollections,

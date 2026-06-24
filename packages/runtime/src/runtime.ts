@@ -1,4 +1,4 @@
-import type { FieldstoneConfig } from "@fieldstone/schema";
+import type { FieldstoneConfig } from "@hugo-hsi-dev/schema";
 
 import { createDatabase } from "./database.ts";
 import { createDocumentRuntime } from "./documents.ts";

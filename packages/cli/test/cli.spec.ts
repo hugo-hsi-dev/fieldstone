@@ -103,14 +103,14 @@ export default defineConfig({
       );
       await writeFile(
         path.join(root, "src", "fields.ts"),
-        `import { text } from '@fieldstone/schema';
+        `import { text } from '@hugo-hsi-dev/schema';
 
 export const title = text({ name: 'title', required: true });
 `,
       );
       await writeFile(
         path.join(root, "src", "cms", "posts", "+collection.ts"),
-        `import { collection } from '@fieldstone/schema';
+        `import { collection } from '@hugo-hsi-dev/schema';
 import { title } from '$fields';
 
 export default collection({
@@ -145,7 +145,7 @@ export default collection({
       });
       await writeFile(
         path.join(root, "src", "cms", "__proto__", "+collection.ts"),
-        `import { collection, text } from '@fieldstone/schema';
+        `import { collection, text } from '@hugo-hsi-dev/schema';
 
 export default collection({
 \tfields: [text({ name: 'title', required: true })]
@@ -179,7 +179,7 @@ export default collection({
 
       // Template files are written.
       const vite = await readFile(path.join(root, "vite.config.ts"), "utf-8");
-      expect(vite).toContain("@fieldstone/vite-plugin");
+      expect(vite).toContain("@hugo-hsi-dev/vite-plugin");
       const barrel = await readFile(
         path.join(root, "src", "routes", "admin", "dashboard.remote.ts"),
         "utf-8",
@@ -196,7 +196,7 @@ export default collection({
         await readFile(path.join(root, "package.json"), "utf-8"),
       );
       expect(pkg.name).toBe("host-app");
-      expect(pkg.dependencies["@fieldstone/ui"]).toBeDefined();
+      expect(pkg.dependencies["@hugo-hsi-dev/ui"]).toBeDefined();
       expect(pkg.devDependencies["drizzle-kit"]).toBeDefined();
       expect(pkg.scripts["db:push"]).toBe("fieldstone push");
 
@@ -269,7 +269,7 @@ export default collection({
       expect(result.stdout).not.toContain("install dependencies");
       expect(
         await readFile(path.join(root, "vite.config.ts"), "utf-8"),
-      ).toContain("@fieldstone/vite-plugin");
+      ).toContain("@hugo-hsi-dev/vite-plugin");
     } finally {
       await rm(root, { recursive: true, force: true });
     }

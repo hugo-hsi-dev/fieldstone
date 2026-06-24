@@ -2,7 +2,7 @@ import type {
 	CollectionRuntimeConfig,
 	DocumentDataValue,
 	GlobalRuntimeConfig
-} from '@fieldstone/schema';
+} from '@hugo-hsi-dev/schema';
 
 export function titleCase(value: string) {
 	return value

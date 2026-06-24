@@ -4,8 +4,8 @@
 		CollectionDocument,
 		CollectionRuntimeConfig,
 		CollectionSlug
-	} from '@fieldstone/schema';
-	import { UPLOAD_FIELD_NAMES } from '@fieldstone/schema';
+	} from '@hugo-hsi-dev/schema';
+	import { UPLOAD_FIELD_NAMES } from '@hugo-hsi-dev/schema';
 
 	import { getCollectionLabel, getFieldLabel, getFieldValue } from './labels';
 	import Button from './primitives/Button.svelte';
@@ -16,7 +16,7 @@
 		adminRouteId,
 		adminRouteSegments,
 		mediaPath
-	} from '@fieldstone/routes';
+	} from '@hugo-hsi-dev/routes';
 
 	let {
 		collection,

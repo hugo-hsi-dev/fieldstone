@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { CollectionRuntimeConfig } from '@fieldstone/schema';
+	import type { CollectionRuntimeConfig } from '@hugo-hsi-dev/schema';
 
 	import FieldInput from './FieldInput.svelte';
 	import { getCollectionLabel } from './labels';

@@ -5,7 +5,7 @@ import path from "node:path";
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 
-import { LocalDiskStorage } from "@fieldstone/storage";
+import { LocalDiskStorage } from "@hugo-hsi-dev/storage";
 
 import { generateVariants, loadSharp } from "../src/index.ts";
 

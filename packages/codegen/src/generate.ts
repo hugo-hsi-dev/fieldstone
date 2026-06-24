@@ -1,8 +1,8 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import type { FieldstoneConfig } from "@fieldstone/schema";
-import type { FieldstoneCompiledConfig } from "@fieldstone/compiler";
+import type { FieldstoneConfig } from "@hugo-hsi-dev/schema";
+import type { FieldstoneCompiledConfig } from "@hugo-hsi-dev/compiler";
 import { discoverCollections, discoverGlobals } from "./collections.ts";
 
 type LoadModule = <T = Record<string, unknown>>(id: string) => Promise<T>;

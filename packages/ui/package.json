@@ -1,6 +1,6 @@
 {
-	"name": "@fieldstone/ui",
-	"version": "0.0.1",
+	"name": "@hugo-hsi-dev/ui",
+	"version": "0.1.0",
 	"type": "module",
 	"publishConfig": {
 		"access": "public"
@@ -28,9 +28,9 @@
 		"check:publish": "publint"
 	},
 	"dependencies": {
-		"@fieldstone/remotes": "workspace:*",
-		"@fieldstone/routes": "workspace:*",
-		"@fieldstone/schema": "workspace:*",
+		"@hugo-hsi-dev/remotes": "workspace:*",
+		"@hugo-hsi-dev/routes": "workspace:*",
+		"@hugo-hsi-dev/schema": "workspace:*",
 		"@lucide/svelte": "^1.21.0",
 		"@tiptap/core": "^3.27.1",
 		"@tiptap/pm": "^3.27.1",
@@ -43,9 +43,9 @@
 		"svelte": "^5.56.1"
 	},
 	"devDependencies": {
-		"@fieldstone/eslint-config": "workspace:*",
-		"@fieldstone/prettier-config": "workspace:*",
-		"@fieldstone/tsconfig": "workspace:*",
+		"@hugo-hsi-dev/eslint-config": "workspace:*",
+		"@hugo-hsi-dev/prettier-config": "workspace:*",
+		"@hugo-hsi-dev/tsconfig": "workspace:*",
 		"@sveltejs/kit": "^2.64.0",
 		"@sveltejs/package": "^2.5.8",
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",

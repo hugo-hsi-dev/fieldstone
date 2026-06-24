@@ -1,2 +1,2 @@
 export { default as FieldstoneAdmin } from './FieldstoneAdmin.svelte';
-export type { FieldstoneAdminRemotes } from '@fieldstone/remotes';
+export type { FieldstoneAdminRemotes } from '@hugo-hsi-dev/remotes';

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { GlobalDocument, GlobalRuntimeConfig, GlobalSlug } from '@fieldstone/schema';
+	import type { GlobalDocument, GlobalRuntimeConfig, GlobalSlug } from '@hugo-hsi-dev/schema';
 
 	import FieldInput from './FieldInput.svelte';
 	import { getFieldInputValue, getGlobalLabel } from './labels';
