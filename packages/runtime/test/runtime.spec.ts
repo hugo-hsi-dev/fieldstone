@@ -529,6 +529,7 @@ describe("fieldstone runtime", () => {
         height real,
         focalX real,
         focalY real,
+        sizes text,
         created_at integer not null,
         updated_at integer not null
       );

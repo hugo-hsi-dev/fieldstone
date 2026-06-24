@@ -566,6 +566,7 @@ describe("fieldstone compiler", () => {
       "height",
       "focalX",
       "focalY",
+      "sizes",
     ])
       expect(byName[name], name).toBeDefined();
     expect(byName.filename).toMatchObject({
@@ -576,6 +577,10 @@ describe("fieldstone compiler", () => {
       sourceExpression: "number",
       required: false,
     });
+    // `sizes` is the generated-variants array — a json column with a structured
+    // element type (not the bogus `string` a default branch would have produced).
+    expect(byName.sizes.sourceExpression).toBe("json");
+    expect(byName.sizes.typeScriptType).toContain('"filename": string');
 
     // The injected metadata is nullable + optional on input: the upload pipeline
     // fills it in, so a hand-written create must never be forced to supply it. A

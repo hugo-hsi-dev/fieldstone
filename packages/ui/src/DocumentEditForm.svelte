@@ -5,6 +5,7 @@
 		CollectionRuntimeConfig,
 		CollectionSlug
 	} from '@fieldstone/schema';
+	import { UPLOAD_FIELD_NAMES } from '@fieldstone/schema';
 
 	import FieldInput from './FieldInput.svelte';
 	import { getCollectionLabel, getFieldInputValue } from './labels';
@@ -56,6 +57,14 @@
 	} = $props();
 
 	const formFields = $derived(form.fields as RemoteFormFields);
+	// On an upload collection, hide the system-managed media metadata
+	// (filename/mimeType/sizes/…) — it's set by the upload pipeline, not edited.
+	const UPLOAD_METADATA = new Set<string>(UPLOAD_FIELD_NAMES);
+	const visibleFields = $derived(
+		collection.upload
+			? collection.fields.filter((field) => !UPLOAD_METADATA.has(field.name))
+			: collection.fields
+	);
 	// The form remounts per route, so capturing form/onSuccess at init is intentional.
 	// svelte-ignore state_referenced_locally
 	const guard = createFormGuard(form as never, { onSuccess });
@@ -91,7 +100,7 @@
 		{/each}
 	{/if}
 
-	{#each collection.fields as field (field.name)}
+	{#each visibleFields as field (field.name)}
 		<FieldInput
 			{field}
 			formField={formFields.data[field.identifier]}

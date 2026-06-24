@@ -64,6 +64,20 @@ function isUploadCollection(config: DatabaseContext["config"], slug: string) {
   );
 }
 
+// The original filename plus every generated variant filename (the `sizes` rows),
+// for cleanup when a media doc is deleted.
+function collectStorageKeys(doc: Doc): string[] {
+  const keys: string[] = [];
+  if (typeof doc.filename === "string" && doc.filename) keys.push(doc.filename);
+  if (Array.isArray(doc.sizes)) {
+    for (const entry of doc.sizes) {
+      const filename = (entry as { filename?: unknown } | null)?.filename;
+      if (typeof filename === "string" && filename) keys.push(filename);
+    }
+  }
+  return keys;
+}
+
 export function createDocumentRuntime(context: DatabaseContext) {
   const {
     compiled,
@@ -354,15 +368,11 @@ export function createDocumentRuntime(context: DatabaseContext) {
 
       if (!deleted) throw new Error("Document not found");
 
-      const storageKey =
-        uploadCollection &&
-        deletedDoc &&
-        typeof deletedDoc.filename === "string" &&
-        deletedDoc.filename
-          ? deletedDoc.filename
-          : null;
+      // The original file plus every generated variant (the `sizes` rows).
+      const storageKeys =
+        uploadCollection && deletedDoc ? collectStorageKeys(deletedDoc) : [];
 
-      // The row is already gone, so the file must be cleaned up even if a user
+      // The row is already gone, so the files must be cleaned up even if a user
       // afterDelete hook throws — otherwise the bytes leak. Run hooks, capture any
       // error, clean up, then resurface the hook error.
       let afterDeleteError: unknown = null;
@@ -375,7 +385,7 @@ export function createDocumentRuntime(context: DatabaseContext) {
       }
       // Best-effort: a missing file must not fail the delete (the DB is the
       // source of truth).
-      if (storageKey) await storage.delete(storageKey).catch(() => {});
+      for (const key of storageKeys) await storage.delete(key).catch(() => {});
       if (afterDeleteError) throw afterDeleteError;
 
       return deleted as { id: string };

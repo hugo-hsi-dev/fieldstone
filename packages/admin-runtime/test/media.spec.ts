@@ -3,6 +3,7 @@ import { mkdtemp, readdir, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import sharp from "sharp";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { collection, text } from "@fieldstone/schema";
@@ -61,6 +62,7 @@ async function createMediaTable(dbPath: string) {
       height real,
       focalX real,
       focalY real,
+      sizes text,
       created_at integer not null,
       updated_at integer not null
     );
@@ -70,6 +72,15 @@ async function createMediaTable(dbPath: string) {
 
 function gifFile() {
   return { name: "Photo One.gif", type: "image/gif", bytes: GIF_3x2 };
+}
+
+async function makePng(width: number, height: number): Promise<Uint8Array> {
+  const buffer = await sharp({
+    create: { width, height, channels: 3, background: { r: 100, g: 150, b: 200 } },
+  })
+    .png()
+    .toBuffer();
+  return new Uint8Array(buffer);
 }
 
 describe("upload helpers", () => {
@@ -121,6 +132,30 @@ describe("createFieldstoneAdmin.uploadMedia", () => {
     // The bytes physically landed under the configured staticDir.
     const onDisk = await stat(path.join(tempDir, "uploads", String(doc.filename)));
     expect(onDisk.size).toBe(GIF_3x2.byteLength);
+  });
+
+  it("generates and cleans up image variants when sharp is available", async () => {
+    const config = mediaConfig(tempDir, {
+      imageSizes: [{ name: "thumb", width: 16, height: 16 }],
+    });
+    const admin = await createFieldstoneAdmin({ config });
+    const doc = (await admin.uploadMedia({
+      collection: "media",
+      file: { name: "big.png", type: "image/png", bytes: await makePng(64, 48) },
+    })) as Record<string, unknown>;
+
+    // sharp gives authoritative dimensions and generates the configured variant.
+    expect(doc.width).toBe(64);
+    expect(doc.height).toBe(48);
+    const sizes = doc.sizes as { name: string; filename: string }[];
+    expect(sizes).toHaveLength(1);
+    expect(sizes[0].name).toBe("thumb");
+    const variantPath = path.join(tempDir, "uploads", sizes[0].filename);
+    await stat(variantPath); // the variant bytes exist
+
+    // Deleting the media doc removes the original AND every variant.
+    await admin.deleteDocument({ collection: "media", id: String(doc.id) });
+    await expect(stat(variantPath)).rejects.toMatchObject({ code: "ENOENT" });
   });
 
   it("rejects disallowed mime types and oversize files", async () => {
