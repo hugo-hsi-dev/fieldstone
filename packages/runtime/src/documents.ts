@@ -19,7 +19,7 @@ import {
   runBeforeDeleteHooks,
 } from "./hooks.js";
 import type { CreateInput, DocumentInput, ListInput, UpdateInput } from "./types.js";
-import { buildWhere, type WhereClause } from "./where.js";
+import { buildWhere, isPlainObject, type WhereClause } from "./where.js";
 
 type DatabaseContext = Awaited<ReturnType<typeof createDatabase>>;
 type Doc = Record<string, unknown>;
@@ -42,14 +42,6 @@ function stripSystemFields(doc: Doc): Record<string, unknown> {
     if (!SYSTEM_FIELDS.has(key)) rest[key] = value;
   }
   return rest;
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  // Only merge plain records (group objects); scalar object values like Date are
-  // replaced wholesale so the deep merge can't turn a Date into {}.
-  const proto = Object.getPrototypeOf(value);
-  return proto === Object.prototype || proto === null;
 }
 
 // Recursively overlay a PATCH body onto the stored row so partial group payloads

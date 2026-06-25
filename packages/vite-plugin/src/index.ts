@@ -19,8 +19,6 @@ import {
   pushSchema,
 } from "@hugo-hsi-dev/codegen";
 
-type FieldstonePluginOptions = FieldstoneConfigInput;
-
 async function writeTypes(root: string, compiled: ReturnType<typeof compileFieldstoneConfig>) {
   const outputFile = path.join(root, ".fieldstone", "types.d.ts");
   await mkdir(path.dirname(outputFile), { recursive: true });
@@ -53,7 +51,7 @@ async function assertNoBlankKnownContent(root: string, knownSlugs: ReadonlySet<s
   }
 }
 
-export function fieldstone(options: FieldstonePluginOptions): Plugin {
+export function fieldstone(options: FieldstoneConfigInput): Plugin {
   let root = process.cwd();
   let previousFingerprint = "";
   let previousContentSlugs = new Set<string>();
@@ -121,20 +119,14 @@ export function fieldstone(options: FieldstonePluginOptions): Plugin {
       server.watcher.add(cmsDir);
       server.watcher.add(path.join(cmsDir, "*", COLLECTION_FILENAME));
       server.watcher.add(path.join(cmsDir, "*", GLOBAL_FILENAME));
-      server.watcher.on("add", (file) => {
-        if (!isWatchedCollectionFile(cmsDir, file) && !isWatchedGlobalFile(cmsDir, file)) return;
-        scheduleRebuild(server);
-      });
-      server.watcher.on("change", (file) => {
+      const onCmsFileEvent = (file: string) => {
         if (isWatchedCollectionFile(cmsDir, file) || isWatchedGlobalFile(cmsDir, file)) {
           scheduleRebuild(server);
         }
-      });
-      server.watcher.on("unlink", (file) => {
-        if (isWatchedCollectionFile(cmsDir, file) || isWatchedGlobalFile(cmsDir, file)) {
-          scheduleRebuild(server);
-        }
-      });
+      };
+      server.watcher.on("add", onCmsFileEvent);
+      server.watcher.on("change", onCmsFileEvent);
+      server.watcher.on("unlink", onCmsFileEvent);
 
       if (process.env.FIELDSTONE_PUSH_ON_CONFIGURE === "true") {
         return rebuild(server);
