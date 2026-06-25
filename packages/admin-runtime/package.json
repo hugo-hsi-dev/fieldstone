@@ -1,6 +1,6 @@
 {
   "name": "@hugo-hsi-dev/admin-runtime",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/hugo-hsi-dev/fieldstone.git",

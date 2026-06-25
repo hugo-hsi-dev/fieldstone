@@ -1,5 +1,13 @@
 # @hugo-hsi-dev/admin-runtime
 
+## 0.3.0
+
+### Patch Changes
+
+- Updated dependencies [8359d26]
+  - @hugo-hsi-dev/runtime@0.3.0
+  - @hugo-hsi-dev/schema@0.3.0
+
 ## 0.2.0
 
 ### Patch Changes
