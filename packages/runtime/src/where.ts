@@ -80,11 +80,7 @@ const SYSTEM_COLUMN_KINDS: Record<string, ColumnKind> = {
   updatedAt: "date",
 };
 
-function hasOwn(object: object, key: string): boolean {
-  return Object.prototype.hasOwnProperty.call(object, key);
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
+export function isPlainObject(value: unknown): value is Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const proto = Object.getPrototypeOf(value);
   return proto === Object.prototype || proto === null;
@@ -134,9 +130,9 @@ function resolveColumn(
   // members (constructor, toString, …) for crafted keys, on both the kind map and
   // the drizzle table (whose columns are own properties — same assumption the sort
   // guard in documents.ts relies on).
-  const systemKind = hasOwn(SYSTEM_COLUMN_KINDS, key) ? SYSTEM_COLUMN_KINDS[key] : undefined;
+  const systemKind = Object.hasOwn(SYSTEM_COLUMN_KINDS, key) ? SYSTEM_COLUMN_KINDS[key] : undefined;
   if (systemKind) {
-    const column = hasOwn(table, key) ? table[key] : undefined;
+    const column = Object.hasOwn(table, key) ? table[key] : undefined;
     if (column == null) throw new Error(`No column for field "${key}"`);
     return { column, kind: systemKind };
   }
@@ -145,7 +141,7 @@ function resolveColumn(
   if (!field) throw new Error(`Unknown field in where clause: "${key}"`);
 
   const kind = fieldKind(field, key);
-  const column = hasOwn(table, key) ? table[key] : undefined;
+  const column = Object.hasOwn(table, key) ? table[key] : undefined;
   if (column == null) {
     throw new Error(`No column for field "${key}"`);
   }
