@@ -7,9 +7,7 @@
 		Check,
 		ChevronRight,
 		CircleAlert,
-		Globe,
 		Inbox,
-		Layers,
 		Menu,
 		Pencil,
 		Plus,
@@ -23,6 +21,7 @@
 	import UploadForm from './UploadForm.svelte';
 	import ThemeToggle from './ThemeToggle.svelte';
 	import {
+		abbrev,
 		collectionLabelFromSlug,
 		getCollectionLabel,
 		getFieldLabel,
@@ -344,6 +343,48 @@
 
 <div class="fs-admin" data-sveltekit-preload-data="off" class:fs-admin--drawer-open={drawerOpen}>
 	<div class="fs-admin__shell">
+		<aside
+			bind:this={sidebarEl}
+			class="fs-admin__sidebar"
+			id="fs-admin-nav"
+			tabindex="-1"
+			inert={isNarrow && !drawerOpen}
+		>
+			<a class="fs-admin__brand" href={indexHref}>
+				<span class="fs-admin__brandmark" aria-hidden="true">
+					<span class="fs-admin__brandmark-gem"></span>
+				</span>
+				<span class="fs-admin__brand-name">Fieldstone</span>
+			</a>
+
+			<div class="fs-admin__sidebar-scroll">
+				<svelte:boundary>
+					{@const collections = await remotes.listCollections()}
+					{@const globals = await remotes.listGlobals()}
+					<CollectionNav
+						{collections}
+						{collectionHref}
+						{globals}
+						{globalHref}
+						{selectedCollectionSlug}
+						{selectedGlobalSlug}
+					/>
+
+					{#snippet pending()}
+						{@render navSkeleton()}
+					{/snippet}
+
+					{#snippet failed(error, reset)}
+						{@render errorBox(error, reset)}
+					{/snippet}
+				</svelte:boundary>
+			</div>
+
+			<div class="fs-admin__sidebar-footer">
+				<ThemeToggle />
+			</div>
+		</aside>
+
 		<header class="fs-admin__header">
 			<button
 				bind:this={hamburgerEl}
@@ -357,15 +398,12 @@
 				<Menu size={18} class="fs-admin__icon" aria-hidden="true" focusable="false" />
 			</button>
 
-			<a class="fs-admin__brand" href={indexHref}>
-				<span class="fs-admin__brandmark" aria-hidden="true">F</span>
-				<span class="fs-admin__brand-name">Fieldstone</span>
-			</a>
-
 			{#if crumbs.length}
 				<nav class="fs-admin__breadcrumb" aria-label="Breadcrumb">
 					{#each crumbs as crumb, index (index)}
-						<span class="fs-admin__crumb-sep" aria-hidden="true">/</span>
+						{#if index > 0}
+							<span class="fs-admin__crumb-sep" aria-hidden="true">/</span>
+						{/if}
 						{#if crumb.href}
 							<a class="fs-admin__crumb" href={crumb.href}>{crumb.label}</a>
 						{:else}
@@ -378,37 +416,7 @@
 			{/if}
 
 			<div class="fs-admin__header-spacer"></div>
-			<ThemeToggle />
 		</header>
-
-		<aside
-			bind:this={sidebarEl}
-			class="fs-admin__sidebar"
-			id="fs-admin-nav"
-			tabindex="-1"
-			inert={isNarrow && !drawerOpen}
-		>
-			<svelte:boundary>
-				{@const collections = await remotes.listCollections()}
-				{@const globals = await remotes.listGlobals()}
-				<CollectionNav
-					{collections}
-					{collectionHref}
-					{globals}
-					{globalHref}
-					{selectedCollectionSlug}
-					{selectedGlobalSlug}
-				/>
-
-				{#snippet pending()}
-					{@render navSkeleton()}
-				{/snippet}
-
-				{#snippet failed(error, reset)}
-					{@render errorBox(error, reset)}
-				{/snippet}
-			</svelte:boundary>
-		</aside>
 
 		<button
 			type="button"
@@ -433,61 +441,50 @@
 						{@const globals = await remotes.listGlobals()}
 
 						{#if collections.length || globals.length}
-							<div class="fs-admin__dashboard">
-								{#each collections as collection (collection.slug)}
-									<a class="fs-admin__card" href={collectionHref(collection.slug)}>
-										<span class="fs-admin__card-icon"
-											><Layers
-												size={18}
-												class="fs-admin__icon"
-												aria-hidden="true"
-												focusable="false"
-											/></span
-										>
-										<span class="fs-admin__card-body">
-											<span class="fs-admin__card-title"
-												>{getCollectionLabel(collection, 'plural')}</span
-											>
-											<span class="fs-admin__card-meta">
-												{collection.fields.length}
-												{collection.fields.length === 1 ? 'field' : 'fields'}
+							{#if collections.length}
+								<p class="fs-admin__section-label">Collections</p>
+								<div class="fs-admin__dashboard">
+									{#each collections as collection (collection.slug)}
+										{@const label = getCollectionLabel(collection, 'plural')}
+										<a class="fs-admin__card" href={collectionHref(collection.slug)}>
+											<span class="fs-admin__card-top">
+												<span class="fs-admin__card-chip" aria-hidden="true">{abbrev(label)}</span>
+												<ChevronRight
+													size={16}
+													class="fs-admin__icon fs-admin__card-arrow"
+													aria-hidden="true"
+													focusable="false"
+												/>
 											</span>
-										</span>
-										<span class="fs-admin__card-arrow" aria-hidden="true"
-											><ChevronRight
-												size={16}
-												class="fs-admin__icon"
-												aria-hidden="true"
-												focusable="false"
-											/></span
-										>
-									</a>
-								{/each}
-								{#each globals as global (global.slug)}
-									<a class="fs-admin__card" href={globalHref(global.slug)}>
-										<span class="fs-admin__card-icon"
-											><Globe
-												size={18}
-												class="fs-admin__icon"
-												aria-hidden="true"
-												focusable="false"
-											/></span
-										>
-										<span class="fs-admin__card-body">
-											<span class="fs-admin__card-title">{getGlobalLabel(global)}</span>
-											<span class="fs-admin__card-meta">Single document</span>
-										</span>
-										<span class="fs-admin__card-arrow" aria-hidden="true"
-											><ChevronRight
-												size={16}
-												class="fs-admin__icon"
-												aria-hidden="true"
-												focusable="false"
-											/></span
-										>
-									</a>
-								{/each}
-							</div>
+											<span class="fs-admin__card-body">
+												<span class="fs-admin__card-title">{label}</span>
+												<span class="fs-admin__card-meta">
+													{collection.fields.length}
+													{collection.fields.length === 1 ? 'field' : 'fields'}
+												</span>
+											</span>
+										</a>
+									{/each}
+								</div>
+							{/if}
+							{#if globals.length}
+								<p class="fs-admin__section-label">Globals</p>
+								<div class="fs-admin__dashboard">
+									{#each globals as global (global.slug)}
+										{@const label = getGlobalLabel(global)}
+										<a class="fs-admin__card" href={globalHref(global.slug)}>
+											<span class="fs-admin__card-top">
+												<span class="fs-admin__card-chip" aria-hidden="true">{abbrev(label)}</span>
+												<span class="fs-admin__card-tag">singleton</span>
+											</span>
+											<span class="fs-admin__card-body">
+												<span class="fs-admin__card-title">{label}</span>
+												<span class="fs-admin__card-meta">Single document</span>
+											</span>
+										</a>
+									{/each}
+								</div>
+							{/if}
 						{:else}
 							<div class="fs-admin__empty">
 								<span class="fs-admin__empty-icon"
@@ -905,7 +902,7 @@
 </div>
 
 <style>
-	/* ---- Shell grid ---- */
+	/* ---- Shell grid: full-height sidebar (col 1), breadcrumb bar over content ---- */
 	.fs-admin__shell {
 		display: grid;
 		grid-template-columns: var(--fs-sidebar-w) 1fr;
@@ -913,29 +910,29 @@
 		min-height: 100dvh;
 	}
 
-	/* ---- Header ---- */
-	.fs-admin__header {
-		grid-column: 1 / -1;
+	/* ---- Sidebar (brand · nav · footer) ---- */
+	.fs-admin__sidebar {
+		grid-column: 1;
+		grid-row: 1 / -1;
 		position: sticky;
 		top: 0;
-		z-index: 30;
+		align-self: start;
+		height: 100dvh;
 		display: flex;
-		align-items: center;
-		gap: var(--fs-space-3);
-		height: var(--fs-header-h);
-		padding: 0 var(--fs-space-6);
-		border-bottom: 1px solid var(--fs-admin-border);
-		background: color-mix(in srgb, var(--fs-admin-panel) 85%, transparent);
-		backdrop-filter: blur(8px);
-		--fs-focus-gap: var(--fs-admin-panel);
+		flex-direction: column;
+		overflow: hidden;
+		border-right: 1px solid var(--fs-admin-border);
+		background: var(--fs-admin-sidebar);
+		--fs-focus-gap: var(--fs-admin-sidebar);
 	}
 
 	.fs-admin__brand {
-		display: inline-flex;
+		display: flex;
 		align-items: center;
 		gap: var(--fs-space-2);
+		padding: var(--fs-space-4) var(--fs-space-4) var(--fs-space-3);
 		color: var(--fs-admin-text-strong);
-		font-size: 0.9375rem;
+		font-size: 0.90625rem; /* ~14.5px */
 		font-weight: 600;
 		letter-spacing: -0.01em;
 		text-decoration: none;
@@ -951,13 +948,58 @@
 	.fs-admin__brandmark {
 		display: grid;
 		place-items: center;
+		flex: none;
 		width: 1.5rem;
 		height: 1.5rem;
-		border-radius: var(--fs-radius-sm);
+		border-radius: var(--fs-radius-md);
 		background: var(--fs-admin-primary);
-		color: var(--fs-admin-primary-fg);
-		font-size: 0.8125rem;
-		font-weight: 700;
+	}
+
+	.fs-admin__brandmark-gem {
+		width: 0.625rem;
+		height: 0.625rem;
+		border-radius: 2px;
+		background: #fff;
+		transform: rotate(45deg);
+	}
+
+	.fs-admin__sidebar-scroll {
+		flex: 1;
+		min-height: 0;
+		overflow-y: auto;
+		padding: 0 var(--fs-space-3) var(--fs-space-3);
+	}
+
+	.fs-admin__sidebar-footer {
+		display: flex;
+		align-items: center;
+		gap: var(--fs-space-2);
+		padding: var(--fs-space-3);
+		border-top: 1px solid var(--fs-admin-border);
+	}
+
+	.fs-admin__nav-skeleton {
+		display: grid;
+		gap: 0.125rem;
+		padding-top: var(--fs-space-2);
+	}
+
+	/* ---- Header: thin breadcrumb bar over the content column ---- */
+	.fs-admin__header {
+		grid-column: 2;
+		grid-row: 1;
+		position: sticky;
+		top: 0;
+		z-index: 30;
+		display: flex;
+		align-items: center;
+		gap: var(--fs-space-2);
+		height: var(--fs-header-h);
+		padding: 0 var(--fs-space-6);
+		border-bottom: 1px solid var(--fs-admin-border);
+		background: color-mix(in srgb, var(--fs-admin-panel) 88%, transparent);
+		backdrop-filter: blur(8px);
+		--fs-focus-gap: var(--fs-admin-panel);
 	}
 
 	.fs-admin__breadcrumb {
@@ -970,7 +1012,7 @@
 	}
 
 	.fs-admin__crumb-sep {
-		color: var(--fs-admin-faint);
+		color: var(--fs-admin-border-stronger);
 	}
 
 	.fs-admin__crumb {
@@ -982,7 +1024,7 @@
 	}
 
 	a.fs-admin__crumb:hover {
-		color: var(--fs-admin-text);
+		color: var(--fs-admin-accent);
 	}
 
 	a.fs-admin__crumb:focus-visible {
@@ -992,8 +1034,8 @@
 	}
 
 	.fs-admin__crumb--current {
-		color: var(--fs-admin-text);
-		font-weight: 500;
+		color: var(--fs-admin-text-strong);
+		font-weight: 600;
 	}
 
 	.fs-admin__header-spacer {
@@ -1002,26 +1044,6 @@
 
 	.fs-admin__hamburger {
 		display: none;
-	}
-
-	/* ---- Sidebar ---- */
-	.fs-admin__sidebar {
-		grid-column: 1;
-		grid-row: 2;
-		position: sticky;
-		top: var(--fs-header-h);
-		align-self: start;
-		height: calc(100dvh - var(--fs-header-h));
-		overflow-y: auto;
-		padding: var(--fs-space-3);
-		border-right: 1px solid var(--fs-admin-border);
-		background: var(--fs-admin-panel);
-		--fs-focus-gap: var(--fs-admin-panel);
-	}
-
-	.fs-admin__nav-skeleton {
-		display: grid;
-		gap: 0.125rem;
 	}
 
 	.fs-admin__scrim {
@@ -1056,8 +1078,8 @@
 	.fs-admin__title {
 		margin: 0;
 		color: var(--fs-admin-text-strong);
-		font-size: 1.5rem;
-		line-height: 2rem;
+		font-size: 1.25rem; /* 20px — design page title */
+		line-height: 1.75rem;
 		font-weight: 600;
 		letter-spacing: -0.02em;
 		overflow-wrap: anywhere;
@@ -1066,7 +1088,21 @@
 	.fs-admin__subtitle {
 		margin: 0;
 		color: var(--fs-admin-muted);
-		font-size: 0.875rem;
+		font-size: 0.8125rem;
+	}
+
+	/* Uppercase section divider on the index dashboard */
+	.fs-admin__section-label {
+		margin: 0 0 var(--fs-space-3);
+		color: var(--fs-admin-faint);
+		font-size: 0.6875rem;
+		font-weight: 600;
+		letter-spacing: 0.09em;
+		text-transform: uppercase;
+	}
+
+	.fs-admin__section-label:not(:first-of-type) {
+		margin-top: var(--fs-space-6);
 	}
 
 	.fs-admin__detail-meta {
@@ -1092,19 +1128,18 @@
 	/* ---- Index dashboard ---- */
 	.fs-admin__dashboard {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
-		gap: var(--fs-space-4);
-		max-width: 60rem;
+		grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+		gap: var(--fs-space-3);
+		max-width: 56rem;
 	}
 
 	.fs-admin__card {
 		display: flex;
-		align-items: center;
+		flex-direction: column;
 		gap: var(--fs-space-3);
 		border: 1px solid var(--fs-admin-border);
 		border-radius: var(--fs-radius-md);
 		background: var(--fs-admin-panel);
-		box-shadow: var(--fs-shadow-sm);
 		padding: var(--fs-space-4);
 		text-decoration: none;
 		color: inherit;
@@ -1115,8 +1150,8 @@
 	}
 
 	.fs-admin__card:hover {
-		border-color: var(--fs-admin-border-stronger);
-		box-shadow: var(--fs-shadow-md);
+		border-color: var(--fs-admin-accent-border);
+		box-shadow: var(--fs-shadow-sm);
 	}
 
 	.fs-admin__card:focus-visible {
@@ -1124,27 +1159,43 @@
 		box-shadow: var(--fs-focus-ring);
 	}
 
-	.fs-admin__card-icon {
+	.fs-admin__card-top {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.fs-admin__card-chip {
 		display: grid;
 		place-items: center;
-		width: 2.25rem;
-		height: 2.25rem;
-		flex-shrink: 0;
+		width: 1.875rem;
+		height: 1.875rem;
+		flex: none;
+		border-radius: var(--fs-radius-md);
+		background: var(--fs-admin-accent-tint);
+		color: var(--fs-admin-accent);
+		font-size: 0.75rem;
+		font-weight: 600;
+	}
+
+	.fs-admin__card-tag {
+		color: var(--fs-admin-faint);
+		font-size: 0.6875rem;
+		font-weight: 500;
+		border: 1px solid var(--fs-admin-border);
 		border-radius: var(--fs-radius-sm);
-		background: var(--fs-admin-inset);
-		color: var(--fs-admin-muted);
+		padding: 0.0625rem 0.4375rem;
 	}
 
 	.fs-admin__card-body {
 		display: grid;
 		gap: 0.125rem;
 		min-width: 0;
-		flex: 1;
 	}
 
 	.fs-admin__card-title {
 		color: var(--fs-admin-text-strong);
-		font-size: 0.9375rem;
+		font-size: 0.875rem;
 		font-weight: 600;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -1152,18 +1203,20 @@
 	}
 
 	.fs-admin__card-meta {
-		color: var(--fs-admin-muted);
-		font-size: 0.8125rem;
+		color: var(--fs-admin-faint);
+		font-size: 0.75rem;
 	}
 
 	.fs-admin__card-arrow {
-		color: var(--fs-admin-faint);
-		transition: transform var(--fs-dur) var(--fs-ease);
+		color: var(--fs-admin-border-stronger);
+		transition:
+			transform var(--fs-dur) var(--fs-ease),
+			color var(--fs-dur) var(--fs-ease);
 	}
 
 	.fs-admin__card:hover .fs-admin__card-arrow {
 		transform: translateX(2px);
-		color: var(--fs-admin-muted);
+		color: var(--fs-admin-accent);
 	}
 
 	/* ---- List view (toolbar + count + pagination) ---- */
@@ -1267,17 +1320,28 @@
 			grid-template-columns: 1fr;
 		}
 
+		.fs-admin__header {
+			grid-column: 1;
+			grid-row: 1;
+		}
+
+		.fs-admin__content {
+			grid-column: 1;
+			grid-row: 2;
+		}
+
 		.fs-admin__hamburger {
 			display: inline-flex;
 		}
 
 		.fs-admin__sidebar {
+			grid-row: 1 / -1;
 			position: fixed;
-			top: var(--fs-header-h);
+			top: 0;
 			left: 0;
 			z-index: 40;
-			width: min(18rem, 80vw);
-			height: calc(100dvh - var(--fs-header-h));
+			width: min(17rem, 82vw);
+			height: 100dvh;
 			transform: translateX(-100%);
 			transition: transform var(--fs-dur-slow) var(--fs-ease);
 			box-shadow: var(--fs-shadow-lg);
@@ -1287,14 +1351,10 @@
 			transform: translateX(0);
 		}
 
-		.fs-admin__content {
-			grid-column: 1;
-		}
-
 		.fs-admin--drawer-open .fs-admin__scrim {
 			display: block;
 			position: fixed;
-			inset: var(--fs-header-h) 0 0;
+			inset: 0;
 			z-index: 35;
 			background: var(--fs-admin-overlay);
 		}

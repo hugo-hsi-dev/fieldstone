@@ -69,6 +69,37 @@
 	function hasUpdated(document: CollectionDocument<CollectionSlug>): boolean {
 		return 'updatedAt' in document && Boolean((document as { updatedAt?: unknown }).updatedAt);
 	}
+
+	// Map an enum/status value to a pill tone. Neutral (e.g. "draft") returns '' so
+	// the base pill style applies; everything published-like reads as success.
+	const SUCCESS_STATES = new Set([
+		'published',
+		'active',
+		'live',
+		'enabled',
+		'approved',
+		'complete',
+		'completed',
+		'done'
+	]);
+	const DANGER_STATES = new Set([
+		'archived',
+		'disabled',
+		'inactive',
+		'rejected',
+		'failed',
+		'cancelled',
+		'canceled'
+	]);
+	const WARNING_STATES = new Set(['pending', 'review', 'in_review', 'scheduled', 'warning']);
+
+	function statusTone(value: string): '' | 'success' | 'warning' | 'danger' {
+		const key = value.trim().toLowerCase();
+		if (SUCCESS_STATES.has(key)) return 'success';
+		if (DANGER_STATES.has(key)) return 'danger';
+		if (WARNING_STATES.has(key)) return 'warning';
+		return '';
+	}
 </script>
 
 {#if documents.length}
@@ -81,7 +112,9 @@
 						>{/if}
 					<th scope="col">Title</th>
 					{#each summaryFields as field (field.name)}
-						<th scope="col">{getFieldLabel(field)}</th>
+						<th scope="col" class={field.type === 'number' ? 'fs-admin__th-number' : undefined}
+							>{getFieldLabel(field)}</th
+						>
 					{/each}
 					<th scope="col">Updated</th>
 					<th scope="col" class="fs-admin__th-actions">
@@ -111,9 +144,29 @@
 							</a>
 						</td>
 						{#each summaryFields as field (field.name)}
-							<td data-label={getFieldLabel(field)} class="fs-admin__cell-muted">
-								{getFieldValue(document, field.name)}
-							</td>
+							{@const value = getFieldValue(document, field.name)}
+							{#if field.type === 'select'}
+								<td data-label={getFieldLabel(field)} class="fs-admin__cell-status">
+									{#if value}
+										{@const tone = statusTone(value)}
+										<span class={['fs-admin__status', tone && `fs-admin__status--${tone}`]}>
+											<span class="fs-admin__status-dot" aria-hidden="true"></span>
+											{value}
+										</span>
+									{/if}
+								</td>
+							{:else if field.type === 'number'}
+								<td
+									data-label={getFieldLabel(field)}
+									class="fs-admin__cell-muted fs-admin__cell-number"
+								>
+									{value}
+								</td>
+							{:else}
+								<td data-label={getFieldLabel(field)} class="fs-admin__cell-muted">
+									{value}
+								</td>
+							{/if}
 						{/each}
 						<td data-label="Updated" class="fs-admin__cell-muted fs-admin__cell-updated">
 							{hasUpdated(document)
@@ -173,21 +226,25 @@
 	}
 
 	.fs-admin__table thead th {
-		background: var(--fs-admin-inset);
-		color: var(--fs-admin-muted);
-		font-size: 0.75rem;
+		background: var(--fs-admin-subtle);
+		color: var(--fs-admin-faint);
+		font-size: 0.6875rem;
 		font-weight: 600;
-		letter-spacing: 0.04em;
+		letter-spacing: 0.05em;
 		text-transform: uppercase;
 		text-align: left;
 		white-space: nowrap;
 		padding: 0 1rem;
-		height: 2.5rem;
+		height: 2.25rem;
 		border-bottom: 1px solid var(--fs-admin-border);
 	}
 
 	.fs-admin__th-actions {
 		width: 1%;
+	}
+
+	.fs-admin__th-number {
+		text-align: right;
 	}
 
 	.fs-admin__th-thumb,
@@ -221,7 +278,7 @@
 	}
 
 	.fs-admin__table tbody tr:hover {
-		background: var(--fs-admin-hover);
+		background: var(--fs-admin-row-hover);
 	}
 
 	.fs-admin__cell-muted {
@@ -229,6 +286,15 @@
 		max-width: 18rem;
 		overflow: hidden;
 		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.fs-admin__cell-number {
+		text-align: right;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.fs-admin__cell-status {
 		white-space: nowrap;
 	}
 
