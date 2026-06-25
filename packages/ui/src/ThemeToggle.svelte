@@ -1,18 +1,40 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { mode, toggleMode } from 'mode-watcher';
+	import { Moon, Sun } from '@lucide/svelte';
 
-	import Icon from './primitives/Icon.svelte';
+	type FieldstoneTheme = 'light' | 'dark';
 
-	// `mode.current` is undefined during SSR; render a stable placeholder until
-	// mounted so the server and first client render agree (no hydration mismatch).
-	let mounted = $state(false);
+	const STORAGE_KEY = 'fieldstone-theme';
+
+	let theme = $state<FieldstoneTheme>('light');
+
+	function systemTheme(): FieldstoneTheme {
+		return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+	}
+
+	function storedTheme(): FieldstoneTheme | undefined {
+		const value = window.localStorage.getItem(STORAGE_KEY);
+		return value === 'light' || value === 'dark' ? value : undefined;
+	}
+
+	function applyTheme(nextTheme: FieldstoneTheme = storedTheme() ?? systemTheme()) {
+		document.documentElement.classList.toggle('dark', nextTheme === 'dark');
+		document.documentElement.dataset.theme = nextTheme;
+		return nextTheme;
+	}
+
 	onMount(() => {
-		mounted = true;
+		theme = applyTheme();
 	});
 
-	const isDark = $derived(mounted && mode.current === 'dark');
+	const isDark = $derived(theme === 'dark');
 	const label = $derived(isDark ? 'Switch to light theme' : 'Switch to dark theme');
+
+	function toggleTheme() {
+		const nextTheme = isDark ? 'light' : 'dark';
+		window.localStorage.setItem(STORAGE_KEY, nextTheme);
+		theme = applyTheme(nextTheme);
+	}
 </script>
 
 <button
@@ -21,11 +43,11 @@
 	aria-label={label}
 	aria-pressed={isDark}
 	title={label}
-	onclick={toggleMode}
+	onclick={toggleTheme}
 >
 	{#if isDark}
-		<Icon name="moon" size={18} />
+		<Moon size={18} class="fs-admin__icon" aria-hidden="true" focusable="false" />
 	{:else}
-		<Icon name="sun" size={18} />
+		<Sun size={18} class="fs-admin__icon" aria-hidden="true" focusable="false" />
 	{/if}
 </button>

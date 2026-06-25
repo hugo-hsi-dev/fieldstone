@@ -1,4 +1,5 @@
 import { beforeNavigate } from '$app/navigation';
+import { onMount } from 'svelte';
 
 type SubmittableForm = {
 	enhance(
@@ -40,6 +41,17 @@ export function createFormGuard(
 		if (!window.confirm('You have unsaved changes. Leave without saving?')) {
 			navigation.cancel();
 		}
+	});
+
+	onMount(() => {
+		const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+			if (!dirty || submitting) return;
+			event.preventDefault();
+			// Older browsers gate the unsaved-changes prompt on returnValue.
+			event.returnValue = '';
+		};
+		window.addEventListener('beforeunload', handleBeforeUnload);
+		return () => window.removeEventListener('beforeunload', handleBeforeUnload);
 	});
 
 	const attrs = form.enhance(async (enhanced) => {

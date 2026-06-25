@@ -1,21 +1,21 @@
-import { expect, request as playwrightRequest, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
-const BASE = 'http://localhost:4173/api';
+test('collection access control: authenticated allowed, anonymous redirected', async ({ page }) => {
+	await page.goto('/admin/collections/secrets');
+	await expect(page.getByRole('heading', { level: 1, name: 'Secrets' })).toBeVisible();
 
-test('collection access control: authenticated allowed, anonymous denied', async ({ request }) => {
-	// The suite runs authenticated (storageState), so read + create are permitted.
-	const authedRead = await request.get(`${BASE}/secrets`);
-	expect(authedRead.status()).toBe(200);
+	await page.goto('/admin/collections/secrets/new');
+	await page.getByLabel('Title').fill('Top secret');
+	await page.getByRole('button', { name: 'Create secret' }).click();
+	await expect(page).toHaveURL(/\/admin\/collections\/secrets\/[^/]+$/);
+	await expect(page.getByRole('heading', { name: 'Top secret' })).toBeVisible();
+});
 
-	const created = await request.post(`${BASE}/secrets`, { data: { title: 'Top secret' } });
-	expect(created.status()).toBe(201);
+test.describe('unauthenticated', () => {
+	test.use({ storageState: { cookies: [], origins: [] } });
 
-	// A fresh, cookie-less context is anonymous and must be forbidden.
-	const anon = await playwrightRequest.newContext({ storageState: { cookies: [], origins: [] } });
-	try {
-		expect((await anon.get(`${BASE}/secrets`)).status()).toBe(403);
-		expect((await anon.post(`${BASE}/secrets`, { data: { title: 'nope' } })).status()).toBe(403);
-	} finally {
-		await anon.dispose();
-	}
+	test('protected collection redirects to login', async ({ page }) => {
+		await page.goto('/admin/collections/secrets');
+		await expect(page).toHaveURL(/\/login/);
+	});
 });

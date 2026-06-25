@@ -32,14 +32,9 @@ let sharpPromise: Promise<SharpModule | null> | undefined;
 // module loads at most once.
 export function loadSharp(): Promise<SharpModule | null> {
   sharpPromise ??= import("sharp")
-    .then((module) => ((module.default ?? module) as unknown) as SharpModule)
+    .then((module) => (module.default ?? module) as unknown as SharpModule)
     .catch(() => null);
   return sharpPromise;
-}
-
-// Reset the memoized loader — tests only.
-export function resetSharpForTests(): void {
-  sharpPromise = undefined;
 }
 
 function variantKey(originalKey: string, sizeName: string): string {
@@ -66,15 +61,10 @@ export async function generateVariants(options: {
   mimeType: string;
   originalKey: string;
   imageSizes?: UploadImageSize[];
-  put: (
-    key: string,
-    body: Uint8Array,
-    meta: { contentType: string },
-  ) => Promise<void>;
+  put: (key: string, body: Uint8Array) => Promise<void>;
 }): Promise<GenerateVariantsResult> {
   const { sharp, bytes, mimeType, originalKey, imageSizes, put } = options;
-  if (!sharp || !mimeType.startsWith("image/"))
-    return { width: null, height: null, variants: [] };
+  if (!sharp || !mimeType.startsWith("image/")) return { width: null, height: null, variants: [] };
 
   // A broken sharp or unreadable image: keep the original, no dimensions/variants.
   const meta = await sharp(bytes)
@@ -98,7 +88,7 @@ export async function generateVariants(options: {
         .toBuffer();
       const body = new Uint8Array(resized);
       const key = variantKey(originalKey, size.name);
-      await put(key, body, { contentType: mimeType });
+      await put(key, body);
       // Re-probe the actual variant dimensions (a `fit` may differ from the
       // requested box); fall back to the requested size if re-probing fails.
       const probe = await sharp(body)

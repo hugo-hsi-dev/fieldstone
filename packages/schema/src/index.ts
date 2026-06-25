@@ -1,10 +1,6 @@
-import { validateCollectionFields } from "./field-validation.ts";
-import { normalizeSelectOptions } from "./field-validation.ts";
+import { validateCollectionFields } from "./field-validation.js";
+import { normalizeSelectOptions } from "./field-validation.js";
 
-export {
-  FIELDSTONE_ADMIN_REMOTE_NAMES,
-  type FieldstoneAdminRemoteName,
-} from "./admin-remotes.ts";
 import type {
   ArrayFieldDefinition,
   BooleanFieldDefinition,
@@ -14,7 +10,6 @@ import type {
   DateFieldDefinition,
   EmailFieldDefinition,
   FieldDefinition,
-  FieldstoneConfigInput,
   GlobalDefinition,
   GroupFieldDefinition,
   NumberFieldDefinition,
@@ -25,10 +20,10 @@ import type {
   TextFieldDefinition,
   UploadFieldDefinition,
   UploadOptions,
-} from "./types.ts";
+} from "./types.js";
 
-export { validateCollectionFields, normalizeSelectOptions } from "./field-validation.ts";
-export { STATUS_FIELD_NAME, UPLOAD_FIELD_NAMES } from "./types.ts";
+export { validateCollectionFields, normalizeSelectOptions } from "./field-validation.js";
+export { STATUS_FIELD_NAME, UPLOAD_FIELD_NAMES } from "./types.js";
 export {
   normalizeBooleanFieldValue,
   normalizeCollectionData,
@@ -38,7 +33,7 @@ export {
   normalizeDateFieldValue,
   type DocumentDataValue,
   type NormalizedDocumentData,
-} from "./document-data.ts";
+} from "./document-data.js";
 export type {
   CollectionConfig,
   CollectionDefinition,
@@ -95,29 +90,21 @@ export type {
   UploadFieldDefinition,
   UploadImageSize,
   UploadOptions,
-} from "./types.ts";
+} from "./types.js";
 
-export function text(
-  config: Omit<TextFieldDefinition, "type">,
-): TextFieldDefinition {
+export function text(config: Omit<TextFieldDefinition, "type">): TextFieldDefinition {
   return { ...config, type: "text" };
 }
 
-export function email(
-  config: Omit<EmailFieldDefinition, "type">,
-): EmailFieldDefinition {
+export function email(config: Omit<EmailFieldDefinition, "type">): EmailFieldDefinition {
   return { ...config, type: "email" };
 }
 
-export function number(
-  config: Omit<NumberFieldDefinition, "type">,
-): NumberFieldDefinition {
+export function number(config: Omit<NumberFieldDefinition, "type">): NumberFieldDefinition {
   return { ...config, type: "number" };
 }
 
-export function date(
-  config: Omit<DateFieldDefinition, "type">,
-): DateFieldDefinition {
+export function date(config: Omit<DateFieldDefinition, "type">): DateFieldDefinition {
   return { ...config, type: "date" };
 }
 
@@ -133,9 +120,7 @@ export function select(
   };
 }
 
-export function boolean(
-  config: Omit<BooleanFieldDefinition, "type">,
-): BooleanFieldDefinition {
+export function boolean(config: Omit<BooleanFieldDefinition, "type">): BooleanFieldDefinition {
   return { ...config, type: "boolean" };
 }
 
@@ -145,27 +130,19 @@ export function relationship(
   return { ...config, type: "relationship" };
 }
 
-export function upload(
-  config: Omit<UploadFieldDefinition, "type">,
-): UploadFieldDefinition {
+export function upload(config: Omit<UploadFieldDefinition, "type">): UploadFieldDefinition {
   return { ...config, type: "upload" };
 }
 
-export function richText(
-  config: Omit<RichTextFieldDefinition, "type">,
-): RichTextFieldDefinition {
+export function richText(config: Omit<RichTextFieldDefinition, "type">): RichTextFieldDefinition {
   return { ...config, type: "richText" };
 }
 
-export function group(
-  config: Omit<GroupFieldDefinition, "type">,
-): GroupFieldDefinition {
+export function group(config: Omit<GroupFieldDefinition, "type">): GroupFieldDefinition {
   return { ...config, fields: [...config.fields], type: "group" };
 }
 
-export function array(
-  config: Omit<ArrayFieldDefinition, "type">,
-): ArrayFieldDefinition {
+export function array(config: Omit<ArrayFieldDefinition, "type">): ArrayFieldDefinition {
   return { ...config, fields: [...config.fields], type: "array" };
 }
 
@@ -197,10 +174,4 @@ export function global(config: {
     fields: [...config.fields],
     ...(config.drafts ? { drafts: true } : {}),
   };
-}
-
-export function defineConfig(
-  config: FieldstoneConfigInput,
-): FieldstoneConfigInput {
-  return config;
 }

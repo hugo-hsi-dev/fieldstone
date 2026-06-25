@@ -2,7 +2,7 @@ import type {
   FieldDefinition,
   SelectOption,
   SelectOptionInput,
-} from "./types.ts";
+} from "./types.js";
 
 const reservedFieldNames = new Set([
   "__proto__",

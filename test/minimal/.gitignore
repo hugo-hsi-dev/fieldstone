@@ -32,3 +32,19 @@ test-results
 
 # Playwright auth state
 playwright/.auth
+
+# Generated from ../../packages/cli/templates by scripts/sync-template.mjs
+/src/app.d.ts
+/src/app.html
+/src/cms/articles/+collection.ts
+/src/hooks.server.ts
+/src/lib/auth-client.ts
+/src/lib/auth.ts
+/src/lib/server/auth-db.ts
+/src/lib/server/auth-schema.ts
+/src/routes/+layout.svelte
+/src/routes/admin/[...segments]/+page.svelte
+/src/routes/admin/dashboard.remote.ts
+/src/routes/login/+page.svelte
+/src/routes/media/[...path]/+server.ts
+/vite.config.ts

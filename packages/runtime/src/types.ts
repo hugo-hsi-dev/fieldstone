@@ -1,32 +1,16 @@
 import type {
   AccessUser,
   CollectionData,
-  CollectionDocument,
   CollectionSlug,
   CollectionWhere,
   DocumentStatus,
   GlobalData,
-  GlobalDocument,
   GlobalSlug,
 } from "@hugo-hsi-dev/schema";
 
-export type { WhereClause, WhereOperators } from "./where.ts";
+export type { WhereClause, WhereOperators } from "./where.js";
 
-export type DocumentData = Record<string, boolean | string | null>;
-export type FieldstoneCollectionSlug = CollectionSlug;
-export type FieldstoneDocument<TCollection extends CollectionSlug> =
-  CollectionDocument<TCollection>;
-export type FieldstoneDocumentData<TCollection extends CollectionSlug> =
-  CollectionData<TCollection>;
-export type FieldstoneGlobalSlug = GlobalSlug;
-export type FieldstoneGlobal<TGlobal extends GlobalSlug> =
-  GlobalDocument<TGlobal>;
-export type FieldstoneGlobalData<TGlobal extends GlobalSlug> =
-  GlobalData<TGlobal>;
-
-export type CollectionInput<
-  TCollection extends CollectionSlug = CollectionSlug,
-> = {
+export type CollectionInput<TCollection extends CollectionSlug = CollectionSlug> = {
   collection: TCollection;
   status?: DocumentStatus;
   user?: AccessUser;
@@ -57,13 +41,6 @@ export type ListInput<TCollection extends CollectionSlug = CollectionSlug> =
      */
     depth?: number;
   };
-
-export type ListResult<TCollection extends CollectionSlug = CollectionSlug> = {
-  docs: CollectionDocument<TCollection>[];
-  total: number;
-  limit: number;
-  offset: number;
-};
 
 export type DocumentInput<TCollection extends CollectionSlug = CollectionSlug> =
   CollectionInput<TCollection> & {
@@ -101,30 +78,29 @@ export type UpdateInput<TCollection extends CollectionSlug = CollectionSlug> =
   DocumentInput<TCollection> & {
     updatedAt?: Date;
   } & (
-    | {
-        /**
-         * Partial (PATCH) update: merge `data` onto the stored row instead of
-         * replacing it, so omitted fields keep their values. The merge reads the
-         * raw row under the already-checked update access — no separate read,
-         * which is why `data` may omit otherwise-required fields (including nested
-         * group siblings).
-         */
-        merge: true;
-        data: DeepMergeData<CollectionData<TCollection>>;
-      }
-    | {
-        merge?: false;
-        data: CollectionData<TCollection>;
-      }
-  );
+      | {
+          /**
+           * Partial (PATCH) update: merge `data` onto the stored row instead of
+           * replacing it, so omitted fields keep their values. The merge reads the
+           * raw row under the already-checked update access — no separate read,
+           * which is why `data` may omit otherwise-required fields (including nested
+           * group siblings).
+           */
+          merge: true;
+          data: DeepMergeData<CollectionData<TCollection>>;
+        }
+      | {
+          merge?: false;
+          data: CollectionData<TCollection>;
+        }
+    );
 
 export type GlobalInput<TGlobal extends GlobalSlug = GlobalSlug> = {
   global: TGlobal;
   user?: AccessUser;
 };
 
-export type UpdateGlobalInput<TGlobal extends GlobalSlug = GlobalSlug> =
-  GlobalInput<TGlobal> & {
-    data: GlobalData<TGlobal>;
-    updatedAt?: Date;
-  };
+export type UpdateGlobalInput<TGlobal extends GlobalSlug = GlobalSlug> = GlobalInput<TGlobal> & {
+  data: GlobalData<TGlobal>;
+  updatedAt?: Date;
+};

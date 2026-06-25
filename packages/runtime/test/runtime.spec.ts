@@ -18,7 +18,7 @@ import {
   upload,
   type FieldstoneConfig,
 } from "@hugo-hsi-dev/schema";
-import { getFieldstone } from "../src/index.ts";
+import { getFieldstone } from "../src/index.js";
 
 describe("fieldstone runtime", () => {
   it("does not treat inherited collection keys as valid collections", async () => {
@@ -32,51 +32,6 @@ describe("fieldstone runtime", () => {
     expect(stone.getCollection("toString")).toBeNull();
     await expect(stone.find({ collection: "toString" })).rejects.toThrow(
       "Unsupported collection: toString",
-    );
-  });
-
-  it("provides the virtual config module declaration from the client entrypoint", { timeout: 20_000 }, () => {
-    const source = `
-			import { getFieldstone } from '@hugo-hsi-dev/runtime';
-			import config from '$fieldstone-config';
-
-			void getFieldstone({ config });
-		`;
-    const rootDir = process.cwd().replace(/\/packages\/runtime$/, "");
-    const fileName = `${rootDir}/app.ts`;
-    const compilerOptions = {
-      allowImportingTsExtensions: true,
-      baseUrl: rootDir,
-      module: ts.ModuleKind.ESNext,
-      moduleResolution: ts.ModuleResolutionKind.Bundler,
-      noEmit: true,
-      paths: {
-        "@hugo-hsi-dev/runtime": ["packages/runtime/src/index.ts"],
-        "@hugo-hsi-dev/schema": ["packages/schema/src/index.ts"],
-      },
-      strict: true,
-      target: ts.ScriptTarget.ESNext,
-    } satisfies ts.CompilerOptions;
-    const host = ts.createCompilerHost(compilerOptions);
-    const originalReadFile = host.readFile;
-    const originalFileExists = host.fileExists;
-
-    host.readFile = (requestedFileName) =>
-      requestedFileName === fileName
-        ? source
-        : originalReadFile(requestedFileName);
-    host.fileExists = (requestedFileName) =>
-      requestedFileName === fileName || originalFileExists(requestedFileName);
-
-    const program = ts.createProgram([fileName], compilerOptions, host);
-    const diagnostics = ts.getPreEmitDiagnostics(program);
-
-    expect(
-      diagnostics.map((diagnostic) =>
-        ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"),
-      ),
-    ).not.toContain(
-      "Cannot find module '$fieldstone-config' or its corresponding type declarations.",
     );
   });
 
@@ -363,16 +318,12 @@ describe("fieldstone runtime", () => {
 
       const listed = await stone.find({ collection: "posts" });
       expect(listed).toHaveLength(3);
-      expect(
-        await stone.findById({ collection: "posts", id: created.id }),
-      ).toMatchObject({
+      expect(await stone.findById({ collection: "posts", id: created.id })).toMatchObject({
         id: created.id,
         title: "Hello",
         published: true,
       });
-      expect(
-        await stone.findById({ collection: "posts", id: "missing" }),
-      ).toBeNull();
+      expect(await stone.findById({ collection: "posts", id: "missing" })).toBeNull();
 
       const defaulted = await stone.create({
         collection: "posts",
@@ -411,9 +362,9 @@ describe("fieldstone runtime", () => {
           id: "missing",
         }),
       ).rejects.toThrow("Document not found");
-      await expect(
-        stone.delete({ collection: "posts", id: "missing" }),
-      ).rejects.toThrow("Document not found");
+      await expect(stone.delete({ collection: "posts", id: "missing" })).rejects.toThrow(
+        "Document not found",
+      );
 
       expect(await stone.getGlobal({ global: "site-settings" })).toBeNull();
       await expect(
@@ -444,9 +395,7 @@ describe("fieldstone runtime", () => {
       ]);
       expect(firstConcurrentSave.id).toBe("global");
       expect(secondConcurrentSave.id).toBe("global");
-      await expect(
-        stone.getGlobal({ global: "site-settings" }),
-      ).resolves.toMatchObject({
+      await expect(stone.getGlobal({ global: "site-settings" })).resolves.toMatchObject({
         id: "global",
       });
 
@@ -469,9 +418,7 @@ describe("fieldstone runtime", () => {
       });
       expect(changedSettings.id).toBe("global");
       expect(changedSettings.tagline).toBeNull();
-      await expect(
-        stone.getGlobal({ global: "site-settings" }),
-      ).resolves.toMatchObject({
+      await expect(stone.getGlobal({ global: "site-settings" })).resolves.toMatchObject({
         id: "global",
         siteTitle: "Fieldstone",
         tagline: null,
@@ -543,9 +490,7 @@ describe("fieldstone runtime", () => {
         status: "draft",
       });
       expect(created.launchDate).toBeInstanceOf(Date);
-      expect((created.launchDate as Date).toISOString()).toBe(
-        launch.toISOString(),
-      );
+      expect((created.launchDate as Date).toISOString()).toBe(launch.toISOString());
 
       const fetched = await stone.findById({
         collection: "products",
@@ -757,7 +702,12 @@ describe("fieldstone runtime", () => {
         merge: true,
         data: { author: "missing-id", editors: [ada.id, "missing-id"] },
       });
-      const withMissing = await stone.findById({ collection: "posts", id: post.id, depth: 1, user });
+      const withMissing = await stone.findById({
+        collection: "posts",
+        id: post.id,
+        depth: 1,
+        user,
+      });
       expect(withMissing!.author).toBeNull();
       expect((withMissing!.editors as { name: string }[]).map((editor) => editor.name)).toEqual([
         "Ada",
@@ -1120,12 +1070,7 @@ describe("fieldstone runtime", () => {
         collection: "posts",
         sort: { field: "title", direction: "asc" },
       });
-      expect(sorted.map((doc) => doc.title)).toEqual([
-        "Apple",
-        "Banana",
-        "Cherry",
-        "apricot",
-      ]);
+      expect(sorted.map((doc) => doc.title)).toEqual(["Apple", "Banana", "Cherry", "apricot"]);
     } finally {
       await rm(tempDir, { force: true, recursive: true });
     }
@@ -1168,9 +1113,9 @@ describe("fieldstone runtime", () => {
       await expect(stone.find({ collection: "secrets" })).rejects.toThrow("Forbidden");
       expect(await stone.find({ collection: "secrets", user: { id: "u1" } })).toEqual([]);
 
-      await expect(
-        stone.create({ collection: "secrets", data: { title: "x" } }),
-      ).rejects.toThrow("Forbidden");
+      await expect(stone.create({ collection: "secrets", data: { title: "x" } })).rejects.toThrow(
+        "Forbidden",
+      );
 
       const created = await stone.create({
         collection: "secrets",
@@ -1208,10 +1153,7 @@ describe("fieldstone runtime", () => {
       collections: {
         notes: {
           ...collection({
-            fields: [
-              text({ name: "title", required: true }),
-              text({ name: "slug" }),
-            ],
+            fields: [text({ name: "title", required: true }), text({ name: "slug" })],
             hooks: {
               beforeChange: [
                 ({ data, operation }) => {
@@ -1228,9 +1170,7 @@ describe("fieldstone runtime", () => {
                   events.push(`afterChange:${operation}`);
                 },
               ],
-              afterRead: [
-                ({ doc }) => ({ ...doc, title: String(doc.title).toUpperCase() }),
-              ],
+              afterRead: [({ doc }) => ({ ...doc, title: String(doc.title).toUpperCase() })],
               beforeDelete: [
                 () => {
                   events.push("beforeDelete");
@@ -1290,9 +1230,9 @@ describe("fieldstone runtime", () => {
 
       // Deleting a missing id must not fire delete hooks for a row that never existed.
       events.length = 0;
-      await expect(
-        stone.delete({ collection: "notes", id: "missing" }),
-      ).rejects.toThrow("Document not found");
+      await expect(stone.delete({ collection: "notes", id: "missing" })).rejects.toThrow(
+        "Document not found",
+      );
       expect(events).not.toContain("beforeDelete");
     } finally {
       await rm(tempDir, { force: true, recursive: true });
@@ -1362,7 +1302,6 @@ function getDiagnostics(source: string) {
   const rootDir = process.cwd().replace(/\/packages\/runtime$/, "");
   const fileName = `${rootDir}/type-test.ts`;
   const compilerOptions = {
-    allowImportingTsExtensions: true,
     baseUrl: rootDir,
     ignoreDeprecations: "6.0",
     module: ts.ModuleKind.ESNext,
@@ -1383,16 +1322,12 @@ function getDiagnostics(source: string) {
   const originalFileExists = host.fileExists;
 
   host.readFile = (requestedFileName) =>
-    requestedFileName === fileName
-      ? source
-      : originalReadFile(requestedFileName);
+    requestedFileName === fileName ? source : originalReadFile(requestedFileName);
   host.fileExists = (requestedFileName) =>
     requestedFileName === fileName || originalFileExists(requestedFileName);
 
   const program = ts.createProgram([fileName], compilerOptions, host);
   return ts
     .getPreEmitDiagnostics(program)
-    .map((diagnostic) =>
-      ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"),
-    );
+    .map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"));
 }

@@ -12,12 +12,11 @@ import {
   getGlobalConfig,
   normalizeDocumentData,
   normalizeGlobalData,
-} from "./collection-model.ts";
-import type { SchemaPlan } from "./collection-model.ts";
-import { createDrizzleSchemaSource } from "./drizzle-source.ts";
-import { createSchemaFingerprint } from "./fingerprint.ts";
-import { createRuntimeSchema, type RuntimeSchema } from "./runtime-schema.ts";
-import { createTypesDeclaration } from "./types-output.ts";
+} from "./collection-model.js";
+import type { SchemaPlan } from "./collection-model.js";
+import { createDrizzleSchemaSource } from "./drizzle-source.js";
+import { createRuntimeSchema, type RuntimeSchema } from "./runtime-schema.js";
+import { createTypesDeclaration } from "./types-output.js";
 
 export type FieldstoneCompiledConfig = {
   createCollectionRuntimeConfigs(): CollectionRuntimeConfig[];
@@ -25,23 +24,15 @@ export type FieldstoneCompiledConfig = {
   readonly schemaPlan: SchemaPlan;
   getCollection(slug: string): ReturnType<typeof getCollectionConfig>;
   getGlobal(slug: string): ReturnType<typeof getGlobalConfig>;
-  normalizeDocumentData(
-    slug: string,
-    data: Record<string, unknown>,
-  ): NormalizedDocumentData;
-  normalizeGlobalData(
-    slug: string,
-    data: Record<string, unknown>,
-  ): NormalizedDocumentData;
+  normalizeDocumentData(slug: string, data: Record<string, unknown>): NormalizedDocumentData;
+  normalizeGlobalData(slug: string, data: Record<string, unknown>): NormalizedDocumentData;
   renderRuntimeSchema(): RuntimeSchema;
   renderSchemaSource(): string;
   renderTypesDeclaration(): string;
   schemaFingerprint(): string;
 };
 
-export function compileFieldstoneConfig(
-  config: FieldstoneConfig,
-): FieldstoneCompiledConfig {
+export function compileFieldstoneConfig(config: FieldstoneConfig): FieldstoneCompiledConfig {
   const schemaPlan = buildSchemaPlan(config);
   let runtimeSchema: RuntimeSchema | undefined;
   let drizzleSchemaSource: string | undefined;
@@ -49,8 +40,7 @@ export function compileFieldstoneConfig(
   let fingerprint: string | undefined;
 
   return {
-    createCollectionRuntimeConfigs: () =>
-      createCollectionRuntimeConfigs(schemaPlan),
+    createCollectionRuntimeConfigs: () => createCollectionRuntimeConfigs(schemaPlan),
     createGlobalRuntimeConfigs: () => createGlobalRuntimeConfigs(schemaPlan),
     schemaPlan,
     getCollection(slug) {
@@ -78,7 +68,7 @@ export function compileFieldstoneConfig(
       return typesDeclaration;
     },
     schemaFingerprint() {
-      fingerprint ??= createSchemaFingerprint(schemaPlan);
+      fingerprint ??= JSON.stringify(schemaPlan.fingerprintPayload);
       return fingerprint;
     },
   };

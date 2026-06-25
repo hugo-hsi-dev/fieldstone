@@ -3,7 +3,7 @@ import type {
   CollectionRuntimeConfig,
   FieldDefinition,
   SelectOptionInput,
-} from "./types.ts";
+} from "./types.js";
 
 export type DocumentDataValue =
   | boolean
@@ -16,10 +16,7 @@ export type DocumentDataValue =
   | { [key: string]: DocumentDataValue }[];
 export type NormalizedDocumentData = Record<string, DocumentDataValue>;
 
-type NormalizableCollection = Pick<
-  CollectionConfig | CollectionRuntimeConfig,
-  "fields"
->;
+type NormalizableCollection = Pick<CollectionConfig | CollectionRuntimeConfig, "fields">;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -35,7 +32,7 @@ export function normalizeNumberFieldValue(value: unknown): number | null {
   if (value === null || value === undefined) return null;
   // Reject non-finite values (NaN, Infinity, "1e999") rather than storing them.
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
-  // Treat a blank/whitespace-only string as empty so non-HTML callers (e.g. REST)
+  // Treat a blank/whitespace-only string as empty so programmatic callers
   // don't coerce "   " into 0 and pass required-number validation.
   const trimmed = String(value).trim();
   if (trimmed === "") return null;
@@ -58,9 +55,7 @@ export function normalizeDateFieldValue(value: unknown): Date | null {
 }
 
 function selectOptionValues(options: readonly SelectOptionInput[] | undefined) {
-  return (options ?? []).map((option) =>
-    typeof option === "string" ? option : option.value,
-  );
+  return (options ?? []).map((option) => (typeof option === "string" ? option : option.value));
 }
 
 function normalizeStringLikeField(
@@ -68,8 +63,7 @@ function normalizeStringLikeField(
   raw: unknown,
 ): string | null {
   let value = normalizeTextFieldValue(raw);
-  if (!value && field.defaultValue != null)
-    value = normalizeTextFieldValue(field.defaultValue);
+  if (!value && field.defaultValue != null) value = normalizeTextFieldValue(field.defaultValue);
 
   if (!value) {
     if (field.required) throw new Error(`${field.name} is required`);
@@ -81,13 +75,9 @@ function normalizeStringLikeField(
 
   if (field.type === "text") {
     if (typeof field.minLength === "number" && value.length < field.minLength)
-      throw new Error(
-        `${field.name} must be at least ${field.minLength} characters`,
-      );
+      throw new Error(`${field.name} must be at least ${field.minLength} characters`);
     if (typeof field.maxLength === "number" && value.length > field.maxLength)
-      throw new Error(
-        `${field.name} must be at most ${field.maxLength} characters`,
-      );
+      throw new Error(`${field.name} must be at most ${field.maxLength} characters`);
     if (field.pattern !== undefined && !new RegExp(field.pattern).test(value))
       throw new Error(`${field.name} is invalid`);
   }
@@ -149,8 +139,7 @@ function normalizeBooleanField(
   field: Extract<FieldDefinition, { type: "boolean" }>,
   raw: unknown,
 ): boolean {
-  if (raw === undefined && field.defaultValue !== undefined)
-    return field.defaultValue;
+  if (raw === undefined && field.defaultValue !== undefined) return field.defaultValue;
   return normalizeBooleanFieldValue(raw);
 }
 
@@ -225,8 +214,7 @@ function assertKnownNestedKeys(
 ): void {
   const known = new Set(field.fields.map((subField) => subField.name));
   for (const key of Object.keys(source)) {
-    if (!known.has(key))
-      throw new Error(`Unknown field: ${field.name}.${key}`);
+    if (!known.has(key)) throw new Error(`Unknown field: ${field.name}.${key}`);
   }
 }
 
@@ -275,15 +263,11 @@ function normalizeArrayField(
     }
     return entry;
   });
-  if (field.required && entries.length === 0)
-    throw new Error(`${field.name} is required`);
+  if (field.required && entries.length === 0) throw new Error(`${field.name} is required`);
   return entries;
 }
 
-export function normalizeFieldValue(
-  field: FieldDefinition,
-  raw: unknown,
-): DocumentDataValue {
+export function normalizeFieldValue(field: FieldDefinition, raw: unknown): DocumentDataValue {
   switch (field.type) {
     case "text":
     case "email":
@@ -317,8 +301,7 @@ export function normalizeCollectionData(
   const normalized: NormalizedDocumentData = {};
 
   for (const fieldName of Object.keys(data)) {
-    if (!allowedFields.has(fieldName))
-      throw new Error(`Unknown field: ${fieldName}`);
+    if (!allowedFields.has(fieldName)) throw new Error(`Unknown field: ${fieldName}`);
   }
 
   for (const field of collection.fields) {

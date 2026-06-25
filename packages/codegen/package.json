@@ -20,31 +20,20 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && node ../../scripts/rewrite-dts-extensions.mjs dist",
+    "build": "node ../../scripts/build-ts-package.mjs",
     "check:publish": "publint && attw --pack . --profile esm-only",
-    "test": "vitest --run --passWithNoTests",
-    "typecheck": "tsgo -p tsconfig.json",
-    "lint": "oxlint .",
-    "format": "oxfmt -c ../../config/oxfmt/oxfmt.json ."
+    "test": "vitest --run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@hugo-hsi-dev/compiler": "workspace:*",
     "@hugo-hsi-dev/schema": "workspace:*",
     "@libsql/client": "^0.15.15",
-    "drizzle-orm": "^0.45.2"
-  },
-  "peerDependencies": {
+    "drizzle-orm": "^0.45.2",
     "drizzle-kit": "^0.31.10"
   },
   "devDependencies": {
-    "@hugo-hsi-dev/oxfmt-config": "workspace:*",
-    "@hugo-hsi-dev/oxlint-config": "workspace:*",
-    "@hugo-hsi-dev/tsconfig": "workspace:*",
     "@types/node": "^24.13.1",
-    "@typescript/native-preview": "7.0.0-dev.20260611.2",
-    "drizzle-kit": "^0.31.10",
-    "oxfmt": "^0.17.0",
-    "oxlint": "^1.29.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.8"
   }

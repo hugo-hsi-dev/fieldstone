@@ -1,4 +1,4 @@
-import type { CompiledContent, SchemaPlan } from "./collection-model.ts";
+import type { CompiledContent, SchemaPlan } from "./collection-model.js";
 
 function renderTypeColumn(column: CompiledContent["columns"][number]) {
   // optionalInput fields (defaulted fields, optional arrays) are optional on
@@ -25,7 +25,7 @@ function renderGeneratedEntries(contents: readonly CompiledContent[]) {
 // relation fields only (group/array-nested relations are not yet populated).
 function renderRelationEntries(contents: readonly CompiledContent[]) {
   return contents
-    .map((content) => {
+    .flatMap((content) => {
       const relations = content.fields
         .filter((field) => field.type === "relationship" || field.type === "upload")
         .map(
@@ -36,9 +36,7 @@ function renderRelationEntries(contents: readonly CompiledContent[]) {
         )
         .join("\n");
 
-      return relations
-        ? `  ${JSON.stringify(content.slug)}: {\n${relations}\n  };`
-        : `  ${JSON.stringify(content.slug)}: {};`;
+      return relations ? [`  ${JSON.stringify(content.slug)}: {\n${relations}\n  };`] : [];
     })
     .join("\n");
 }

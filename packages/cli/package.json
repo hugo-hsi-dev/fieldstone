@@ -20,24 +20,15 @@
   "scripts": {
     "test": "vitest --run",
     "check:publish": "publint",
-    "typecheck": "tsgo -p tsconfig.json",
-    "lint": "oxlint .",
-    "format": "oxfmt -c ../../config/oxfmt/oxfmt.json ."
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@hugo-hsi-dev/codegen": "workspace:*",
     "@hugo-hsi-dev/compiler": "workspace:*",
-    "@hugo-hsi-dev/schema": "workspace:*",
     "vite": "^8.0.16"
   },
   "devDependencies": {
-    "@hugo-hsi-dev/oxfmt-config": "workspace:*",
-    "@hugo-hsi-dev/oxlint-config": "workspace:*",
-    "@hugo-hsi-dev/tsconfig": "workspace:*",
     "@types/node": "^24.13.1",
-    "@typescript/native-preview": "7.0.0-dev.20260611.2",
-    "oxfmt": "^0.17.0",
-    "oxlint": "^1.29.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.8"
   }

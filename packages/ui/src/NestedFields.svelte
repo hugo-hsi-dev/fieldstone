@@ -1,10 +1,10 @@
 <script lang="ts">
+	import { Plus } from '@lucide/svelte';
 	import type { FieldDefinition } from '@hugo-hsi-dev/schema';
 
 	import { getFieldLabel } from './labels';
 	import Label from './primitives/Label.svelte';
 	import Button from './primitives/Button.svelte';
-	import Icon from './primitives/Icon.svelte';
 	import NestedFields from './NestedFields.svelte';
 
 	type Field = FieldDefinition;
@@ -205,7 +205,7 @@
 							class="fs-admin__array-add"
 							onclick={() => addArrayRow(field.name)}
 						>
-							<Icon name="plus" />
+							<Plus size={16} class="fs-admin__icon" aria-hidden="true" focusable="false" />
 							Add item
 						</button>
 					{/if}

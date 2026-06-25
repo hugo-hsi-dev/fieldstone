@@ -1,10 +1,7 @@
 packages:
   - packages/*
-  - config/*
   - test/*
 allowBuilds:
-  '@prisma/client': true
-  "@tailwindcss/oxide": true
-  better-sqlite3: true
   esbuild: true
   sharp: true
+autoInstallPeers: false

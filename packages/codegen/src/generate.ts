@@ -3,7 +3,7 @@ import path from "node:path";
 
 import type { FieldstoneConfig } from "@hugo-hsi-dev/schema";
 import type { FieldstoneCompiledConfig } from "@hugo-hsi-dev/compiler";
-import { discoverCollections, discoverGlobals } from "./collections.ts";
+import { discoverContentFiles } from "./collections.js";
 
 type LoadModule = <T = Record<string, unknown>>(id: string) => Promise<T>;
 
@@ -19,10 +19,7 @@ export async function loadFieldstoneConfig({
   loadModule: LoadModule;
   root: string;
 }): Promise<FieldstoneConfig> {
-  const [collectionFiles, globalFiles] = await Promise.all([
-    discoverCollections(root),
-    discoverGlobals(root),
-  ]);
+  const { collections: collectionFiles, globals: globalFiles } = await discoverContentFiles(root);
   const collections: FieldstoneConfig["collections"] = {};
   const globals: NonNullable<FieldstoneConfig["globals"]> = {};
 
@@ -67,9 +64,6 @@ export async function writeGeneratedFiles({
   await mkdir(outputDir, { recursive: true });
   await Promise.all([
     writeFile(path.join(outputDir, "schema.ts"), compiled.renderSchemaSource()),
-    writeFile(
-      path.join(outputDir, "types.d.ts"),
-      compiled.renderTypesDeclaration(),
-    ),
+    writeFile(path.join(outputDir, "types.d.ts"), compiled.renderTypesDeclaration()),
   ]);
 }

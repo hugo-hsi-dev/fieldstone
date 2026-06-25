@@ -1,7 +1,0 @@
-{
-  "extends": "@hugo-hsi-dev/tsconfig/node.json",
-  "compilerOptions": {
-    "types": ["node", "@sveltejs/kit"],
-  },
-  "include": ["src/**/*.ts"],
-}

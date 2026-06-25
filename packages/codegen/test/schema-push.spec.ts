@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { abortMessage, decidePush, normalizeSqliteUrl } from "../src/schema-push.ts";
+import { abortMessage, decidePush, normalizeSqliteUrl } from "../src/schema-push.js";
 
 describe("decidePush", () => {
   it("applies when there are no warnings, whatever the context", () => {

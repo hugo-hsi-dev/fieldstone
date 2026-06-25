@@ -9,24 +9,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { collection, text } from "@hugo-hsi-dev/schema";
 import type { FieldstoneConfig, UploadOptions } from "@hugo-hsi-dev/schema";
 
-import {
-  createFieldstoneAdmin,
-  createFieldstoneMedia,
-  mimeAllowed,
-  probeImageDimensions,
-  UploadError,
-} from "../src/index.ts";
+import { createFieldstoneAdmin, createFieldstoneMedia } from "../src/index.js";
 
-// A minimal 3x2 GIF (only the header is read by the probe) padded past the
-// 24-byte minimum.
+// A tiny fake GIF is enough for validation tests; dimension extraction is owned by sharp.
 const GIF_3x2 = new Uint8Array(30);
 GIF_3x2.set([0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 3, 0, 2, 0]);
-
-// A minimal PNG: 8-byte signature, then width(4 BE)@16 / height(4 BE)@20.
-const PNG_4x5 = new Uint8Array(32);
-PNG_4x5.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
-PNG_4x5.set([0, 0, 0, 4], 16);
-PNG_4x5.set([0, 0, 0, 5], 20);
 
 function mediaConfig(
   tempDir: string,
@@ -83,22 +70,6 @@ async function makePng(width: number, height: number): Promise<Uint8Array> {
   return new Uint8Array(buffer);
 }
 
-describe("upload helpers", () => {
-  it("probes dimensions for the common formats and gives up gracefully", () => {
-    expect(probeImageDimensions(GIF_3x2)).toEqual({ width: 3, height: 2 });
-    expect(probeImageDimensions(PNG_4x5)).toEqual({ width: 4, height: 5 });
-    expect(probeImageDimensions(new Uint8Array(4))).toBeNull();
-    expect(probeImageDimensions(new Uint8Array(40))).toBeNull();
-  });
-
-  it("matches mime patterns including wildcards", () => {
-    expect(mimeAllowed("image/png", ["image/*"])).toBe(true);
-    expect(mimeAllowed("image/png", ["image/png"])).toBe(true);
-    expect(mimeAllowed("application/pdf", ["*/*"])).toBe(true);
-    expect(mimeAllowed("application/pdf", ["image/*"])).toBe(false);
-  });
-});
-
 describe("createFieldstoneAdmin.uploadMedia", () => {
   let tempDir: string;
 
@@ -114,24 +85,25 @@ describe("createFieldstoneAdmin.uploadMedia", () => {
   it("stores the file and persists a media doc with derived metadata", async () => {
     const config = mediaConfig(tempDir);
     const admin = await createFieldstoneAdmin({ config });
+    const bytes = await makePng(3, 2);
 
     const doc = (await admin.uploadMedia({
       collection: "media",
-      file: gifFile(),
+      file: { name: "Photo One.png", type: "image/png", bytes },
       data: { alt: "A photo" },
     })) as Record<string, unknown>;
 
     expect(doc.alt).toBe("A photo");
-    expect(doc.mimeType).toBe("image/gif");
-    expect(doc.filesize).toBe(GIF_3x2.byteLength);
+    expect(doc.mimeType).toBe("image/png");
+    expect(doc.filesize).toBe(bytes.byteLength);
     expect(doc.width).toBe(3);
     expect(doc.height).toBe(2);
     // filename is the storage key: namespaced by collection, uuid-prefixed.
-    expect(String(doc.filename)).toMatch(/^media\/[0-9a-f-]+-photo-one\.gif$/);
+    expect(String(doc.filename)).toMatch(/^media\/[0-9a-f-]+-photo-one\.png$/);
 
     // The bytes physically landed under the configured staticDir.
     const onDisk = await stat(path.join(tempDir, "uploads", String(doc.filename)));
-    expect(onDisk.size).toBe(GIF_3x2.byteLength);
+    expect(onDisk.size).toBe(bytes.byteLength);
   });
 
   it("generates and cleans up image variants when sharp is available", async () => {
@@ -163,7 +135,7 @@ describe("createFieldstoneAdmin.uploadMedia", () => {
       config: mediaConfig(tempDir, { mimeTypes: ["image/png"] }),
     });
     await expect(admin.uploadMedia({ collection: "media", file: gifFile() })).rejects.toThrow(
-      UploadError,
+      'File type "image/gif" is not allowed',
     );
 
     const admin2 = await createFieldstoneAdmin({
@@ -242,9 +214,9 @@ describe("createFieldstoneAdmin.uploadMedia", () => {
 
     await stat(filePath); // exists
     // The throwing hook surfaces, but the row is gone so the bytes are still cleaned up.
-    await expect(
-      admin.deleteDocument({ collection: "media", id: String(doc.id) }),
-    ).rejects.toThrow("hook boom");
+    await expect(admin.deleteDocument({ collection: "media", id: String(doc.id) })).rejects.toThrow(
+      "hook boom",
+    );
     await expect(stat(filePath)).rejects.toMatchObject({ code: "ENOENT" });
   });
 
@@ -326,10 +298,7 @@ describe("createFieldstoneMedia serve handler", () => {
     })) as Record<string, unknown>;
 
     const media = createFieldstoneMedia({ config });
-    const res = await media.handle(
-      new Request("http://x/"),
-      String(svg.filename).split("/"),
-    );
+    const res = await media.handle(new Request("http://x/"), String(svg.filename).split("/"));
     expect(res.headers.get("content-type")).toBe("image/svg+xml");
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");
     // Served as a download so a navigated /media/<x>.svg can't execute script.

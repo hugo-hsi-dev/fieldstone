@@ -5,33 +5,14 @@ import type {
   CollectionSlug,
   FieldstoneConfig,
   GlobalRuntimeConfig,
-  GlobalSlug,
 } from "@hugo-hsi-dev/schema";
 
-import {
-  getFieldstone,
-  isForbiddenError,
-  type CreateInput,
-  type DocumentInput,
-  type GlobalInput,
-  type ListInput,
-  type UpdateGlobalInput,
-  type UpdateInput,
-} from "@hugo-hsi-dev/runtime";
+import { getFieldstone, isForbiddenError } from "@hugo-hsi-dev/runtime";
 
-import {
-  assertUploadAllowed,
-  buildStorageKey,
-  probeImageDimensions,
-  type UploadFile,
-} from "./upload.ts";
-import { generateVariants, loadSharp } from "./variants.ts";
+import { assertUploadAllowed, buildStorageKey, type UploadFile } from "./upload.js";
+import { generateVariants, loadSharp } from "./variants.js";
 
-export async function createFieldstoneAdmin({
-  config,
-}: {
-  config: FieldstoneConfig;
-}) {
+export async function createFieldstoneAdmin({ config }: { config: FieldstoneConfig }) {
   const stone = await getFieldstone({ config });
 
   return {
@@ -46,9 +27,7 @@ export async function createFieldstoneAdmin({
       const configCollection = Object.values(config.collections).find(
         (candidate) => candidate.slug === slug,
       );
-      return configCollection?.upload
-        ? { ...runtime, upload: configCollection.upload }
-        : runtime;
+      return configCollection?.upload ? { ...runtime, upload: configCollection.upload } : runtime;
     },
 
     getGlobalConfig(slug: string): GlobalRuntimeConfig | null {
@@ -83,10 +62,7 @@ export async function createFieldstoneAdmin({
       const labelField = isUpload
         ? "filename"
         : (collection.fields.find(
-            (field) =>
-              field.type === "text" ||
-              field.type === "email" ||
-              field.type === "select",
+            (field) => field.type === "text" || field.type === "email" || field.type === "select",
           )?.name ??
           collection.fields[0]?.name ??
           "id");
@@ -96,29 +72,10 @@ export async function createFieldstoneAdmin({
       }));
     },
 
-    listDocuments<TCollection extends CollectionSlug, TDepth extends number = 0>(
-      input: ListInput<TCollection> & { depth?: TDepth },
-    ) {
-      return stone.find(input);
-    },
-
-    countDocuments<TCollection extends CollectionSlug>(
-      input: ListInput<TCollection>,
-    ) {
-      return stone.count(input);
-    },
-
-    getDocument<TCollection extends CollectionSlug, TDepth extends number = 0>(
-      input: DocumentInput<TCollection> & { depth?: TDepth },
-    ) {
-      return stone.findById(input);
-    },
-
-    createDocument<TCollection extends CollectionSlug>(
-      input: CreateInput<TCollection>,
-    ) {
-      return stone.create(input);
-    },
+    listDocuments: stone.find,
+    countDocuments: stone.count,
+    getDocument: stone.findById,
+    createDocument: stone.create,
 
     // Store an uploaded file and persist its media document. Validates the
     // collection's mime/size rules, writes the original via the storage adapter
@@ -145,10 +102,10 @@ export async function createFieldstoneAdmin({
       assertUploadAllowed(file, collectionConfig.upload);
 
       const key = buildStorageKey(slug, file.name);
-      await stone.storage.put(key, file.bytes, { contentType: file.type });
+      await stone.storage.put(key, file.bytes);
 
       // Generate image variants (when sharp is installed); sharp's dimensions are
-      // authoritative, with the pure-JS probe as the no-sharp fallback.
+      // authoritative. Without sharp, dimensions stay null.
       const sharp = await loadSharp();
       const generated = await generateVariants({
         sharp,
@@ -156,14 +113,8 @@ export async function createFieldstoneAdmin({
         mimeType: file.type,
         originalKey: key,
         imageSizes: collectionConfig.upload.imageSizes,
-        put: (variantKey, body, meta) => stone.storage.put(variantKey, body, meta),
+        put: (variantKey, body) => stone.storage.put(variantKey, body),
       });
-      // Only decode for dimensions if sharp didn't already provide them.
-      const probe =
-        generated.width == null || generated.height == null
-          ? probeImageDimensions(file.bytes)
-          : null;
-
       try {
         return await stone.create({
           collection: slug as CollectionSlug,
@@ -174,8 +125,8 @@ export async function createFieldstoneAdmin({
             filename: key,
             mimeType: file.type,
             filesize: file.bytes.byteLength,
-            width: generated.width ?? probe?.width ?? null,
-            height: generated.height ?? probe?.height ?? null,
+            width: generated.width,
+            height: generated.height,
             sizes: generated.variants,
           },
           user,
@@ -189,48 +140,13 @@ export async function createFieldstoneAdmin({
       }
     },
 
-    updateDocument<TCollection extends CollectionSlug>(
-      input: UpdateInput<TCollection>,
-    ) {
-      return stone.update(input);
-    },
-
-    deleteDocument<TCollection extends CollectionSlug>(
-      input: DocumentInput<TCollection>,
-    ) {
-      return stone.delete(input);
-    },
-
-    getGlobal<TGlobal extends GlobalSlug>(input: GlobalInput<TGlobal>) {
-      return stone.getGlobal(input);
-    },
-
-    updateGlobal<TGlobal extends GlobalSlug>(
-      input: UpdateGlobalInput<TGlobal>,
-    ) {
-      return stone.updateGlobal(input);
-    },
+    updateDocument: stone.update,
+    deleteDocument: stone.delete,
+    getGlobal: stone.getGlobal,
+    updateGlobal: stone.updateGlobal,
   };
 }
 
-export { createFieldstoneRest } from "./rest.ts";
-export { createFieldstoneMedia, type FieldstoneMedia } from "./media.ts";
-export {
-  generateVariants,
-  loadSharp,
-  resetSharpForTests,
-  type GenerateVariantsResult,
-  type ImageVariant,
-  type SharpModule,
-} from "./variants.ts";
-export {
-  assertUploadAllowed,
-  buildStorageKey,
-  isUploadError,
-  mimeAllowed,
-  probeImageDimensions,
-  UploadError,
-  type UploadFile,
-  type UploadValidationOptions,
-} from "./upload.ts";
+export { createFieldstoneMedia, type FieldstoneMedia } from "./media.js";
+export { isUploadError } from "./upload.js";
 export { ForbiddenError, isForbiddenError } from "@hugo-hsi-dev/runtime";

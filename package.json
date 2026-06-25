@@ -16,7 +16,7 @@
 		"test": "pnpm build:packages && pnpm test:unit && pnpm --dir test/minimal test:e2e",
 		"test:unit": "pnpm -r --filter './packages/*' test",
 		"test:e2e": "pnpm build:packages && pnpm --dir test/minimal test:e2e",
-		"lint": "eslint . && pnpm -r --filter './packages/*' --if-present lint",
+		"lint": "eslint . && pnpm --filter @hugo-hsi-dev/ui lint:format",
 		"format": "pnpm -r --filter './packages/*' --if-present format",
 		"changeset": "changeset",
 		"release": "pnpm build:packages && changeset publish"
@@ -24,7 +24,11 @@
 	"devDependencies": {
 		"@arethetypeswrong/cli": "^0.18.3",
 		"@changesets/cli": "^2.31.0",
+		"@eslint/js": "^10.0.1",
 		"eslint": "^10.4.1",
-		"publint": "^0.3.21"
+		"eslint-config-prettier": "^10.1.8",
+		"eslint-plugin-svelte": "^3.19.0",
+		"publint": "^0.3.21",
+		"typescript-eslint": "^8.60.1"
 	}
 }

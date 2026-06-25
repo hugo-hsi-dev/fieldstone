@@ -1,8 +1,4 @@
-import type {
-  AccessOperation,
-  AccessUser,
-  FieldstoneConfig,
-} from "@hugo-hsi-dev/schema";
+import type { AccessOperation, AccessUser, FieldstoneConfig } from "@hugo-hsi-dev/schema";
 
 export class ForbiddenError extends Error {
   readonly status = 403;
@@ -29,7 +25,7 @@ export async function assertCollectionAccess(
   args: { user: AccessUser; id?: string; data?: Record<string, unknown> },
 ): Promise<void> {
   // Look up by slug, not config key — collections may be registered under a key
-  // that differs from their slug, and runtime/REST calls pass the slug.
+  // that differs from their slug, and runtime/admin calls pass the slug.
   const collectionConfig = Object.values(config.collections).find(
     (entry) => entry.slug === collection,
   );

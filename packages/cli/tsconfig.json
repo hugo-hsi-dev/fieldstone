@@ -1,4 +1,4 @@
 {
-  "extends": "@hugo-hsi-dev/tsconfig/cli.json",
+  "extends": "../../config/tsconfig/cli.json",
   "include": ["bin/**/*.mjs"],
 }
