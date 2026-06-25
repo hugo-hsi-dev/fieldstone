@@ -261,12 +261,9 @@ export type GlobalConfig = GlobalDefinition & {
   slug: string;
 };
 
-// Storage backend for uploaded files. Declarative (serialized into
-// $fieldstone-config); the live adapter is resolved from it at runtime by
-// @hugo-hsi-dev/storage. The mime/size limits are per-collection (UploadOptions).
+// Local storage settings for uploaded files. The mime/size limits are
+// per-collection (UploadOptions).
 export type StorageConfig = {
-  /** Backend. "local" (default) writes to staticDir; "s3" uses a remote adapter (a later slice). */
-  adapter?: "local" | "s3";
   /** Directory (relative to the app root) for local files. Defaults to ".fieldstone/uploads". */
   staticDir?: string;
   /** URL prefix the media-serving route is mounted at. Defaults to "/media". */
@@ -299,21 +296,17 @@ export type CollectionSlug = [GeneratedCollectionSlug] extends [never]
   ? string
   : GeneratedCollectionSlug;
 
-export type GlobalSlug = [GeneratedGlobalSlug] extends [never]
-  ? string
-  : GeneratedGlobalSlug;
+export type GlobalSlug = [GeneratedGlobalSlug] extends [never] ? string : GeneratedGlobalSlug;
 
 export type SystemFieldName = "id" | "createdAt" | "updatedAt";
 
-type ContentFieldName<
-  TGenerated extends object,
-  TSlug extends keyof TGenerated,
-> = Exclude<keyof TGenerated[TSlug], SystemFieldName> & string;
+type ContentFieldName<TGenerated extends object, TSlug extends keyof TGenerated> = Exclude<
+  keyof TGenerated[TSlug],
+  SystemFieldName
+> &
+  string;
 
-type RequiredContentFieldName<
-  TGenerated extends object,
-  TSlug extends keyof TGenerated,
-> = {
+type RequiredContentFieldName<TGenerated extends object, TSlug extends keyof TGenerated> = {
   [TField in ContentFieldName<TGenerated, TSlug>]: undefined extends TGenerated[TSlug][TField]
     ? never // optional property (e.g. a defaulted field) → optional on input
     : Exclude<TGenerated[TSlug][TField], undefined> extends boolean
@@ -323,10 +316,7 @@ type RequiredContentFieldName<
         : TField;
 }[ContentFieldName<TGenerated, TSlug>];
 
-type OptionalContentFieldName<
-  TGenerated extends object,
-  TSlug extends keyof TGenerated,
-> = Exclude<
+type OptionalContentFieldName<TGenerated extends object, TSlug extends keyof TGenerated> = Exclude<
   ContentFieldName<TGenerated, TSlug>,
   RequiredContentFieldName<TGenerated, TSlug>
 >;
@@ -351,21 +341,10 @@ type ContentDataValue<
   TField extends ContentFieldName<TGenerated, TSlug>,
 > = WidenInputValue<Exclude<TGenerated[TSlug][TField], undefined>>;
 
-type GeneratedData<
-  TGenerated extends object,
-  TSlug extends keyof TGenerated,
-> = {
-  [K in RequiredContentFieldName<TGenerated, TSlug>]: ContentDataValue<
-    TGenerated,
-    TSlug,
-    K
-  >;
+type GeneratedData<TGenerated extends object, TSlug extends keyof TGenerated> = {
+  [K in RequiredContentFieldName<TGenerated, TSlug>]: ContentDataValue<TGenerated, TSlug, K>;
 } & {
-  [K in OptionalContentFieldName<TGenerated, TSlug>]?: ContentDataValue<
-    TGenerated,
-    TSlug,
-    K
-  >;
+  [K in OptionalContentFieldName<TGenerated, TSlug>]?: ContentDataValue<TGenerated, TSlug, K>;
 };
 
 type FallbackDocument = {
@@ -392,10 +371,9 @@ export type CollectionDocument<TCollection extends string> =
     ? DocumentShape<GeneratedCollections[TCollection]>
     : FallbackDocument;
 
-export type GlobalDocument<TGlobal extends string> =
-  TGlobal extends keyof GeneratedGlobals
-    ? DocumentShape<GeneratedGlobals[TGlobal]>
-    : FallbackDocument;
+export type GlobalDocument<TGlobal extends string> = TGlobal extends keyof GeneratedGlobals
+  ? DocumentShape<GeneratedGlobals[TGlobal]>
+  : FallbackDocument;
 
 // A `depth`-populated read replaces each top-level relation/upload field with the
 // target document(s): single → `Doc | null` (null when missing or read-forbidden),
@@ -403,9 +381,7 @@ export type GlobalDocument<TGlobal extends string> =
 // Depth countdown for recursive populate typing. Multi-level types up to index 10;
 // deeper levels degrade to ids (the runtime still populates, bounded by depth).
 type DepthPrev = [never, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-type NextDepth<TDepth extends number> = DepthPrev[TDepth] extends number
-  ? DepthPrev[TDepth]
-  : 0;
+type NextDepth<TDepth extends number> = DepthPrev[TDepth] extends number ? DepthPrev[TDepth] : 0;
 
 type PopulatedField<TRelation, TDepth extends number> = TRelation extends {
   to: infer TTarget extends string;
@@ -413,7 +389,7 @@ type PopulatedField<TRelation, TDepth extends number> = TRelation extends {
 }
   ? TMany extends true
     ? // An unset non-required hasMany relation is stored as null, not [].
-      PopulatedDocument<TTarget, TDepth>[] | null
+        PopulatedDocument<TTarget, TDepth>[] | null
     : PopulatedDocument<TTarget, TDepth> | null
   : never;
 
@@ -429,10 +405,7 @@ export type PopulatedDocument<
     TDepth extends 0
     ? CollectionDocument<TCollection>
     : TCollection extends keyof GeneratedCollectionRelations
-      ? Omit<
-          CollectionDocument<TCollection>,
-          keyof GeneratedCollectionRelations[TCollection]
-        > & {
+      ? Omit<CollectionDocument<TCollection>, keyof GeneratedCollectionRelations[TCollection]> & {
           [K in keyof GeneratedCollectionRelations[TCollection]]: PopulatedField<
             GeneratedCollectionRelations[TCollection][K],
             NextDepth<TDepth>
@@ -455,10 +428,9 @@ export type CollectionData<TCollection extends string> =
     ? GeneratedData<GeneratedCollections, TCollection>
     : Record<string, FallbackDataValue>;
 
-export type GlobalData<TGlobal extends string> =
-  TGlobal extends keyof GeneratedGlobals
-    ? GeneratedData<GeneratedGlobals, TGlobal>
-    : Record<string, FallbackDataValue>;
+export type GlobalData<TGlobal extends string> = TGlobal extends keyof GeneratedGlobals
+  ? GeneratedData<GeneratedGlobals, TGlobal>
+  : Record<string, FallbackDataValue>;
 
 // --- Typed `where` filter — mirrors the runtime where-builder's OPS_BY_KIND ---
 

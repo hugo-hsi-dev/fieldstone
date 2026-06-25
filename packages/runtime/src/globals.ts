@@ -1,14 +1,15 @@
 import type { GlobalDocument, GlobalSlug } from "@hugo-hsi-dev/schema";
+import { eq } from "drizzle-orm";
 
-import type { createDatabase } from "./database.ts";
-import type { GlobalInput, UpdateGlobalInput } from "./types.ts";
+import type { createDatabase } from "./database.js";
+import type { GlobalInput, UpdateGlobalInput } from "./types.js";
 
 const GLOBAL_SINGLETON_ID = "global";
 
 type DatabaseContext = Awaited<ReturnType<typeof createDatabase>>;
 
 export function createGlobalRuntime(context: DatabaseContext) {
-  const { compiled, compiledConfig, database, eq } = context;
+  const { compiled, compiledConfig, database } = context;
 
   function getTable(globalSlug: string) {
     if (!compiledConfig.getGlobal(globalSlug)) {
@@ -18,9 +19,7 @@ export function createGlobalRuntime(context: DatabaseContext) {
   }
 
   return {
-    getGlobal: async <TGlobal extends GlobalSlug>({
-      global: globalSlug,
-    }: GlobalInput<TGlobal>) => {
+    getGlobal: async <TGlobal extends GlobalSlug>({ global: globalSlug }: GlobalInput<TGlobal>) => {
       const table = getTable(globalSlug);
       const [document] = await database
         .select()

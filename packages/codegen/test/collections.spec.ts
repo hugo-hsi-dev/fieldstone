@@ -5,11 +5,10 @@ import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 
 import {
-  discoverCollections,
-  discoverGlobals,
-  validateCollectionEntries,
-  validateContentEntries,
-} from "../src/collections.ts";
+  discoverContentFiles,
+  isWatchedCollectionFile,
+  isWatchedGlobalFile,
+} from "../src/collections.js";
 
 async function withCollections(
   files: Record<string, string>,
@@ -35,45 +34,33 @@ async function withCollections(
 describe("collection discovery", () => {
   it("ignores blank collection files", async () => {
     await withCollections({ draft: "" }, async (root) => {
-      await expect(discoverCollections(root)).resolves.toEqual([]);
+      await expect(discoverContentFiles(root)).resolves.toMatchObject({ collections: [] });
     });
   });
 
   it("discovers nonblank collection files", async () => {
     await withCollections({ posts: "export default {};" }, async (root) => {
-      await expect(discoverCollections(root)).resolves.toEqual([
-        {
-          file: path.join(root, "src", "cms", "posts", "+collection.ts"),
-          slug: "posts",
-        },
-      ]);
+      await expect(discoverContentFiles(root)).resolves.toMatchObject({
+        collections: [
+          {
+            file: path.join(root, "src", "cms", "posts", "+collection.ts"),
+            slug: "posts",
+          },
+        ],
+      });
     });
   });
 
   it("ignores blank prototype collection files", async () => {
     await withCollections({ ["__proto__"]: "" }, async (root) => {
-      await expect(discoverCollections(root)).resolves.toEqual([]);
+      await expect(discoverContentFiles(root)).resolves.toMatchObject({ collections: [] });
     });
   });
 
   it("rejects nonblank prototype collection files", async () => {
-    await withCollections(
-      { ["__proto__"]: "export default {};" },
-      async (root) => {
-        await expect(discoverCollections(root)).rejects.toThrow(
-          "Reserved content slug: __proto__",
-        );
-      },
-    );
-  });
-
-  it("rejects duplicate nonblank collection slugs", async () => {
-    expect(() =>
-      validateCollectionEntries([
-        { entry: "Posts", isBlank: false },
-        { entry: "posts", isBlank: false },
-      ]),
-    ).toThrow("Duplicate content slug: posts");
+    await withCollections({ ["__proto__"]: "export default {};" }, async (root) => {
+      await expect(discoverContentFiles(root)).rejects.toThrow("Reserved content slug: __proto__");
+    });
   });
 
   it("discovers global files", async () => {
@@ -87,12 +74,14 @@ describe("collection discovery", () => {
     );
 
     try {
-      await expect(discoverGlobals(root)).resolves.toEqual([
-        {
-          file: path.join(root, "src", "cms", "site-settings", "+global.ts"),
-          slug: "site-settings",
-        },
-      ]);
+      await expect(discoverContentFiles(root)).resolves.toMatchObject({
+        globals: [
+          {
+            file: path.join(root, "src", "cms", "site-settings", "+global.ts"),
+            slug: "site-settings",
+          },
+        ],
+      });
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -103,39 +92,43 @@ describe("collection discovery", () => {
     await mkdir(path.join(root, "src", "cms", "site-settings"), {
       recursive: true,
     });
-    await writeFile(
-      path.join(root, "src", "cms", "site-settings", "+collection.ts"),
-      "",
-    );
+    await writeFile(path.join(root, "src", "cms", "site-settings", "+collection.ts"), "");
     await writeFile(
       path.join(root, "src", "cms", "site-settings", "+global.ts"),
       "export default {};",
     );
 
     try {
-      await expect(discoverCollections(root)).resolves.toEqual([]);
-      await expect(discoverGlobals(root)).resolves.toEqual([
-        {
-          file: path.join(root, "src", "cms", "site-settings", "+global.ts"),
-          slug: "site-settings",
-        },
-      ]);
+      await expect(discoverContentFiles(root)).resolves.toEqual({
+        collections: [],
+        globals: [
+          {
+            file: path.join(root, "src", "cms", "site-settings", "+global.ts"),
+            slug: "site-settings",
+          },
+        ],
+      });
     } finally {
       await rm(root, { recursive: true, force: true });
     }
   });
 
-  it("rejects collection and global files with the same slug", () => {
-    expect(() =>
-      validateContentEntries([
-        {
-          entry: "settings",
-          hasCollection: true,
-          hasGlobal: true,
-          isBlank: false,
-        },
-      ]),
-    ).toThrow("Duplicate content slug: settings");
+  it("rejects collection and global files with the same slug", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "fieldstone-codegen-"));
+    await mkdir(path.join(root, "src", "cms", "settings"), {
+      recursive: true,
+    });
+    await writeFile(
+      path.join(root, "src", "cms", "settings", "+collection.ts"),
+      "export default {};",
+    );
+    await writeFile(path.join(root, "src", "cms", "settings", "+global.ts"), "export default {};");
+
+    try {
+      await expect(discoverContentFiles(root)).rejects.toThrow("Duplicate content slug: settings");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 
   it("rejects collection files that exist but cannot be read", async () => {
@@ -145,7 +138,7 @@ describe("collection discovery", () => {
     });
 
     try {
-      await expect(discoverCollections(root)).rejects.toThrow();
+      await expect(discoverContentFiles(root)).rejects.toThrow();
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -158,9 +151,21 @@ describe("collection discovery", () => {
     });
 
     try {
-      await expect(discoverCollections(root)).resolves.toEqual([]);
+      await expect(discoverContentFiles(root)).resolves.toMatchObject({ collections: [] });
     } finally {
       await rm(root, { recursive: true, force: true });
     }
+  });
+
+  it("recognizes watched content files through public predicates", () => {
+    const cmsDir = path.join("src", "cms");
+    expect(isWatchedCollectionFile(cmsDir, path.join(cmsDir, "posts", "+collection.ts"))).toBe(
+      true,
+    );
+    expect(isWatchedGlobalFile(cmsDir, path.join(cmsDir, "settings", "+global.ts"))).toBe(true);
+    expect(isWatchedCollectionFile(cmsDir, path.join(cmsDir, "_draft", "+collection.ts"))).toBe(
+      false,
+    );
+    expect(isWatchedGlobalFile(cmsDir, path.join(cmsDir, "settings", "helper.ts"))).toBe(false);
   });
 });

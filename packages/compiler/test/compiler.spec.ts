@@ -16,8 +16,8 @@ import {
   type FieldstoneConfig,
 } from "@hugo-hsi-dev/schema";
 import * as schema from "@hugo-hsi-dev/schema";
-import * as compiler from "../src/index.ts";
-import { compileFieldstoneConfig } from "../src/index.ts";
+import * as compiler from "../src/index.js";
+import { compileFieldstoneConfig } from "../src/index.js";
 
 describe("fieldstone compiler", () => {
   it("compiles deterministic collection facts once for compiler outputs", () => {
@@ -47,9 +47,7 @@ describe("fieldstone compiler", () => {
       "blog_posts",
       "pages",
     ]);
-    expect(schemaPlan.collections[1]?.tableIdentifier).toBe(
-      "collection_blog_posts_2",
-    );
+    expect(schemaPlan.collections[1]?.tableIdentifier).toBe("collection_blog_posts_2");
     expect(schemaPlan.collections[0]).toMatchObject({
       slug: "blog-posts",
       tableIdentifier: "collection_blog_posts",
@@ -57,7 +55,6 @@ describe("fieldstone compiler", () => {
         {
           columnName: "id",
           identifier: "id",
-          name: "id",
           origin: "system",
           required: true,
           runtimeKey: "id",
@@ -66,7 +63,6 @@ describe("fieldstone compiler", () => {
         {
           columnName: "seo-title",
           identifier: "seo_title",
-          name: "seo-title",
           origin: "field",
           required: true,
           runtimeKey: "seo-title",
@@ -75,7 +71,6 @@ describe("fieldstone compiler", () => {
         {
           columnName: "seo_title",
           identifier: "seo_title_2",
-          name: "seo_title",
           origin: "field",
           required: false,
           runtimeKey: "seo_title",
@@ -84,7 +79,6 @@ describe("fieldstone compiler", () => {
         {
           columnName: "created_at",
           identifier: "createdAt",
-          name: "createdAt",
           origin: "system",
           required: true,
           runtimeKey: "createdAt",
@@ -93,7 +87,6 @@ describe("fieldstone compiler", () => {
         {
           columnName: "updated_at",
           identifier: "updatedAt",
-          name: "updatedAt",
           origin: "system",
           required: true,
           runtimeKey: "updatedAt",
@@ -103,19 +96,6 @@ describe("fieldstone compiler", () => {
       fields: [
         { identifier: "seo_title", name: "seo-title", required: true },
         { identifier: "seo_title_2", name: "seo_title", required: false },
-      ],
-      systemFields: [
-        { columnName: "id", identifier: "id", name: "id" },
-        {
-          columnName: "created_at",
-          identifier: "createdAt",
-          name: "createdAt",
-        },
-        {
-          columnName: "updated_at",
-          identifier: "updatedAt",
-          name: "updatedAt",
-        },
       ],
     });
     expect(schemaPlan.fingerprintPayload.collections[0]).toEqual({
@@ -143,10 +123,7 @@ describe("fieldstone compiler", () => {
         db: { dialect: "sqlite", url: ":memory:" },
         collections: {
           posts: {
-            fields: [
-              text({ name: "seo-title", required: true }),
-              text({ name: "seo_title" }),
-            ],
+            fields: [text({ name: "seo-title", required: true }), text({ name: "seo_title" })],
             slug: "posts",
           },
         },
@@ -221,10 +198,7 @@ describe("fieldstone compiler", () => {
   it("rejects duplicate field names in one collection", () => {
     expect(() =>
       collection({
-        fields: [
-          text({ name: "title", required: true }),
-          text({ name: "title", required: true }),
-        ],
+        fields: [text({ name: "title", required: true }), text({ name: "title", required: true })],
       }),
     ).toThrow("Duplicate field name: title");
   });
@@ -251,10 +225,7 @@ describe("fieldstone compiler", () => {
   it("rejects case-only duplicate field names", () => {
     expect(() =>
       collection({
-        fields: [
-          text({ name: "title", required: true }),
-          text({ name: "Title", required: true }),
-        ],
+        fields: [text({ name: "title", required: true }), text({ name: "Title", required: true })],
       }),
     ).toThrow("Duplicate field name: Title");
   });
@@ -264,18 +235,13 @@ describe("fieldstone compiler", () => {
       db: { dialect: "sqlite", url: ":memory:" },
       collections: {
         "blog-posts": {
-          fields: [
-            text({ name: "title", required: true }),
-            boolean({ name: "published" }),
-          ],
+          fields: [text({ name: "title", required: true }), boolean({ name: "published" })],
           slug: "blog-posts",
         },
       },
     }).renderSchemaSource();
 
-    expect(output).toContain(
-      'export const collection_blog_posts = sqliteTable("blog-posts"',
-    );
+    expect(output).toContain('export const collection_blog_posts = sqliteTable("blog-posts"');
     expect(output).toContain("import crypto from 'node:crypto'");
     expect(output).toContain('title: text("title").notNull()');
     expect(output).toContain(
@@ -324,12 +290,9 @@ describe("fieldstone compiler", () => {
     });
 
     const collection = compiled.schemaPlan.collectionBySlug.get("products")!;
-    const byName = Object.fromEntries(
-      collection.columns.map((column) => [column.name, column]),
-    );
+    const byName = Object.fromEntries(collection.columns.map((column) => [column.runtimeKey, column]));
     expect(byName.price).toMatchObject({
       sourceExpression: "number",
-      drizzleType: "number",
       typeScriptType: "number",
       required: true,
     });
@@ -346,9 +309,7 @@ describe("fieldstone compiler", () => {
 
     const source = compiled.renderSchemaSource();
     expect(source).toContain('price: real("price").notNull()');
-    expect(source).toContain(
-      "launchDate: integer(\"launchDate\", { mode: 'timestamp' })",
-    );
+    expect(source).toContain("launchDate: integer(\"launchDate\", { mode: 'timestamp' })");
     expect(source).toContain('sku: text("sku").unique()');
     expect(source).toContain("import { integer, real, sqliteTable, text }");
 
@@ -381,9 +342,7 @@ describe("fieldstone compiler", () => {
     });
 
     const posts = compiled.schemaPlan.collectionBySlug.get("posts")!;
-    const byName = Object.fromEntries(
-      posts.columns.map((column) => [column.name, column]),
-    );
+    const byName = Object.fromEntries(posts.columns.map((column) => [column.runtimeKey, column]));
     expect(byName.author).toMatchObject({
       sourceExpression: "text",
       typeScriptType: "string",
@@ -419,7 +378,7 @@ describe("fieldstone compiler", () => {
     });
 
     const posts = compiled.schemaPlan.collectionBySlug.get("posts")!;
-    const status = posts.columns.find((column) => column.name === "_status")!;
+    const status = posts.columns.find((column) => column.runtimeKey === "_status")!;
     expect(status).toMatchObject({
       sourceExpression: "text",
       typeScriptType: '"draft" | "published"',
@@ -427,14 +386,10 @@ describe("fieldstone compiler", () => {
     });
     // _status is emitted optional (it has a runtime default), so typed creates
     // needn't pass it even though the stored value is always non-null.
-    expect(compiled.renderTypesDeclaration()).toContain(
-      '"_status"?: "draft" | "published"',
-    );
+    expect(compiled.renderTypesDeclaration()).toContain('"_status"?: "draft" | "published"');
     // The column keeps its `_status` name; the generated Drizzle identifier drops the
     // leading underscore.
-    expect(compiled.renderSchemaSource()).toContain(
-      'status: text("_status").notNull()',
-    );
+    expect(compiled.renderSchemaSource()).toContain('status: text("_status").notNull()');
   });
 
   it("does not inject _status without drafts enabled", () => {
@@ -448,7 +403,7 @@ describe("fieldstone compiler", () => {
       },
     });
     const posts = compiled.schemaPlan.collectionBySlug.get("posts")!;
-    expect(posts.columns.some((column) => column.name === "_status")).toBe(false);
+    expect(posts.columns.some((column) => column.runtimeKey === "_status")).toBe(false);
   });
 
   it("compiles group and array fields to json columns with nested types", () => {
@@ -459,10 +414,7 @@ describe("fieldstone compiler", () => {
           fields: [
             group({
               name: "seo",
-              fields: [
-                text({ name: "title", required: true }),
-                text({ name: "description" }),
-              ],
+              fields: [text({ name: "title", required: true }), text({ name: "description" })],
             }),
             array({
               name: "links",
@@ -475,22 +427,16 @@ describe("fieldstone compiler", () => {
     });
 
     const posts = compiled.schemaPlan.collectionBySlug.get("posts")!;
-    const byName = Object.fromEntries(
-      posts.columns.map((column) => [column.name, column]),
-    );
+    const byName = Object.fromEntries(posts.columns.map((column) => [column.runtimeKey, column]));
     expect(byName.seo.sourceExpression).toBe("json");
     expect(byName.links.sourceExpression).toBe("json");
 
     const types = compiled.renderTypesDeclaration();
-    expect(types).toContain(
-      '"seo": { "title": string; "description": string | null }',
-    );
+    expect(types).toContain('"seo": { "title": string; "description": string | null }');
     // links is an optional array, so it's optional (and non-null) on input.
     expect(types).toContain('"links"?: { "url": string }[]');
 
-    expect(compiled.renderSchemaSource()).toContain(
-      "seo: text(\"seo\", { mode: 'json' })",
-    );
+    expect(compiled.renderSchemaSource()).toContain("seo: text(\"seo\", { mode: 'json' })");
   });
 
   it("rejects relationships pointing to unknown collections", () => {
@@ -523,9 +469,7 @@ describe("fieldstone compiler", () => {
     });
 
     const posts = compiled.schemaPlan.collectionBySlug.get("posts")!;
-    const byName = Object.fromEntries(
-      posts.columns.map((column) => [column.name, column]),
-    );
+    const byName = Object.fromEntries(posts.columns.map((column) => [column.runtimeKey, column]));
     expect(byName.cover).toMatchObject({
       sourceExpression: "text",
       typeScriptType: "string",
@@ -555,9 +499,7 @@ describe("fieldstone compiler", () => {
     });
 
     const media = compiled.schemaPlan.collectionBySlug.get("media")!;
-    const byName = Object.fromEntries(
-      media.columns.map((column) => [column.name, column]),
-    );
+    const byName = Object.fromEntries(media.columns.map((column) => [column.runtimeKey, column]));
     for (const name of [
       "filename",
       "mimeType",
@@ -598,7 +540,7 @@ describe("fieldstone compiler", () => {
       },
     });
     const posts = compiled.schemaPlan.collectionBySlug.get("posts")!;
-    expect(posts.columns.some((column) => column.name === "filename")).toBe(false);
+    expect(posts.columns.some((column) => column.runtimeKey === "filename")).toBe(false);
   });
 
   it("rejects a reserved media field name on an upload-enabled collection", () => {
@@ -708,9 +650,7 @@ describe("fieldstone compiler", () => {
         db: { dialect: "sqlite", url: ":memory:" },
         collections: {
           posts: {
-            fields: [
-              array({ name: "links", fields: [text({ name: "id" })] }),
-            ],
+            fields: [array({ name: "links", fields: [text({ name: "id" })] })],
             slug: "posts",
           },
         },
@@ -758,10 +698,7 @@ describe("fieldstone compiler", () => {
       globals: {
         "site-settings": {
           ...global({
-            fields: [
-              text({ name: "siteTitle", required: true }),
-              boolean({ name: "showBanner" }),
-            ],
+            fields: [text({ name: "siteTitle", required: true }), boolean({ name: "showBanner" })],
           }),
           slug: "site-settings",
         },
@@ -787,15 +724,11 @@ describe("fieldstone compiler", () => {
         slug: "site-settings",
       },
     ]);
-    expect(
-      compiled.renderRuntimeSchema().tables["site-settings"].siteTitle,
-    ).toBeDefined();
+    expect(compiled.renderRuntimeSchema().tables["site-settings"].siteTitle).toBeDefined();
     expect(compiled.renderSchemaSource()).toContain(
       'export const global_site_settings = sqliteTable("site-settings"',
     );
-    expect(compiled.renderTypesDeclaration()).toContain(
-      "interface GeneratedGlobals",
-    );
+    expect(compiled.renderTypesDeclaration()).toContain("interface GeneratedGlobals");
     expect(compiled.renderTypesDeclaration()).toContain('"site-settings"');
   });
 
@@ -834,12 +767,8 @@ describe("fieldstone compiler", () => {
       },
     }).renderSchemaSource();
 
-    expect(output).toContain(
-      'export const collection_class = sqliteTable("class"',
-    );
-    expect(output).toContain(
-      'export const collection_class_name = sqliteTable("class-name"',
-    );
+    expect(output).toContain('export const collection_class = sqliteTable("class"');
+    expect(output).toContain('export const collection_class_name = sqliteTable("class-name"');
     expect(output).not.toContain("export const class =");
   });
 
@@ -861,20 +790,6 @@ describe("fieldstone compiler", () => {
     ).toThrow("Duplicate content slug: Posts");
   });
 
-  it("rejects a collection using the reserved 'globals' slug", () => {
-    expect(() =>
-      compileFieldstoneConfig({
-        db: { dialect: "sqlite", url: ":memory:" },
-        collections: {
-          globals: {
-            fields: [text({ name: "title", required: true })],
-            slug: "globals",
-          },
-        },
-      }).renderSchemaSource(),
-    ).toThrow('Reserved collection slug: "globals"');
-  });
-
   it("rejects reserved field names in direct config input", () => {
     const config: FieldstoneConfig = {
       db: { dialect: "sqlite", url: ":memory:" },
@@ -886,9 +801,7 @@ describe("fieldstone compiler", () => {
       },
     };
 
-    expect(() => compileFieldstoneConfig(config)).toThrow(
-      "Reserved field name: id",
-    );
+    expect(() => compileFieldstoneConfig(config)).toThrow("Reserved field name: id");
   });
 
   it("rejects duplicate field names in direct config input", () => {
@@ -922,9 +835,7 @@ describe("fieldstone compiler", () => {
     });
 
     expect(compiled.renderRuntimeSchema().tables.posts.title).toBeDefined();
-    expect(compiled.renderSchemaSource()).toContain(
-      'title: text("title").notNull()',
-    );
+    expect(compiled.renderSchemaSource()).toContain('title: text("title").notNull()');
     expect(compiled.renderTypesDeclaration()).toContain('"title": string');
     expect(compiled.schemaFingerprint()).toContain('"slug":"posts"');
   });
@@ -951,9 +862,9 @@ describe("fieldstone compiler", () => {
         title: " Hello ",
       }),
     ).toEqual({ description: "Body", title: "Hello" });
-    expect(() =>
-      compiled.normalizeDocumentData("posts", { description: "Missing title" }),
-    ).toThrow("title is required");
+    expect(() => compiled.normalizeDocumentData("posts", { description: "Missing title" })).toThrow(
+      "title is required",
+    );
     expect(() =>
       compiled.normalizeDocumentData("posts", {
         title: "Hello",

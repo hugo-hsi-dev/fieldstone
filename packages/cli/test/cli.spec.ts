@@ -7,10 +7,9 @@ import { describe, expect, it } from "vitest";
 
 import { runInit } from "../bin/init.mjs";
 
-const packageRoot = path.dirname(
-  fileURLToPath(new URL("../package.json", import.meta.url)),
-);
+const packageRoot = path.dirname(fileURLToPath(new URL("../package.json", import.meta.url)));
 const cliPath = path.join(packageRoot, "bin", "fieldstone.mjs");
+const schemaEntry = path.resolve(packageRoot, "../schema/src/index.ts");
 
 function runFieldstone(
   command: "generate" | "push",
@@ -45,9 +44,7 @@ function runFieldstone(
         return;
       }
 
-      reject(
-        new Error(`fieldstone ${command} exited ${code}\n${stdout}\n${stderr}`),
-      );
+      reject(new Error(`fieldstone ${command} exited ${code}\n${stdout}\n${stderr}`));
     });
   });
 }
@@ -57,25 +54,23 @@ function runFieldstoneGenerate(cwd: string) {
 }
 
 function runFieldstoneBin(args: string[], cwd: string) {
-  return new Promise<{ code: number; stdout: string; stderr: string }>(
-    (resolve) => {
-      const child = spawn(process.execPath, [cliPath, ...args], {
-        cwd,
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-      let stdout = "";
-      let stderr = "";
-      child.stdout.on("data", (chunk) => (stdout += chunk));
-      child.stderr.on("data", (chunk) => (stderr += chunk));
-      child.on("error", (err) => {
-        stderr += `\n${String(err)}`;
-        resolve({ code: 1, stdout, stderr });
-      });
-      child.on("close", (code, signal) =>
-        resolve({ code: code ?? (signal ? 1 : 0), stdout, stderr }),
-      );
-    },
-  );
+  return new Promise<{ code: number; stdout: string; stderr: string }>((resolve) => {
+    const child = spawn(process.execPath, [cliPath, ...args], {
+      cwd,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (chunk) => (stdout += chunk));
+    child.stderr.on("data", (chunk) => (stderr += chunk));
+    child.on("error", (err) => {
+      stderr += `\n${String(err)}`;
+      resolve({ code: 1, stdout, stderr });
+    });
+    child.on("close", (code, signal) =>
+      resolve({ code: code ?? (signal ? 1 : 0), stdout, stderr }),
+    );
+  });
 }
 
 describe("fieldstone cli", () => {
@@ -95,7 +90,8 @@ import { defineConfig } from 'vite';
 export default defineConfig({
 \tresolve: {
 \t\talias: {
-\t\t\t$fields: path.resolve('src/fields.ts')
+\t\t\t$fields: path.resolve('src/fields.ts'),
+\t\t\t'@hugo-hsi-dev/schema': ${JSON.stringify(schemaEntry)}
 \t\t}
 \t}
 });
@@ -120,14 +116,9 @@ export default collection({
       );
 
       await runFieldstoneGenerate(root);
-      const schema = await readFile(
-        path.join(root, ".fieldstone", "schema.ts"),
-        "utf-8",
-      );
+      const schema = await readFile(path.join(root, ".fieldstone", "schema.ts"), "utf-8");
 
-      expect(schema).toContain(
-        'export const collection_posts = sqliteTable("posts"',
-      );
+      expect(schema).toContain('export const collection_posts = sqliteTable("posts"');
       expect(schema).toContain('title: text("title").notNull()');
     } finally {
       await rm(root, { recursive: true, force: true });
@@ -153,9 +144,7 @@ export default collection({
 `,
       );
 
-      await expect(runFieldstoneGenerate(root)).rejects.toThrow(
-        "Reserved content slug: __proto__",
-      );
+      await expect(runFieldstoneGenerate(root)).rejects.toThrow("Reserved content slug: __proto__");
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -184,20 +173,15 @@ export default collection({
         path.join(root, "src", "routes", "admin", "dashboard.remote.ts"),
         "utf-8",
       );
-      expect(barrel).toContain("createFieldstoneAdminRemotes");
-      const auth = await readFile(
-        path.join(root, "src", "lib", "auth.ts"),
-        "utf-8",
-      );
+      expect(barrel).toContain("@hugo-hsi-dev/admin-runtime/sveltekit");
+      const auth = await readFile(path.join(root, "src", "lib", "auth.ts"), "utf-8");
       expect(auth).toContain("betterAuth");
 
       // package.json deps + scripts are merged, not clobbered.
-      const pkg = JSON.parse(
-        await readFile(path.join(root, "package.json"), "utf-8"),
-      );
+      const pkg = JSON.parse(await readFile(path.join(root, "package.json"), "utf-8"));
       expect(pkg.name).toBe("host-app");
       expect(pkg.dependencies["@hugo-hsi-dev/ui"]).toBeDefined();
-      expect(pkg.devDependencies["drizzle-kit"]).toBeDefined();
+      expect(pkg.devDependencies["@hugo-hsi-dev/cli"]).toBeDefined();
       expect(pkg.scripts["db:push"]).toBe("fieldstone push");
 
       // .gitignore gains the Fieldstone artifacts.
@@ -221,24 +205,18 @@ export default collection({
           devDependencies: { "@sveltejs/kit": "^2.0.0" },
         }),
       );
-      await writeFile(
-        path.join(root, "vite.config.ts"),
-        "// my own vite config\n",
-      );
+      await writeFile(path.join(root, "vite.config.ts"), "// my own vite config\n");
 
       await runInit({ cwd: root, force: false, install: false });
 
       // The pre-existing vite.config.ts is preserved.
-      expect(
-        await readFile(path.join(root, "vite.config.ts"), "utf-8"),
-      ).toBe("// my own vite config\n");
+      expect(await readFile(path.join(root, "vite.config.ts"), "utf-8")).toBe(
+        "// my own vite config\n",
+      );
       // New files are still written.
-      expect(
-        await readFile(
-          path.join(root, "src", "lib", "auth.ts"),
-          "utf-8",
-        ),
-      ).toContain("betterAuth");
+      expect(await readFile(path.join(root, "src", "lib", "auth.ts"), "utf-8")).toContain(
+        "betterAuth",
+      );
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -267,9 +245,9 @@ export default collection({
       expect(result.code).toBe(0);
       // --no-install suppresses the install suggestion.
       expect(result.stdout).not.toContain("install dependencies");
-      expect(
-        await readFile(path.join(root, "vite.config.ts"), "utf-8"),
-      ).toContain("@hugo-hsi-dev/vite-plugin");
+      expect(await readFile(path.join(root, "vite.config.ts"), "utf-8")).toContain(
+        "@hugo-hsi-dev/vite-plugin",
+      );
     } finally {
       await rm(root, { recursive: true, force: true });
     }

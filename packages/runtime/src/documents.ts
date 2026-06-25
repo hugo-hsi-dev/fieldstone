@@ -4,10 +4,11 @@ import type {
   CollectionSlug,
   PopulatedDocument,
 } from "@hugo-hsi-dev/schema";
+import { and, asc, count, desc, eq, inArray, like, or } from "drizzle-orm";
 
-import { assertCollectionAccess, ForbiddenError } from "./access.ts";
-import { populateDocuments } from "./populate.ts";
-import type { createDatabase } from "./database.ts";
+import { assertCollectionAccess, ForbiddenError } from "./access.js";
+import { populateDocuments } from "./populate.js";
+import type { createDatabase } from "./database.js";
 import {
   getCollectionHooks,
   hasChangeHooks,
@@ -16,14 +17,9 @@ import {
   runAfterReadHooks,
   runBeforeChangeHooks,
   runBeforeDeleteHooks,
-} from "./hooks.ts";
-import type {
-  CreateInput,
-  DocumentInput,
-  ListInput,
-  UpdateInput,
-} from "./types.ts";
-import { buildWhere, type WhereClause } from "./where.ts";
+} from "./hooks.js";
+import type { CreateInput, DocumentInput, ListInput, UpdateInput } from "./types.js";
+import { buildWhere, type WhereClause } from "./where.js";
 
 type DatabaseContext = Awaited<ReturnType<typeof createDatabase>>;
 type Doc = Record<string, unknown>;
@@ -31,10 +27,7 @@ type Doc = Record<string, unknown>;
 // depth 0 keeps relations as ids; a literal depth >= 1 returns them populated. A
 // non-literal `number` depth degrades to the conservative id-shape (it may resolve
 // to 0 at runtime), so a computed depth never over-promises populated docs.
-type ReadResult<
-  TCollection extends CollectionSlug,
-  TDepth extends number,
-> = number extends TDepth
+type ReadResult<TCollection extends CollectionSlug, TDepth extends number> = number extends TDepth
   ? CollectionDocument<TCollection>
   : TDepth extends 0
     ? CollectionDocument<TCollection>
@@ -70,9 +63,7 @@ function deepMergePatch(
   for (const [key, value] of Object.entries(patch)) {
     const existing = result[key];
     result[key] =
-      isPlainObject(value) && isPlainObject(existing)
-        ? deepMergePatch(existing, value)
-        : value;
+      isPlainObject(value) && isPlainObject(existing) ? deepMergePatch(existing, value) : value;
   }
   return result;
 }
@@ -98,46 +89,7 @@ function collectStorageKeys(doc: Doc): string[] {
 }
 
 export function createDocumentRuntime(context: DatabaseContext) {
-  const {
-    compiled,
-    compiledConfig,
-    config,
-    database,
-    storage,
-    and,
-    asc,
-    count,
-    desc,
-    eq,
-    gt,
-    gte,
-    inArray,
-    isNotNull,
-    isNull,
-    like,
-    lt,
-    lte,
-    ne,
-    notInArray,
-    or,
-  } = context;
-
-  // Operator bundle for the typed where-builder (drizzle-orm fns from the context).
-  const whereOps = {
-    and,
-    or,
-    eq,
-    ne,
-    gt,
-    gte,
-    lt,
-    lte,
-    like,
-    inArray,
-    notInArray,
-    isNull,
-    isNotNull,
-  };
+  const { compiled, compiledConfig, config, database, storage } = context;
 
   function getTable(collectionSlug: string) {
     if (!compiledConfig.getCollection(collectionSlug)) {
@@ -242,10 +194,7 @@ export function createDocumentRuntime(context: DatabaseContext) {
       const fields = compiledConfig.getCollection(collectionSlug)?.fields ?? [];
       const likes = fields
         .filter(
-          (field) =>
-            field.type === "text" ||
-            field.type === "email" ||
-            field.type === "select",
+          (field) => field.type === "text" || field.type === "email" || field.type === "select",
         )
         .map((field) => table[field.name])
         .filter(Boolean)
@@ -255,7 +204,7 @@ export function createDocumentRuntime(context: DatabaseContext) {
     }
     if (where) {
       const fields = compiledConfig.getCollection(collectionSlug)?.fields ?? [];
-      const condition = buildWhere(where, table, fields, whereOps);
+      const condition = buildWhere(where, table, fields);
       if (condition !== undefined) conditions.push(condition);
     }
     return conditions;
@@ -273,9 +222,7 @@ export function createDocumentRuntime(context: DatabaseContext) {
       depth,
       user,
     }: ListInput<TCollection> & { depth?: TDepth }): Promise<
-      Array<
-        ReadResult<TCollection, TDepth>
-      >
+      Array<ReadResult<TCollection, TDepth>>
     > => {
       await assertCollectionAccess(config, collectionSlug, "read", { user: user ?? null });
       const table = getTable(collectionSlug);
@@ -302,9 +249,7 @@ export function createDocumentRuntime(context: DatabaseContext) {
         ? await Promise.all(rows.map((row) => runAfterReadHooks(hooks, collectionSlug, row)))
         : rows;
       await populateIfNeeded(collectionSlug, result, depth, user);
-      return result as unknown as Array<
-        ReadResult<TCollection, TDepth>
-      >;
+      return result as unknown as Array<ReadResult<TCollection, TDepth>>;
     },
 
     count: async <TCollection extends CollectionSlug>({
@@ -335,10 +280,10 @@ export function createDocumentRuntime(context: DatabaseContext) {
       id,
       depth,
       user,
-    }: DocumentInput<TCollection> & { depth?: TDepth }): Promise<
-      | (ReadResult<TCollection, TDepth>)
-      | null
-    > => {
+    }: DocumentInput<TCollection> & { depth?: TDepth }): Promise<ReadResult<
+      TCollection,
+      TDepth
+    > | null> => {
       await assertCollectionAccess(config, collectionSlug, "read", { user: user ?? null, id });
       const table = getTable(collectionSlug);
       const [document] = await database.select().from(table).where(eq(table.id, id)).limit(1);
@@ -346,8 +291,7 @@ export function createDocumentRuntime(context: DatabaseContext) {
       const hooks = getCollectionHooks(config, collectionSlug);
       const read = (await runAfterReadHooks(hooks, collectionSlug, document as Doc)) as Doc;
       await populateIfNeeded(collectionSlug, [read], depth, user);
-      return read as unknown as
-        | (ReadResult<TCollection, TDepth>);
+      return read as unknown as ReadResult<TCollection, TDepth>;
     },
 
     create: async <TCollection extends CollectionSlug>({
@@ -437,10 +381,7 @@ export function createDocumentRuntime(context: DatabaseContext) {
       // keys still flow to the normalizer, which rejects them.
       const inputData =
         merge && originalDoc
-          ? deepMergePatch(
-              stripSystemFields(originalDoc),
-              data as Record<string, unknown>,
-            )
+          ? deepMergePatch(stripSystemFields(originalDoc), data as Record<string, unknown>)
           : data;
       // Check access against the normalized, merged document — so rules see the
       // trimmed/defaulted values that will be stored and a PATCH can't bypass a rule
@@ -519,8 +460,7 @@ export function createDocumentRuntime(context: DatabaseContext) {
       if (!deleted) throw new Error("Document not found");
 
       // The original file plus every generated variant (the `sizes` rows).
-      const storageKeys =
-        uploadCollection && deletedDoc ? collectStorageKeys(deletedDoc) : [];
+      const storageKeys = uploadCollection && deletedDoc ? collectStorageKeys(deletedDoc) : [];
 
       // The row is already gone, so the files must be cleaned up even if a user
       // afterDelete hook throws — otherwise the bytes leak. Run hooks, capture any

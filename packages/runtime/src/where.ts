@@ -1,5 +1,20 @@
 import type { FieldDefinition } from "@hugo-hsi-dev/schema";
 import { STATUS_FIELD_NAME } from "@hugo-hsi-dev/schema";
+import {
+  and,
+  eq,
+  gt,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  like,
+  lt,
+  lte,
+  ne,
+  notInArray,
+  or,
+} from "drizzle-orm";
 
 // A field filter is a map of Payload-style operators to values. Only the
 // operators valid for the field's column kind are accepted (see OPS_BY_KIND).
@@ -23,25 +38,6 @@ export type WhereClause = {
   or?: WhereClause[];
   [field: string]: WhereOperators | WhereClause[] | undefined;
 };
-
-// drizzle-orm operators, injected so this module stays pure/testable and keeps the
-// runtime's dynamic-import-of-drizzle pattern (see database.ts). Params are `any`
-// so the real drizzle operator signatures (Column | SQL | …) are assignable.
-export interface WhereOps {
-  and: (...conditions: any[]) => unknown;
-  or: (...conditions: any[]) => unknown;
-  eq: (column: any, value: any) => unknown;
-  ne: (column: any, value: any) => unknown;
-  gt: (column: any, value: any) => unknown;
-  gte: (column: any, value: any) => unknown;
-  lt: (column: any, value: any) => unknown;
-  lte: (column: any, value: any) => unknown;
-  like: (column: any, value: any) => unknown;
-  inArray: (column: any, values: any[]) => unknown;
-  notInArray: (column: any, values: any[]) => unknown;
-  isNull: (column: any) => unknown;
-  isNotNull: (column: any) => unknown;
-}
 
 type ColumnKind = "text" | "number" | "date" | "boolean";
 
@@ -119,9 +115,7 @@ function fieldKind(field: FieldDefinition, fieldName: string): ColumnKind {
       return "text";
     default:
       // group / array are serialized into a single JSON column.
-      throw new Error(
-        `Cannot filter on "${field.type}" field "${fieldName}" (stored as JSON)`,
-      );
+      throw new Error(`Cannot filter on "${field.type}" field "${fieldName}" (stored as JSON)`);
   }
 }
 
@@ -191,7 +185,7 @@ function coerce(value: unknown, kind: ColumnKind): unknown {
     return num;
   }
   if (kind === "boolean") {
-    // Accept REST-style string forms too ('true'/'false'/'1'/'0').
+    // Accept form/query string values too ('true'/'false'/'1'/'0').
     if (typeof value === "boolean") return value;
     if (value === "true" || value === "1" || value === 1) return true;
     if (value === "false" || value === "0" || value === 0) return false;
@@ -225,31 +219,30 @@ function buildOperatorCondition(
   column: unknown,
   value: unknown,
   kind: ColumnKind,
-  ops: WhereOps,
 ): unknown {
   switch (op) {
     case "equals":
-      return value === null ? ops.isNull(column) : ops.eq(column, coerce(value, kind));
+      return value === null ? isNull(column as any) : eq(column as any, coerce(value, kind));
     case "not_equals":
-      return value === null ? ops.isNotNull(column) : ops.ne(column, coerce(value, kind));
+      return value === null ? isNotNull(column as any) : ne(column as any, coerce(value, kind));
     case "greater_than":
-      return ops.gt(column, coerce(value, kind));
+      return gt(column as any, coerce(value, kind));
     case "greater_than_equal":
-      return ops.gte(column, coerce(value, kind));
+      return gte(column as any, coerce(value, kind));
     case "less_than":
-      return ops.lt(column, coerce(value, kind));
+      return lt(column as any, coerce(value, kind));
     case "less_than_equal":
-      return ops.lte(column, coerce(value, kind));
+      return lte(column as any, coerce(value, kind));
     case "in":
-      return ops.inArray(column, coerceList(value, op, kind));
+      return inArray(column as any, coerceList(value, op, kind));
     case "not_in":
-      return ops.notInArray(column, coerceList(value, op, kind));
+      return notInArray(column as any, coerceList(value, op, kind));
     case "like":
       // `%`/`_` in the value act as LIKE wildcards (Payload `like` parity). The
       // value is parameter-bound by drizzle, so this is not an injection surface.
-      return ops.like(column, `%${coerce(value, "text") as string}%`);
+      return like(column as any, `%${coerce(value, "text") as string}%`);
     case "exists":
-      return coerce(value, "boolean") ? ops.isNotNull(column) : ops.isNull(column);
+      return coerce(value, "boolean") ? isNotNull(column as any) : isNull(column as any);
     default:
       throw new Error(`Unknown where operator: "${op}"`);
   }
@@ -265,7 +258,6 @@ export function buildWhere(
   where: WhereClause | undefined,
   table: Record<string, unknown>,
   fields: readonly FieldDefinition[],
-  ops: WhereOps,
   depth = 0,
 ): unknown {
   if (!where) return undefined;
@@ -287,11 +279,11 @@ export function buildWhere(
         if (!isPlainObject(clause)) {
           throw new Error(`Each entry in "${key}" must be a where-clause object`);
         }
-        const condition = buildWhere(clause, table, fields, ops, depth + 1);
+        const condition = buildWhere(clause, table, fields, depth + 1);
         if (condition !== undefined) sub.push(condition);
       }
       if (!sub.length) continue;
-      conditions.push(sub.length === 1 ? sub[0] : (key === "and" ? ops.and : ops.or)(...sub));
+      conditions.push(sub.length === 1 ? sub[0] : (key === "and" ? and : or)(...(sub as any[])));
       continue;
     }
 
@@ -306,10 +298,10 @@ export function buildWhere(
       if (!allowed.has(op)) {
         throw new Error(`Operator "${op}" is not supported on ${kind} field "${key}"`);
       }
-      conditions.push(buildOperatorCondition(op, column, opValue, kind, ops));
+      conditions.push(buildOperatorCondition(op, column, opValue, kind));
     }
   }
 
   if (!conditions.length) return undefined;
-  return conditions.length === 1 ? conditions[0] : ops.and(...conditions);
+  return conditions.length === 1 ? conditions[0] : and(...(conditions as any[]));
 }

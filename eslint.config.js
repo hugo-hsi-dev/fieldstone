@@ -1,15 +1,13 @@
 import path from "node:path";
-import { svelteKitConfig } from "./config/eslint/index.js";
+import { svelteKitConfig } from "./eslint.shared.js";
 
 const gitignorePath = path.resolve(import.meta.dirname, ".gitignore");
 
-const oxlintPackages = [
+const packageTsFiles = [
   "packages/admin-runtime/**/*.{js,ts}",
   "packages/cli/**/*.{js,ts}",
   "packages/codegen/**/*.{js,ts}",
   "packages/compiler/**/*.{js,ts}",
-  "packages/remotes/**/*.{js,ts}",
-  "packages/routes/**/*.{js,ts}",
   "packages/runtime/**/*.{js,ts}",
   "packages/schema/**/*.{js,ts}",
   "packages/vite-plugin/**/*.{js,ts}",
@@ -24,7 +22,7 @@ export default [
     tsconfigRootDir: import.meta.dirname,
   }),
   {
-    files: oxlintPackages,
+    files: packageTsFiles,
     rules: {
       "@typescript-eslint/no-empty-object-type": "off",
       "@typescript-eslint/no-explicit-any": "off",

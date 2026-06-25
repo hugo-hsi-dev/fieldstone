@@ -1,6 +1,8 @@
-import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
+import { glob, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { ADMIN_REMOTES_BARREL_PATH, renderAdminRemotesBarrel } from "@hugo-hsi-dev/codegen";
 
 const TEMPLATES_DIR = fileURLToPath(new URL("../templates", import.meta.url));
 
@@ -10,20 +12,17 @@ const FIELDSTONE_VERSION = "^0.1.0";
 /** @type {Record<string, string>} */
 const DEPENDENCIES = {
   "@hugo-hsi-dev/admin-runtime": FIELDSTONE_VERSION,
-  "@hugo-hsi-dev/remotes": FIELDSTONE_VERSION,
   "@hugo-hsi-dev/schema": FIELDSTONE_VERSION,
   "@hugo-hsi-dev/ui": FIELDSTONE_VERSION,
   "@hugo-hsi-dev/vite-plugin": FIELDSTONE_VERSION,
   "@libsql/client": "^0.15.15",
   "better-auth": "^1.6.19",
   "drizzle-orm": "^0.45.2",
-  "mode-watcher": "^1.1.0",
 };
 
 /** @type {Record<string, string>} */
 const DEV_DEPENDENCIES = {
   "@hugo-hsi-dev/cli": FIELDSTONE_VERSION,
-  "drizzle-kit": "^0.31.10",
 };
 
 /** @type {Record<string, string>} */
@@ -54,20 +53,18 @@ async function isNonEmptyFile(file) {
   }
 }
 
-// Recursively list template files as paths relative to TEMPLATES_DIR.
-/** @param {string} dir @returns {Promise<string[]>} */
-async function templateFiles(dir = TEMPLATES_DIR) {
-  /** @type {string[]} */
-  const out = [];
-  for (const entry of await readdir(dir, { withFileTypes: true })) {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      out.push(...(await templateFiles(full)));
-    } else {
-      out.push(path.relative(TEMPLATES_DIR, full));
-    }
+async function templateFiles() {
+  const files = [];
+  for await (const entry of glob("**/*", { cwd: TEMPLATES_DIR, withFileTypes: true })) {
+    if (entry.isFile()) files.push(path.relative(TEMPLATES_DIR, path.join(entry.parentPath, entry.name)));
   }
-  return out;
+  return files;
+}
+
+/** @param {string} relativePath */
+function templateFileSource(relativePath) {
+  if (relativePath === ADMIN_REMOTES_BARREL_PATH) return renderAdminRemotesBarrel();
+  return readFile(path.join(TEMPLATES_DIR, relativePath));
 }
 
 /**
@@ -111,22 +108,15 @@ async function mergePackageJson(cwd, written, log) {
  */
 async function updateGitignore(cwd, written, log) {
   const gitignorePath = path.join(cwd, ".gitignore");
-  const current = (await exists(gitignorePath))
-    ? await readFile(gitignorePath, "utf8")
-    : "";
+  const current = (await exists(gitignorePath)) ? await readFile(gitignorePath, "utf8") : "";
   const lines = current.split("\n");
-  const missing = GITIGNORE_ENTRIES.filter(
-    (entry) => !lines.some((line) => line.trim() === entry),
-  );
+  const missing = GITIGNORE_ENTRIES.filter((entry) => !lines.some((line) => line.trim() === entry));
   if (missing.length === 0) {
     log(".gitignore already ignores the Fieldstone artifacts");
     return;
   }
   const prefix = current.length === 0 || current.endsWith("\n") ? "" : "\n";
-  await writeFile(
-    gitignorePath,
-    `${current}${prefix}\n# Fieldstone\n${missing.join("\n")}\n`,
-  );
+  await writeFile(gitignorePath, `${current}${prefix}\n# Fieldstone\n${missing.join("\n")}\n`);
   written.push(".gitignore");
 }
 
@@ -146,8 +136,7 @@ export async function runInit({ cwd, force, install }) {
     return;
   }
   const pkg = JSON.parse(await readFile(pkgPath, "utf8"));
-  const hasKit =
-    pkg.devDependencies?.["@sveltejs/kit"] || pkg.dependencies?.["@sveltejs/kit"];
+  const hasKit = pkg.devDependencies?.["@sveltejs/kit"] || pkg.dependencies?.["@sveltejs/kit"];
   if (!hasKit && !force) {
     console.error(
       "@sveltejs/kit not found — this doesn't look like a SvelteKit app.\nCreate one with `npx sv create`, then re-run `fieldstone init` (or pass --force).",
@@ -163,14 +152,14 @@ export async function runInit({ cwd, force, install }) {
   const written = [];
   /** @type {string[]} */
   const skipped = [];
-  for (const relativePath of await templateFiles()) {
+  for (const relativePath of [...new Set([...(await templateFiles()), ADMIN_REMOTES_BARREL_PATH])]) {
     const target = path.join(cwd, relativePath);
     if (!force && (await isNonEmptyFile(target))) {
       skipped.push(relativePath);
       continue;
     }
     await mkdir(path.dirname(target), { recursive: true });
-    await writeFile(target, await readFile(path.join(TEMPLATES_DIR, relativePath)));
+    await writeFile(target, await templateFileSource(relativePath));
     written.push(relativePath);
   }
 

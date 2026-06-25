@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { collection, global, text } from "@hugo-hsi-dev/schema";
 
-import { createFieldstoneAdmin } from "../src/index.ts";
+import { createFieldstoneAdmin } from "../src/index.js";
 
 describe("fieldstone admin runtime", () => {
   let tempDir: string;

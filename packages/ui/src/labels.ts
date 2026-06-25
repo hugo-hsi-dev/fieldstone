@@ -110,11 +110,3 @@ export function stripHtml(value: string): string {
 		.replace(/\s+/g, ' ')
 		.trim();
 }
-
-export function getSelectedCollection(
-	collections: CollectionRuntimeConfig[],
-	collectionName: string,
-	fallback: CollectionRuntimeConfig
-) {
-	return collections.find((collection) => collection.slug === collectionName) ?? fallback;
-}

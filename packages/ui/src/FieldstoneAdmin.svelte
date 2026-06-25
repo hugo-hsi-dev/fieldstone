@@ -2,27 +2,40 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import {
+		ArrowLeft,
+		Check,
+		ChevronRight,
+		CircleAlert,
+		Globe,
+		Inbox,
+		Layers,
+		Menu,
+		Pencil,
+		Plus,
+		Search,
+		X
+	} from '@lucide/svelte';
 
 	import CollectionNav from './CollectionNav.svelte';
-	import CreateDocumentForm from './CreateDocumentForm.svelte';
-	import DocumentEditForm from './DocumentEditForm.svelte';
+	import ContentForm from './ContentForm.svelte';
 	import DocumentList from './DocumentList.svelte';
-	import GlobalEditForm from './GlobalEditForm.svelte';
 	import UploadForm from './UploadForm.svelte';
 	import ThemeToggle from './ThemeToggle.svelte';
-	import Icon from './primitives/Icon.svelte';
 	import {
 		collectionLabelFromSlug,
 		getCollectionLabel,
 		getFieldLabel,
+		getFieldInputValue,
 		getFieldValue,
 		stripHtml,
 		getGlobalLabel,
 		globalLabelFromSlug
 	} from './labels';
 	import Button from './primitives/Button.svelte';
+	import { UPLOAD_FIELD_NAMES } from '@hugo-hsi-dev/schema';
 	import type { CollectionRuntimeConfig, FieldDefinition } from '@hugo-hsi-dev/schema';
-	import type { FieldstoneAdminRemotes } from '@hugo-hsi-dev/remotes';
+	import type { FieldstoneAdminRemotes } from './remotes';
 	import {
 		adminCollectionPath,
 		adminDocumentPath,
@@ -30,12 +43,11 @@
 		adminGlobalPath,
 		adminIndexPath,
 		adminNewDocumentPath,
-		adminRouteId,
-		adminRouteSegments,
 		getAdminSegments,
 		parseAdminRoute,
+		resolveAdminPath,
 		type AdminRoute
-	} from '@hugo-hsi-dev/routes';
+	} from './routes';
 
 	let { remotes }: { remotes: FieldstoneAdminRemotes } = $props();
 
@@ -159,6 +171,23 @@
 		return Object.fromEntries(entries);
 	}
 
+	const UPLOAD_METADATA = new Set<string>(UPLOAD_FIELD_NAMES);
+
+	function visibleFormFields(collection: CollectionRuntimeConfig) {
+		return collection.upload
+			? collection.fields.filter((field) => !UPLOAD_METADATA.has(field.name))
+			: collection.fields;
+	}
+
+	function formValues(
+		fields: readonly CollectionRuntimeConfig['fields'][number][],
+		document: Record<string, unknown> | null
+	) {
+		return Object.fromEntries(
+			fields.map((field) => [field.name, getFieldInputValue(document, field.name)])
+		);
+	}
+
 	function routeCollection(route: AdminRoute) {
 		return 'collection' in route ? route.collection : null;
 	}
@@ -177,30 +206,26 @@
 		return 'Could not load admin data';
 	}
 
-	function resolveAdminPath(path: string) {
-		return resolve(adminRouteId, { segments: adminRouteSegments(path) });
-	}
-
-	const indexHref = $derived(resolveAdminPath(adminIndexPath()));
+	const indexHref = $derived(resolveAdminPath(resolve, adminIndexPath()));
 
 	function collectionHref(collection: string) {
-		return resolveAdminPath(adminCollectionPath(collection));
+		return resolveAdminPath(resolve, adminCollectionPath(collection));
 	}
 
 	function newDocumentHref(collection: string) {
-		return resolveAdminPath(adminNewDocumentPath(collection));
+		return resolveAdminPath(resolve, adminNewDocumentPath(collection));
 	}
 
 	function globalHref(global: string) {
-		return resolveAdminPath(adminGlobalPath(global));
+		return resolveAdminPath(resolve, adminGlobalPath(global));
 	}
 
 	function documentHref(collection: string, id: string) {
-		return resolveAdminPath(adminDocumentPath(collection, id));
+		return resolveAdminPath(resolve, adminDocumentPath(collection, id));
 	}
 
 	function editDocumentHref(collection: string, id: string) {
-		return resolveAdminPath(adminEditDocumentPath(collection, id));
+		return resolveAdminPath(resolve, adminEditDocumentPath(collection, id));
 	}
 
 	// Breadcrumb trail derived from the route alone (slug-based labels), so the
@@ -307,7 +332,7 @@
 {#snippet errorBox(error: unknown, reset: () => void)}
 	<div class="fs-admin__error" role="alert">
 		<p class="fs-admin__error-title">
-			<Icon name="alert" />
+			<CircleAlert size={16} class="fs-admin__icon" aria-hidden="true" focusable="false" />
 			<span>Something went wrong</span>
 		</p>
 		<p>{getBoundaryErrorMessage(error)}</p>
@@ -329,7 +354,7 @@
 				aria-controls="fs-admin-nav"
 				onclick={() => (drawerOpen = !drawerOpen)}
 			>
-				<Icon name="menu" size={18} />
+				<Menu size={18} class="fs-admin__icon" aria-hidden="true" focusable="false" />
 			</button>
 
 			<a class="fs-admin__brand" href={indexHref}>
@@ -411,7 +436,14 @@
 							<div class="fs-admin__dashboard">
 								{#each collections as collection (collection.slug)}
 									<a class="fs-admin__card" href={collectionHref(collection.slug)}>
-										<span class="fs-admin__card-icon"><Icon name="collection" size={18} /></span>
+										<span class="fs-admin__card-icon"
+											><Layers
+												size={18}
+												class="fs-admin__icon"
+												aria-hidden="true"
+												focusable="false"
+											/></span
+										>
 										<span class="fs-admin__card-body">
 											<span class="fs-admin__card-title"
 												>{getCollectionLabel(collection, 'plural')}</span
@@ -422,26 +454,50 @@
 											</span>
 										</span>
 										<span class="fs-admin__card-arrow" aria-hidden="true"
-											><Icon name="chevron-right" /></span
+											><ChevronRight
+												size={16}
+												class="fs-admin__icon"
+												aria-hidden="true"
+												focusable="false"
+											/></span
 										>
 									</a>
 								{/each}
 								{#each globals as global (global.slug)}
 									<a class="fs-admin__card" href={globalHref(global.slug)}>
-										<span class="fs-admin__card-icon"><Icon name="globe" size={18} /></span>
+										<span class="fs-admin__card-icon"
+											><Globe
+												size={18}
+												class="fs-admin__icon"
+												aria-hidden="true"
+												focusable="false"
+											/></span
+										>
 										<span class="fs-admin__card-body">
 											<span class="fs-admin__card-title">{getGlobalLabel(global)}</span>
 											<span class="fs-admin__card-meta">Single document</span>
 										</span>
 										<span class="fs-admin__card-arrow" aria-hidden="true"
-											><Icon name="chevron-right" /></span
+											><ChevronRight
+												size={16}
+												class="fs-admin__icon"
+												aria-hidden="true"
+												focusable="false"
+											/></span
 										>
 									</a>
 								{/each}
 							</div>
 						{:else}
 							<div class="fs-admin__empty">
-								<span class="fs-admin__empty-icon"><Icon name="inbox" size={20} /></span>
+								<span class="fs-admin__empty-icon"
+									><Inbox
+										size={20}
+										class="fs-admin__icon"
+										aria-hidden="true"
+										focusable="false"
+									/></span
+								>
 								<p class="fs-admin__empty-title">No content yet</p>
 								<p class="fs-admin__empty-text">No CMS collections or globals were found.</p>
 							</div>
@@ -461,7 +517,7 @@
 							<h1 class="fs-admin__title">{collectionLabelFromSlug(route.collection, 'plural')}</h1>
 						</div>
 						<Button variant="primary" href={newDocumentHref(route.collection)}>
-							<Icon name="plus" />
+							<Plus size={16} class="fs-admin__icon" aria-hidden="true" focusable="false" />
 							New {collectionLabelFromSlug(route.collection, 'singular').toLowerCase()}
 						</Button>
 					</div>
@@ -470,7 +526,14 @@
 						{@const collection = await remotes.getCollection({ collection: route.collection })}
 
 						<form class="fs-admin__search" onsubmit={applySearch}>
-							<span class="fs-admin__search-icon" aria-hidden="true"><Icon name="search" /></span>
+							<span class="fs-admin__search-icon" aria-hidden="true"
+								><Search
+									size={16}
+									class="fs-admin__icon"
+									aria-hidden="true"
+									focusable="false"
+								/></span
+							>
 							<input
 								class="fs-admin__input fs-admin__search-input"
 								type="search"
@@ -549,7 +612,7 @@
 							</h1>
 						</div>
 						<Button variant="ghost" href={collectionHref(route.collection)}>
-							<Icon name="arrow-left" />
+							<ArrowLeft size={16} class="fs-admin__icon" aria-hidden="true" focusable="false" />
 							Back to list
 						</Button>
 					</div>
@@ -564,11 +627,15 @@
 									showToast(`${getCollectionLabel(collection, 'singular')} uploaded`)}
 							/>
 						{:else}
+							{@const createForm = remotes.createDocument.for(collection.slug)}
 							{@const newRelationOptions = await loadRelationOptions(collection)}
-							<CreateDocumentForm
-								{collection}
-								form={remotes.createDocument.for(collection.slug)}
+							<ContentForm
+								fields={collection.fields}
+								form={createForm}
+								hidden={[{ field: createForm.fields.collection, value: collection.slug }]}
+								idPrefix={`create-${collection.slug}`}
 								relationOptions={newRelationOptions}
+								submitLabel={`Create ${getCollectionLabel(collection, 'singular').toLowerCase()}`}
 								onSuccess={() => showToast(`${getCollectionLabel(collection, 'singular')} created`)}
 							/>
 						{/if}
@@ -609,11 +676,16 @@
 								</div>
 								<div class="fs-admin__actions">
 									<Button variant="ghost" href={collectionHref(collection.slug)}>
-										<Icon name="arrow-left" />
+										<ArrowLeft
+											size={16}
+											class="fs-admin__icon"
+											aria-hidden="true"
+											focusable="false"
+										/>
 										Back to list
 									</Button>
 									<Button variant="primary" href={editDocumentHref(collection.slug, document.id)}>
-										<Icon name="edit" />
+										<Pencil size={16} class="fs-admin__icon" aria-hidden="true" focusable="false" />
 										Edit
 									</Button>
 									<Button
@@ -700,7 +772,7 @@
 							</h1>
 						</div>
 						<Button variant="ghost" href={documentHref(route.collection, route.id)}>
-							<Icon name="arrow-left" />
+							<ArrowLeft size={16} class="fs-admin__icon" aria-hidden="true" focusable="false" />
 							Back to detail
 						</Button>
 					</div>
@@ -715,11 +787,20 @@
 							})}
 							{@const updateForm = remotes.updateDocument.for(document.id)}
 							{@const editRelationOptions = await loadRelationOptions(collection)}
-							<DocumentEditForm
-								{collection}
-								{document}
+							{@const fields = visibleFormFields(collection)}
+							<ContentForm
+								cancelHref={documentHref(collection.slug, document.id)}
+								compact
+								{fields}
 								form={updateForm}
+								hidden={[
+									{ field: updateForm.fields.collection, value: collection.slug },
+									{ field: updateForm.fields.id, value: document.id }
+								]}
+								idPrefix={`edit-${document.id}`}
 								relationOptions={editRelationOptions}
+								submitLabel={`Save ${getCollectionLabel(collection, 'singular').toLowerCase()}`}
+								values={formValues(fields, document)}
 								onSuccess={() => showToast(`${getCollectionLabel(collection, 'singular')} saved`)}
 							/>
 
@@ -752,11 +833,15 @@
 						{@const document = await remotes.getGlobal({ global: global.slug })}
 						{@const updateForm = remotes.updateGlobal.for(global.slug)}
 						{@const globalRelationOptions = await loadRelationOptions(global)}
-						<GlobalEditForm
-							globalConfig={global}
-							{document}
+						<ContentForm
+							compact
+							fields={global.fields}
 							form={updateForm}
+							hidden={[{ field: updateForm.fields.global, value: global.slug }]}
+							idPrefix={`global-${global.slug}`}
 							relationOptions={globalRelationOptions}
+							submitLabel={`Save ${getGlobalLabel(global).toLowerCase()}`}
+							values={formValues(global.fields, document)}
 							onSuccess={() => showToast(`${getGlobalLabel(global)} saved`)}
 						/>
 
@@ -775,7 +860,14 @@
 						</div>
 					</div>
 					<div class="fs-admin__empty">
-						<span class="fs-admin__empty-icon"><Icon name="alert" size={20} /></span>
+						<span class="fs-admin__empty-icon"
+							><CircleAlert
+								size={20}
+								class="fs-admin__icon"
+								aria-hidden="true"
+								focusable="false"
+							/></span
+						>
 						<p class="fs-admin__empty-title">This admin route doesn't exist</p>
 						<Button href={indexHref}>Back to admin</Button>
 					</div>
@@ -792,7 +884,11 @@
 				aria-live="polite"
 			>
 				<span class="fs-admin__toast-icon">
-					<Icon name={toast.tone === 'success' ? 'check' : 'alert'} size={16} />
+					{#if toast.tone === 'success'}
+						<Check size={16} class="fs-admin__icon" aria-hidden="true" focusable="false" />
+					{:else}
+						<CircleAlert size={16} class="fs-admin__icon" aria-hidden="true" focusable="false" />
+					{/if}
 				</span>
 				<span class="fs-admin__toast-text">{toast.text}</span>
 				<button
@@ -801,7 +897,7 @@
 					aria-label="Dismiss notification"
 					onclick={() => (toast = null)}
 				>
-					<Icon name="close" size={14} />
+					<X size={14} class="fs-admin__icon" aria-hidden="true" focusable="false" />
 				</button>
 			</div>
 		{/key}

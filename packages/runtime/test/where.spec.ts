@@ -1,19 +1,4 @@
 import { createClient } from "@libsql/client";
-import {
-  and,
-  eq,
-  gt,
-  gte,
-  inArray,
-  isNotNull,
-  isNull,
-  like,
-  lt,
-  lte,
-  ne,
-  notInArray,
-  or,
-} from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
 import { beforeAll, describe, expect, it } from "vitest";
 
@@ -30,23 +15,7 @@ import {
   type FieldstoneConfig,
 } from "@hugo-hsi-dev/schema";
 
-import { buildWhere, type WhereClause, type WhereOps } from "../src/where.ts";
-
-const ops: WhereOps = {
-  and,
-  or,
-  eq,
-  ne,
-  gt,
-  gte,
-  lt,
-  lte,
-  like,
-  inArray,
-  notInArray,
-  isNull,
-  isNotNull,
-};
+import { buildWhere, type WhereClause } from "../src/where.js";
 
 const config: FieldstoneConfig = {
   db: { dialect: "sqlite", url: ":memory:" },
@@ -76,7 +45,7 @@ const table = compiled.renderRuntimeSchema().tables.posts;
 const db = drizzle(createClient({ url: ":memory:" }));
 
 function sqlFor(where: WhereClause) {
-  const condition = buildWhere(where, table, fields, ops);
+  const condition = buildWhere(where, table, fields);
   return db
     .select()
     .from(table)
@@ -86,8 +55,8 @@ function sqlFor(where: WhereClause) {
 
 describe("buildWhere — SQL translation", () => {
   it("returns undefined for an empty clause", () => {
-    expect(buildWhere(undefined, table, fields, ops)).toBeUndefined();
-    expect(buildWhere({}, table, fields, ops)).toBeUndefined();
+    expect(buildWhere(undefined, table, fields)).toBeUndefined();
+    expect(buildWhere({}, table, fields)).toBeUndefined();
   });
 
   it("maps scalar operators to SQL with bound params", () => {
@@ -135,7 +104,9 @@ describe("buildWhere — SQL translation", () => {
   it("rejects operators that don't fit the column kind", () => {
     expect(() => sqlFor({ featured: { greater_than: 1 } })).toThrow(/not supported on boolean/);
     expect(() => sqlFor({ views: { like: "x" } })).toThrow(/not supported on number/);
-    expect(() => sqlFor({ title: { in: "x" as unknown as unknown[] } })).toThrow(/expects an array/);
+    expect(() => sqlFor({ title: { in: "x" as unknown as unknown[] } })).toThrow(
+      /expects an array/,
+    );
   });
 
   it("rejects malformed values", () => {
@@ -148,19 +119,19 @@ describe("buildWhere — SQL translation", () => {
 describe("buildWhere — hardening (adversarial review fixes)", () => {
   it("rejects prototype-chain keys with a clean Unknown field error (not a TypeError)", () => {
     for (const key of ["constructor", "toString", "hasOwnProperty", "valueOf"]) {
-      expect(() => buildWhere({ [key]: { equals: 1 } } as WhereClause, table, fields, ops)).toThrow(
+      expect(() => buildWhere({ [key]: { equals: 1 } } as WhereClause, table, fields)).toThrow(
         /Unknown field/,
       );
     }
     // An own `__proto__` key, as JSON.parse produces from untrusted input.
     const viaJson = JSON.parse('{"__proto__":{"equals":1}}') as WhereClause;
-    expect(() => buildWhere(viaJson, table, fields, ops)).toThrow(/Unknown field/);
+    expect(() => buildWhere(viaJson, table, fields)).toThrow(/Unknown field/);
   });
 
   it("caps and/or nesting depth instead of overflowing the stack", () => {
     let nested: WhereClause = { title: { equals: "x" } };
     for (let i = 0; i < 100; i++) nested = { and: [nested] };
-    expect(() => buildWhere(nested, table, fields, ops)).toThrow(/nested too deeply/);
+    expect(() => buildWhere(nested, table, fields)).toThrow(/nested too deeply/);
   });
 
   it("rejects null and empty arrays in in/not_in", () => {
@@ -175,7 +146,7 @@ describe("buildWhere — hardening (adversarial review fixes)", () => {
     }
   });
 
-  it("coerces exists from boolean and REST-string forms", () => {
+  it("coerces exists from boolean and string forms", () => {
     expect(sqlFor({ title: { exists: false } }).sql).toMatch(/is null/);
     expect(sqlFor({ title: { exists: "false" as unknown as boolean } }).sql).toMatch(/is null/);
     expect(sqlFor({ title: { exists: "0" as unknown as boolean } }).sql).toMatch(/is null/);
@@ -198,17 +169,17 @@ describe("buildWhere — hardening (adversarial review fixes)", () => {
   });
 
   it("rejects malformed and/or entries with a clear message", () => {
-    expect(() => buildWhere({ and: [null] } as unknown as WhereClause, table, fields, ops)).toThrow(
+    expect(() => buildWhere({ and: [null] } as unknown as WhereClause, table, fields)).toThrow(
       /must be a where-clause object/,
     );
-    expect(() => buildWhere({ or: ["x"] } as unknown as WhereClause, table, fields, ops)).toThrow(
+    expect(() => buildWhere({ or: ["x"] } as unknown as WhereClause, table, fields)).toThrow(
       /must be a where-clause object/,
     );
   });
 
   it("keeps _status out of the where surface (drafts go through the status option)", () => {
     expect(() =>
-      buildWhere({ _status: { equals: "draft" } } as WhereClause, table, fields, ops),
+      buildWhere({ _status: { equals: "draft" } } as WhereClause, table, fields),
     ).toThrow(/status/);
   });
 });
@@ -234,14 +205,38 @@ describe("buildWhere — against a real :memory: database", () => {
       )`,
     );
     await live.insert(table).values([
-      { id: "1", title: "Hello", views: 5, publishedAt: new Date("2020-06-01"), featured: false, category: "a", author: "x" },
-      { id: "2", title: "World", views: 50, publishedAt: new Date("2022-06-01"), featured: true, category: "b", author: "y" },
-      { id: "3", title: "Hello again", views: 5, publishedAt: new Date("2021-06-01"), featured: false, category: "a", author: "x" },
+      {
+        id: "1",
+        title: "Hello",
+        views: 5,
+        publishedAt: new Date("2020-06-01"),
+        featured: false,
+        category: "a",
+        author: "x",
+      },
+      {
+        id: "2",
+        title: "World",
+        views: 50,
+        publishedAt: new Date("2022-06-01"),
+        featured: true,
+        category: "b",
+        author: "y",
+      },
+      {
+        id: "3",
+        title: "Hello again",
+        views: 5,
+        publishedAt: new Date("2021-06-01"),
+        featured: false,
+        category: "a",
+        author: "x",
+      },
     ] as never);
   });
 
   async function idsWhere(where: WhereClause) {
-    const condition = buildWhere(where, table, fields, ops);
+    const condition = buildWhere(where, table, fields);
     const rows = (await live
       .select()
       .from(table)

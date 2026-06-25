@@ -1,8 +1,4 @@
-import type {
-  CollectionHooks,
-  FieldstoneConfig,
-  HookOperation,
-} from "@hugo-hsi-dev/schema";
+import type { CollectionHooks, FieldstoneConfig, HookOperation } from "@hugo-hsi-dev/schema";
 
 type Doc = Record<string, unknown>;
 
@@ -13,8 +9,7 @@ export function getCollectionHooks(
   // Resolve by slug, not config key — a collection may be registered under a key
   // that differs from its slug, and runtime calls pass the slug (matches the
   // access check).
-  return Object.values(config.collections).find((entry) => entry.slug === slug)
-    ?.hooks;
+  return Object.values(config.collections).find((entry) => entry.slug === slug)?.hooks;
 }
 
 export async function runBeforeChangeHooks(
@@ -83,10 +78,6 @@ export async function runAfterDeleteHooks(
   for (const hook of hooks?.afterDelete ?? []) {
     await hook({ collection, id, doc });
   }
-}
-
-export function hasReadHooks(hooks: CollectionHooks | undefined): boolean {
-  return Boolean(hooks?.afterRead?.length);
 }
 
 export function hasChangeHooks(hooks: CollectionHooks | undefined): boolean {

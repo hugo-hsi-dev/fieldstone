@@ -1,4 +1,0 @@
-{
-  "extends": "@hugo-hsi-dev/tsconfig/node.json",
-  "include": ["src/**/*.ts"],
-}

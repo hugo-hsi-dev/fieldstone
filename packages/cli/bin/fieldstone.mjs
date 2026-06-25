@@ -2,6 +2,7 @@
 import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { parseArgs as parseNodeArgs } from "node:util";
 
 import { runInit } from "./init.mjs";
 
@@ -26,46 +27,44 @@ Options:
 
 /** @param {string[]} argv */
 function parseArgs(argv) {
-  /** @type {string[]} */
-  const positional = [];
-  /** @type {{ cwd: string, force: boolean, install: boolean, yes: boolean, allowDataLoss: boolean, help?: boolean, version?: boolean }} */
-  const flags = {
-    cwd: process.cwd(),
-    force: false,
-    install: true,
-    yes: false,
-    allowDataLoss: false,
-  };
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    if (arg === "--cwd") {
-      const next = argv[i + 1];
-      if (!next || next.startsWith("-")) {
-        console.error("Missing value for --cwd");
-        process.exit(1);
-      }
-      flags.cwd = path.resolve(next);
-      i++;
-    } else if (arg === "--force") flags.force = true;
-    else if (arg === "--no-install") flags.install = false;
-    else if (arg === "--yes" || arg === "-y") flags.yes = true;
-    else if (arg === "--allow-data-loss") flags.allowDataLoss = true;
-    else if (arg === "--help" || arg === "-h") flags.help = true;
-    else if (arg === "--version" || arg === "-v") flags.version = true;
-    else if (arg.startsWith("-")) {
-      console.error(`Unknown option: ${arg}`);
-      process.exit(1);
-    } else positional.push(arg);
+  let parsed;
+  try {
+    parsed = parseNodeArgs({
+      args: argv,
+      allowPositionals: true,
+      options: {
+        cwd: { type: "string" },
+        force: { type: "boolean" },
+        "no-install": { type: "boolean" },
+        yes: { type: "boolean", short: "y" },
+        "allow-data-loss": { type: "boolean" },
+        help: { type: "boolean", short: "h" },
+        version: { type: "boolean", short: "v" },
+      },
+    });
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
   }
-  return { command: positional[0], flags };
+  const values = parsed.values;
+  return {
+    command: parsed.positionals[0],
+    flags: {
+      cwd: path.resolve(values.cwd ?? process.cwd()),
+      force: Boolean(values.force),
+      install: !values["no-install"],
+      yes: Boolean(values.yes),
+      allowDataLoss: Boolean(values["allow-data-loss"]),
+      help: Boolean(values.help),
+      version: Boolean(values.version),
+    },
+  };
 }
 
 const { command, flags } = parseArgs(process.argv.slice(2));
 
 if (flags.version) {
-  const pkg = JSON.parse(
-    readFileSync(new URL("../package.json", import.meta.url), "utf8"),
-  );
+  const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
   console.log(pkg.version);
   process.exit(0);
 }
@@ -103,13 +102,7 @@ try {
   const generatorModulePath = require.resolve("@hugo-hsi-dev/codegen");
   const coreModulePath = require.resolve("@hugo-hsi-dev/compiler");
   const [
-    {
-      CONFIG_ID,
-      loadFieldstoneConfig,
-      pushSchema,
-      writeAdminRemotesBarrel,
-      writeGeneratedFiles,
-    },
+    { CONFIG_ID, loadFieldstoneConfig, pushSchema, writeAdminRemotesBarrel, writeGeneratedFiles },
     { compileFieldstoneConfig },
   ] = await Promise.all([
     server.ssrLoadModule(generatorModulePath),

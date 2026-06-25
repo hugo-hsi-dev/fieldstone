@@ -4,23 +4,7 @@
 	import { getCollectionLabel } from './labels';
 	import Button from './primitives/Button.svelte';
 	import { createFormGuard } from './form-guard.svelte';
-
-	type RemoteFormField = {
-		as: (
-			type: 'hidden' | 'file' | 'file multiple',
-			value?: string | boolean
-		) => Record<string, unknown>;
-		issues: () => { message: string }[] | undefined;
-	};
-	type RemoteUploadFields = {
-		collection: RemoteFormField;
-		file: RemoteFormField;
-		allIssues: () => { message: string }[] | undefined;
-	};
-	type RemoteUploadForm = {
-		fields: unknown;
-		pending?: number;
-	} & Record<string, unknown>;
+	import type { RemoteForm, RemoteUploadFields } from './remotes';
 
 	let {
 		collection,
@@ -28,7 +12,7 @@
 		onSuccess
 	}: {
 		collection: CollectionRuntimeConfig;
-		form: RemoteUploadForm;
+		form: RemoteForm;
 		onSuccess?: () => void;
 	} = $props();
 

@@ -1,7 +1,4 @@
-import {
-  normalizeCollectionData,
-  type NormalizedDocumentData,
-} from "@hugo-hsi-dev/schema";
+import { normalizeCollectionData, type NormalizedDocumentData } from "@hugo-hsi-dev/schema";
 import type {
   CollectionRuntimeConfig,
   FieldDefinition,
@@ -15,7 +12,7 @@ import {
   UPLOAD_FIELD_NAMES,
   validateCollectionFields,
 } from "@hugo-hsi-dev/schema";
-import { toUniqueIdentifier } from "./identifiers.ts";
+import { toUniqueIdentifier } from "./identifiers.js";
 
 export type CompiledCollectionField = Readonly<
   FieldDefinition & {
@@ -34,10 +31,7 @@ export type CompiledSystemField = (typeof systemFields)[number];
 
 export type CompiledColumn = Readonly<{
   columnName: string;
-  drizzleType: "boolean" | "number" | "text" | "timestamp";
-  fingerprint: boolean;
   identifier: string;
-  name: string;
   // The value is optional on create/update even when the stored column is
   // non-null — i.e. the runtime fills it in (a defaulted field) or it defaults to
   // an empty collection (an optional array). Generated mutation input marks these
@@ -54,7 +48,6 @@ export type CompiledColumn = Readonly<{
     | "dateValue"
     | "timestampNow"
     | "uuidTextPrimaryKey";
-  typeScriptName: string;
   typeScriptProperty: string;
   typeScriptType: string;
   unique: boolean;
@@ -73,25 +66,17 @@ export type CollectionFingerprint = Readonly<{
   slug: string;
 }>;
 
-export type CompiledCollection = Readonly<{
+type CompiledContentBase = Readonly<{
   columns: readonly CompiledColumn[];
   fields: readonly CompiledCollectionField[];
   fingerprint: CollectionFingerprint;
-  kind: "collection";
   slug: string;
-  systemFields: typeof systemFields;
   tableIdentifier: string;
 }>;
 
-export type CompiledGlobal = Readonly<{
-  columns: readonly CompiledColumn[];
-  fields: readonly CompiledCollectionField[];
-  fingerprint: CollectionFingerprint;
-  kind: "global";
-  slug: string;
-  systemFields: typeof systemFields;
-  tableIdentifier: string;
-}>;
+export type CompiledCollection = CompiledContentBase;
+
+export type CompiledGlobal = CompiledContentBase;
 
 export type CompiledContent = CompiledCollection | CompiledGlobal;
 
@@ -115,14 +100,6 @@ function compareSlugs(left: string, right: string) {
 function validateContentSlugs(config: FieldstoneConfig) {
   const seen = new Set<string>();
 
-  for (const collection of Object.values(config.collections)) {
-    // `globals` is reserved for the REST global-singleton route (/api/globals/…);
-    // a collection with this slug would be shadowed by it and become unreachable.
-    if (collection.slug.toLowerCase() === "globals") {
-      throw new Error('Reserved collection slug: "globals"');
-    }
-  }
-
   for (const content of [
     ...Object.values(config.collections),
     ...Object.values(config.globals ?? {}),
@@ -132,8 +109,7 @@ function validateContentSlugs(config: FieldstoneConfig) {
     }
 
     const normalizedSlug = content.slug.toLowerCase();
-    if (seen.has(normalizedSlug))
-      throw new Error(`Duplicate content slug: ${content.slug}`);
+    if (seen.has(normalizedSlug)) throw new Error(`Duplicate content slug: ${content.slug}`);
     seen.add(normalizedSlug);
   }
 }
@@ -143,16 +119,12 @@ function createSystemColumn(field: CompiledSystemField): CompiledColumn {
 
   return {
     columnName: field.columnName,
-    drizzleType: isId ? "text" : "timestamp",
-    fingerprint: false,
     identifier: field.identifier,
-    name: field.name,
     optionalInput: false,
     origin: "system",
     required: true,
     runtimeKey: field.identifier,
     sourceExpression: isId ? "uuidTextPrimaryKey" : "timestampNow",
-    typeScriptName: field.identifier,
     typeScriptProperty: field.identifier,
     typeScriptType: isId ? "string" : "Date",
     unique: false,
@@ -192,12 +164,7 @@ function fieldTypeScript(field: FieldDefinition): string {
 }
 
 function fieldNullable(field: FieldDefinition): boolean {
-  if (
-    field.type === "boolean" ||
-    field.type === "group" ||
-    field.type === "array"
-  )
-    return false;
+  if (field.type === "boolean" || field.type === "group" || field.type === "array") return false;
   return !field.required;
 }
 
@@ -245,17 +212,13 @@ function hasDefaultValue(field: CompiledCollectionField): boolean {
 function createFieldColumn(field: CompiledCollectionField): CompiledColumn {
   const base = {
     columnName: field.name,
-    fingerprint: true,
     identifier: field.identifier,
-    name: field.name,
     // A defaulted field (runtime fills the default) or an optional array (defaults
     // to []) is optional on input even though the stored value is non-null.
-    optionalInput:
-      hasDefaultValue(field) || (field.type === "array" && !field.required),
+    optionalInput: hasDefaultValue(field) || (field.type === "array" && !field.required),
     origin: "field",
     required: field.required,
     runtimeKey: field.name,
-    typeScriptName: field.name,
     typeScriptProperty: JSON.stringify(field.name),
     unique: fieldUnique(field),
   } as const;
@@ -264,28 +227,24 @@ function createFieldColumn(field: CompiledCollectionField): CompiledColumn {
     case "boolean":
       return {
         ...base,
-        drizzleType: "boolean",
         sourceExpression: "boolean",
         typeScriptType: "boolean",
       };
     case "number":
       return {
         ...base,
-        drizzleType: "number",
         sourceExpression: "number",
         typeScriptType: "number",
       };
     case "date":
       return {
         ...base,
-        drizzleType: "timestamp",
         sourceExpression: "dateValue",
         typeScriptType: "Date",
       };
     case "select":
       return {
         ...base,
-        drizzleType: "text",
         sourceExpression: "text",
         typeScriptType: selectUnionType(field),
       };
@@ -294,34 +253,29 @@ function createFieldColumn(field: CompiledCollectionField): CompiledColumn {
       return field.hasMany
         ? {
             ...base,
-            drizzleType: "text",
             sourceExpression: "json",
             typeScriptType: "string[]",
           }
         : {
             ...base,
-            drizzleType: "text",
             sourceExpression: "text",
             typeScriptType: "string",
           };
     case "group":
       return {
         ...base,
-        drizzleType: "text",
         sourceExpression: "json",
         typeScriptType: objectTypeScript(field.fields),
       };
     case "array":
       return {
         ...base,
-        drizzleType: "text",
         sourceExpression: "json",
         typeScriptType: `${objectTypeScript(field.fields)}[]`,
       };
     default:
       return {
         ...base,
-        drizzleType: "text",
         sourceExpression: "text",
         typeScriptType: "string",
       };
@@ -336,9 +290,7 @@ function withDraftStatusField(content: {
   // Reserve _status on draft collections: a user field of that name would suppress
   // the injected draft/published select and break status defaulting and filtering.
   if (content.fields.some((field) => field.name === STATUS_FIELD_NAME))
-    throw new Error(
-      `Reserved field name on a draft-enabled collection: ${STATUS_FIELD_NAME}`,
-    );
+    throw new Error(`Reserved field name on a draft-enabled collection: ${STATUS_FIELD_NAME}`);
   const statusField: FieldDefinition = {
     name: STATUS_FIELD_NAME,
     type: "select",
@@ -362,9 +314,7 @@ function withUploadFields(content: {
   const reserved = new Set<string>(UPLOAD_FIELD_NAMES);
   for (const field of content.fields) {
     if (reserved.has(field.name))
-      throw new Error(
-        `Reserved field name on an upload-enabled collection: ${field.name}`,
-      );
+      throw new Error(`Reserved field name on an upload-enabled collection: ${field.name}`);
   }
   const meta = (name: string, type: "text" | "number"): FieldDefinition =>
     ({ name, type, admin: { readOnly: true } }) as FieldDefinition;
@@ -415,9 +365,7 @@ function compileContent(
   const fieldIdentifiers = new Set<string>();
   const fields = sourceFields.map((field) => ({
     ...field,
-    ...(field.type === "select"
-      ? { options: normalizeSelectOptions(field.options ?? []) }
-      : {}),
+    ...(field.type === "select" ? { options: normalizeSelectOptions(field.options ?? []) } : {}),
     identifier: toUniqueIdentifier(field.name, fieldIdentifiers),
     required:
       field.type === "boolean"
@@ -453,40 +401,23 @@ function compileContent(
     ],
     fields,
     fingerprint,
-    kind,
     slug: content.slug,
-    systemFields,
-    tableIdentifier: toUniqueIdentifier(
-      content.slug,
-      tableIdentifiers,
-      `${kind}_`,
-    ),
+    tableIdentifier: toUniqueIdentifier(content.slug, tableIdentifiers, `${kind}_`),
   } as CompiledContent;
-}
-
-export function getSchemaPlanCollection(schemaPlan: SchemaPlan, slug: string) {
-  return schemaPlan.collectionBySlug.get(slug) ?? null;
-}
-
-export function getSchemaPlanGlobal(schemaPlan: SchemaPlan, slug: string) {
-  return schemaPlan.globalBySlug.get(slug) ?? null;
 }
 
 export function getCollectionConfig(
   schemaPlan: SchemaPlan,
   slug: string,
 ): CollectionRuntimeConfig | null {
-  const collection = getSchemaPlanCollection(schemaPlan, slug);
+  const collection = schemaPlan.collectionBySlug.get(slug);
   if (!collection) return null;
 
   return createRuntimeConfig(collection);
 }
 
-export function getGlobalConfig(
-  schemaPlan: SchemaPlan,
-  slug: string,
-): GlobalRuntimeConfig | null {
-  const global = getSchemaPlanGlobal(schemaPlan, slug);
+export function getGlobalConfig(schemaPlan: SchemaPlan, slug: string): GlobalRuntimeConfig | null {
+  const global = schemaPlan.globalBySlug.get(slug);
   if (!global) return null;
 
   return createRuntimeConfig(global);
@@ -497,21 +428,6 @@ function createRuntimeConfig(content: CompiledContent): CollectionRuntimeConfig 
     fields: content.fields.map((field) => ({ ...field })),
     slug: content.slug,
   };
-}
-
-export function requireSchemaPlanCollection(
-  schemaPlan: SchemaPlan,
-  slug: string,
-) {
-  const collection = getSchemaPlanCollection(schemaPlan, slug);
-  if (!collection) throw new Error(`Unsupported collection: ${slug}`);
-  return collection;
-}
-
-export function requireSchemaPlanGlobal(schemaPlan: SchemaPlan, slug: string) {
-  const global = getSchemaPlanGlobal(schemaPlan, slug);
-  if (!global) throw new Error(`Unsupported global: ${slug}`);
-  return global;
 }
 
 export function normalizeDocumentData(
@@ -542,18 +458,11 @@ export function buildSchemaPlan(config: FieldstoneConfig): SchemaPlan {
     .sort((a, b) => compareSlugs(a.slug, b.slug))
     .map(
       (collection) =>
-        compileContent(
-          collection,
-          "collection",
-          tableIdentifiers,
-        ) as CompiledCollection,
+        compileContent(collection, "collection", tableIdentifiers) as CompiledCollection,
     );
   const globals = Object.values(config.globals ?? {})
     .sort((a, b) => compareSlugs(a.slug, b.slug))
-    .map(
-      (global) =>
-        compileContent(global, "global", tableIdentifiers) as CompiledGlobal,
-    );
+    .map((global) => compileContent(global, "global", tableIdentifiers) as CompiledGlobal);
 
   const collectionSlugs = new Set(collections.map((collection) => collection.slug));
   const uploadCollectionSlugs = new Set(
@@ -561,10 +470,7 @@ export function buildSchemaPlan(config: FieldstoneConfig): SchemaPlan {
       .filter((collection) => collection.upload)
       .map((collection) => collection.slug),
   );
-  const assertRelationshipTargets = (
-    fields: FieldDefinition[],
-    withinGlobal: boolean,
-  ) => {
+  const assertRelationshipTargets = (fields: FieldDefinition[], withinGlobal: boolean) => {
     for (const field of fields) {
       if (field.type === "relationship" && !collectionSlugs.has(field.relationTo))
         throw new Error(
@@ -574,9 +480,7 @@ export function buildSchemaPlan(config: FieldstoneConfig): SchemaPlan {
         // Globals run no hooks/access, so there is no seam to clean up files or
         // gate them — upload fields are collection-only.
         if (withinGlobal)
-          throw new Error(
-            `Upload field "${field.name}" is not supported on globals`,
-          );
+          throw new Error(`Upload field "${field.name}" is not supported on globals`);
         if (!collectionSlugs.has(field.relationTo))
           throw new Error(
             `Upload field "${field.name}" points to unknown collection: ${field.relationTo}`,
@@ -599,9 +503,7 @@ export function buildSchemaPlan(config: FieldstoneConfig): SchemaPlan {
   }
 
   return {
-    collectionBySlug: new Map(
-      collections.map((collection) => [collection.slug, collection]),
-    ),
+    collectionBySlug: new Map(collections.map((collection) => [collection.slug, collection])),
     collections,
     globalBySlug: new Map(globals.map((global) => [global.slug, global])),
     globals,
@@ -612,18 +514,12 @@ export function buildSchemaPlan(config: FieldstoneConfig): SchemaPlan {
   };
 }
 
-export function createCollectionRuntimeConfigs(
-  schemaPlan: SchemaPlan,
-): CollectionRuntimeConfig[] {
+export function createCollectionRuntimeConfigs(schemaPlan: SchemaPlan): CollectionRuntimeConfig[] {
   return schemaPlan.collections.map(
     (collection) => getCollectionConfig(schemaPlan, collection.slug)!,
   );
 }
 
-export function createGlobalRuntimeConfigs(
-  schemaPlan: SchemaPlan,
-): GlobalRuntimeConfig[] {
-  return schemaPlan.globals.map(
-    (global) => getGlobalConfig(schemaPlan, global.slug)!,
-  );
+export function createGlobalRuntimeConfigs(schemaPlan: SchemaPlan): GlobalRuntimeConfig[] {
+  return schemaPlan.globals.map((global) => getGlobalConfig(schemaPlan, global.slug)!);
 }

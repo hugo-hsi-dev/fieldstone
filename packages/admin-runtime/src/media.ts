@@ -1,5 +1,5 @@
 import type { FieldstoneConfig } from "@hugo-hsi-dev/schema";
-import { assertSafeStorageKey, resolveStorage } from "@hugo-hsi-dev/storage";
+import { assertSafeStorageKey, resolveStorage } from "@hugo-hsi-dev/runtime";
 
 const CONTENT_TYPES: Record<string, string> = {
   jpg: "image/jpeg",
@@ -37,14 +37,11 @@ const INLINE_SAFE_TYPES = new Set([
 
 function weakEtag(key: string, size: number): string {
   let hash = 5381;
-  for (let i = 0; i < key.length; i += 1)
-    hash = ((hash << 5) + hash + key.charCodeAt(i)) >>> 0;
+  for (let i = 0; i < key.length; i += 1) hash = ((hash << 5) + hash + key.charCodeAt(i)) >>> 0;
   return `W/"${size.toString(16)}-${hash.toString(16)}"`;
 }
 
-// Serves stored files for the scaffolded /media/[...path] route. Framework-
-// agnostic: it takes a Request + the route's path segments and returns a Response,
-// mirroring createFieldstoneRest.
+// Serves stored files for the scaffolded /media/[...path] route.
 export function createFieldstoneMedia({ config }: { config: FieldstoneConfig }) {
   const storage = resolveStorage(config);
 
@@ -69,7 +66,7 @@ export function createFieldstoneMedia({ config }: { config: FieldstoneConfig }) 
       const object = await storage.get(key);
       if (!object) return new Response("Not Found", { status: 404 });
 
-      const contentType = object.contentType ?? contentTypeForKey(key);
+      const contentType = contentTypeForKey(key);
       const etag = weakEtag(key, object.size);
       const headers = new Headers({
         "content-type": contentType,
@@ -84,18 +81,14 @@ export function createFieldstoneMedia({ config }: { config: FieldstoneConfig }) 
       });
       // Force a download for anything that could execute as markup in our origin
       // (SVG, HTML, …) rather than render inline.
-      if (!INLINE_SAFE_TYPES.has(contentType))
-        headers.set("content-disposition", "attachment");
+      if (!INLINE_SAFE_TYPES.has(contentType)) headers.set("content-disposition", "attachment");
 
       if (request.headers.get("if-none-match") === etag)
         return new Response(null, { status: 304, headers });
 
       // The runtime Response accepts a Uint8Array body; the cast only bridges the
       // DOM lib's generic BodyInit (ArrayBuffer- vs ArrayBufferLike-backed).
-      const body =
-        request.method === "HEAD"
-          ? null
-          : (object.body as unknown as BodyInit);
+      const body = request.method === "HEAD" ? null : (object.body as unknown as BodyInit);
       return new Response(body, { status: 200, headers });
     },
   };

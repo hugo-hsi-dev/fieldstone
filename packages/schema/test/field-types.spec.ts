@@ -14,8 +14,8 @@ import {
   select,
   text,
   upload,
-} from "../src/index.ts";
-import type { FieldDefinition } from "../src/index.ts";
+} from "../src/index.js";
+import type { FieldDefinition } from "../src/index.js";
 
 describe("field constructors", () => {
   it("builds typed field definitions", () => {

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 
 import { RESOLVED_CONFIG_ID } from "@hugo-hsi-dev/codegen";
-import { fieldstone } from "../src/index.ts";
+import { fieldstone } from "../src/index.js";
 
 type TestPlugin = ReturnType<typeof fieldstone> & {
   configResolved?: {

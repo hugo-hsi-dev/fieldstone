@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { Inbox, Pencil, Search } from '@lucide/svelte';
 	import type {
 		CollectionDocument,
 		CollectionRuntimeConfig,
@@ -9,14 +10,7 @@
 
 	import { getCollectionLabel, getFieldLabel, getFieldValue } from './labels';
 	import Button from './primitives/Button.svelte';
-	import Icon from './primitives/Icon.svelte';
-	import {
-		adminDocumentPath,
-		adminEditDocumentPath,
-		adminRouteId,
-		adminRouteSegments,
-		mediaPath
-	} from '@hugo-hsi-dev/routes';
+	import { adminDocumentPath, adminEditDocumentPath, resolveAdminPath, mediaPath } from './routes';
 
 	let {
 		collection,
@@ -65,10 +59,6 @@
 			.slice(0, 2)
 	);
 
-	function resolveAdminPath(path: string) {
-		return resolve(adminRouteId, { segments: adminRouteSegments(path) });
-	}
-
 	function formatDate(value: unknown): string {
 		if (!value) return '';
 		const date = value instanceof Date ? value : new Date(String(value));
@@ -115,7 +105,7 @@
 						<td data-label="Title" class="fs-admin__cell-title">
 							<a
 								class="fs-admin__doc-link"
-								href={resolveAdminPath(adminDocumentPath(collection.slug, document.id))}
+								href={resolveAdminPath(resolve, adminDocumentPath(collection.slug, document.id))}
 							>
 								{getFieldValue(document, titleField)}
 							</a>
@@ -134,9 +124,12 @@
 							<Button
 								size="sm"
 								variant="ghost"
-								href={resolveAdminPath(adminEditDocumentPath(collection.slug, document.id))}
+								href={resolveAdminPath(
+									resolve,
+									adminEditDocumentPath(collection.slug, document.id)
+								)}
 							>
-								<Icon name="edit" />
+								<Pencil size={16} class="fs-admin__icon" aria-hidden="true" focusable="false" />
 								Edit
 							</Button>
 						</td>
@@ -147,13 +140,17 @@
 	</div>
 {:else if search}
 	<div class="fs-admin__panel fs-admin__empty">
-		<span class="fs-admin__empty-icon"><Icon name="search" size={20} /></span>
+		<span class="fs-admin__empty-icon"
+			><Search size={20} class="fs-admin__icon" aria-hidden="true" focusable="false" /></span
+		>
 		<p class="fs-admin__empty-title">No results for “{search}”</p>
 		<p class="fs-admin__empty-text">Try a different search term.</p>
 	</div>
 {:else}
 	<div class="fs-admin__panel fs-admin__empty">
-		<span class="fs-admin__empty-icon"><Icon name="inbox" size={20} /></span>
+		<span class="fs-admin__empty-icon"
+			><Inbox size={20} class="fs-admin__icon" aria-hidden="true" focusable="false" /></span
+		>
 		<p class="fs-admin__empty-title">
 			No {getCollectionLabel(collection, 'plural').toLowerCase()} yet
 		</p>

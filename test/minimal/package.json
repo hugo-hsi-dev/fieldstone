@@ -4,18 +4,17 @@
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
-		"dev": "vite dev",
-		"build": "vite build",
-		"sync": "svelte-kit sync",
-		"db:push": "fieldstone push",
+		"dev": "pnpm fieldstone:generate && vite dev",
+		"build": "pnpm fieldstone:generate && vite build",
+		"sync": "pnpm fieldstone:generate && svelte-kit sync",
+		"db:push": "pnpm fixture:sync && fieldstone push",
 		"setup:e2e": "playwright install --with-deps chromium",
-		"test:e2e": "playwright test",
-		"fieldstone:generate": "fieldstone generate"
+		"test:e2e": "pnpm fieldstone:generate && playwright test",
+		"fieldstone:generate": "pnpm fixture:sync && fieldstone generate",
+		"fixture:sync": "node scripts/sync-template.mjs"
 	},
 	"devDependencies": {
 		"@hugo-hsi-dev/cli": "workspace:*",
-		"@hugo-hsi-dev/eslint-config": "workspace:*",
-		"@hugo-hsi-dev/tsconfig": "workspace:*",
 		"@playwright/test": "^1.60.0",
 		"@sveltejs/adapter-auto": "^7.0.1",
 		"@sveltejs/kit": "^2.63.0",
@@ -28,13 +27,11 @@
 	},
 	"dependencies": {
 		"@hugo-hsi-dev/admin-runtime": "workspace:*",
-		"@hugo-hsi-dev/remotes": "workspace:*",
 		"@hugo-hsi-dev/schema": "workspace:*",
 		"@hugo-hsi-dev/ui": "workspace:*",
 		"@hugo-hsi-dev/vite-plugin": "workspace:*",
 		"@libsql/client": "^0.15.15",
 		"better-auth": "^1.6.19",
-		"drizzle-orm": "^0.45.2",
-		"mode-watcher": "^1.1.0"
+		"drizzle-orm": "^0.45.2"
 	}
 }

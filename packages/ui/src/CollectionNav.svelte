@@ -1,8 +1,8 @@
 <script lang="ts">
+	import { Globe, Layers } from '@lucide/svelte';
 	import type { CollectionRuntimeConfig, GlobalRuntimeConfig } from '@hugo-hsi-dev/schema';
 
 	import { getCollectionLabel, getGlobalLabel } from './labels';
-	import Icon from './primitives/Icon.svelte';
 
 	let {
 		collections,
@@ -35,7 +35,12 @@
 						aria-current={navCollection.slug === selectedCollectionSlug ? 'page' : undefined}
 						href={collectionHref(navCollection.slug)}
 					>
-						<Icon name="collection" class="fs-admin__nav-icon" />
+						<Layers
+							size={16}
+							class="fs-admin__icon fs-admin__nav-icon"
+							aria-hidden="true"
+							focusable="false"
+						/>
 						<span class="fs-admin__nav-label">{getCollectionLabel(navCollection, 'plural')}</span>
 					</a>
 				{/each}
@@ -56,7 +61,12 @@
 						aria-current={navGlobal.slug === selectedGlobalSlug ? 'page' : undefined}
 						href={globalHref(navGlobal.slug)}
 					>
-						<Icon name="globe" class="fs-admin__nav-icon" />
+						<Globe
+							size={16}
+							class="fs-admin__icon fs-admin__nav-icon"
+							aria-hidden="true"
+							focusable="false"
+						/>
 						<span class="fs-admin__nav-label">{getGlobalLabel(navGlobal)}</span>
 					</a>
 				{/each}

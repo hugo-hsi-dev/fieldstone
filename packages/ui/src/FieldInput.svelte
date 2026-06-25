@@ -1,16 +1,12 @@
 <script lang="ts">
-	import { onDestroy, onMount } from 'svelte';
-	import { Editor } from '@tiptap/core';
-	import StarterKit from '@tiptap/starter-kit';
+	import { CircleAlert, Plus } from '@lucide/svelte';
 	import type { CollectionRuntimeConfig, DocumentDataValue } from '@hugo-hsi-dev/schema';
-
-	import { mediaPath } from '@hugo-hsi-dev/routes';
 
 	import { getFieldLabel, shouldUseTextarea, toDatetimeLocalValue, toInputValue } from './labels';
 	import Label from './primitives/Label.svelte';
 	import NestedFields from './NestedFields.svelte';
 	import Button from './primitives/Button.svelte';
-	import Icon from './primitives/Icon.svelte';
+	import { mediaPath } from './routes';
 
 	type Field = CollectionRuntimeConfig['fields'][number];
 
@@ -98,70 +94,6 @@
 		const filename = relationOptionsMerged.find((option) => option.value === stringValue)?.label;
 		return filename && filename !== stringValue ? mediaPath(filename) : null;
 	});
-
-	// Rich text uses TipTap. The editor is created client-side (it needs the DOM)
-	// and mirrors its HTML into a hidden input for form submission. TipTap parses
-	// stored HTML through its schema, dropping disallowed nodes/marks (scripts,
-	// inline handlers, unknown elements), so no separate sanitizer is needed and
-	// untrusted HTML never reaches the DOM as raw markup.
-	// svelte-ignore state_referenced_locally
-	let richTextHtml = $state(typeof base === 'string' ? base : '');
-	let editorEl = $state<HTMLDivElement>();
-	let editor: Editor | undefined;
-	let isBold = $state(false);
-	let isItalic = $state(false);
-	let isStrike = $state(false);
-	let isCode = $state(false);
-	let isHeading2 = $state(false);
-	let isHeading3 = $state(false);
-	let isBulletList = $state(false);
-	let isOrderedList = $state(false);
-	let isBlockquote = $state(false);
-
-	function syncMarks(active: Editor) {
-		isBold = active.isActive('bold');
-		isItalic = active.isActive('italic');
-		isStrike = active.isActive('strike');
-		isCode = active.isActive('code');
-		isHeading2 = active.isActive('heading', { level: 2 });
-		isHeading3 = active.isActive('heading', { level: 3 });
-		isBulletList = active.isActive('bulletList');
-		isOrderedList = active.isActive('orderedList');
-		isBlockquote = active.isActive('blockquote');
-	}
-
-	function syncRichTextHtml(active: Editor) {
-		richTextHtml = active.isEmpty ? '' : active.getHTML();
-		syncMarks(active);
-	}
-
-	onMount(() => {
-		if (field.type !== 'richText' || !editorEl) return;
-		editor = new Editor({
-			element: editorEl,
-			extensions: [StarterKit],
-			content: typeof base === 'string' ? base : '',
-			editable: !readOnly,
-			editorProps: {
-				attributes: {
-					id,
-					role: 'textbox',
-					'aria-multiline': 'true',
-					'aria-label': getFieldLabel(field),
-					class: 'fs-admin__richtext-editor',
-					...(readOnly ? { 'aria-readonly': 'true' } : {})
-				}
-			},
-			onUpdate: ({ editor: active }) => syncRichTextHtml(active),
-			onSelectionUpdate: ({ editor: active }) => syncMarks(active)
-		});
-		// Seed the hidden input from TipTap's parsed/normalized document so an
-		// unedited submission posts schema-normalized HTML rather than the raw
-		// stored value (TipTap's schema is what replaces the old sanitizer).
-		if (!readOnly) syncRichTextHtml(editor);
-	});
-
-	onDestroy(() => editor?.destroy());
 
 	// Nested fields (group/array) are edited as local state and submitted as JSON via a
 	// reactive hidden input.
@@ -297,112 +229,13 @@
 			</select>
 		</div>
 	{:else if field.type === 'richText'}
-		<div class="fs-admin__richtext">
-			{#if !readOnly}
-				<div class="fs-admin__richtext-toolbar">
-					<button
-						type="button"
-						class={['fs-admin__richtext-btn', isBold && 'fs-admin__richtext-btn--active']}
-						aria-label="Bold"
-						aria-pressed={isBold}
-						onmousedown={(event) => event.preventDefault()}
-						onclick={() => editor?.chain().focus().toggleBold().run()}
-					>
-						<Icon name="bold" size={15} />
-					</button>
-					<button
-						type="button"
-						class={['fs-admin__richtext-btn', isItalic && 'fs-admin__richtext-btn--active']}
-						aria-label="Italic"
-						aria-pressed={isItalic}
-						onmousedown={(event) => event.preventDefault()}
-						onclick={() => editor?.chain().focus().toggleItalic().run()}
-					>
-						<Icon name="italic" size={15} />
-					</button>
-					<button
-						type="button"
-						class={['fs-admin__richtext-btn', isStrike && 'fs-admin__richtext-btn--active']}
-						aria-label="Strikethrough"
-						aria-pressed={isStrike}
-						onmousedown={(event) => event.preventDefault()}
-						onclick={() => editor?.chain().focus().toggleStrike().run()}
-					>
-						<Icon name="strikethrough" size={15} />
-					</button>
-					<button
-						type="button"
-						class={['fs-admin__richtext-btn', isCode && 'fs-admin__richtext-btn--active']}
-						aria-label="Inline code"
-						aria-pressed={isCode}
-						onmousedown={(event) => event.preventDefault()}
-						onclick={() => editor?.chain().focus().toggleCode().run()}
-					>
-						<Icon name="code" size={15} />
-					</button>
-					<span class="fs-admin__richtext-divider" aria-hidden="true"></span>
-					<button
-						type="button"
-						class={['fs-admin__richtext-btn', isHeading2 && 'fs-admin__richtext-btn--active']}
-						aria-label="Heading 2"
-						aria-pressed={isHeading2}
-						onmousedown={(event) => event.preventDefault()}
-						onclick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
-					>
-						<Icon name="heading-2" size={15} />
-					</button>
-					<button
-						type="button"
-						class={['fs-admin__richtext-btn', isHeading3 && 'fs-admin__richtext-btn--active']}
-						aria-label="Heading 3"
-						aria-pressed={isHeading3}
-						onmousedown={(event) => event.preventDefault()}
-						onclick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}
-					>
-						<Icon name="heading-3" size={15} />
-					</button>
-					<span class="fs-admin__richtext-divider" aria-hidden="true"></span>
-					<button
-						type="button"
-						class={['fs-admin__richtext-btn', isBulletList && 'fs-admin__richtext-btn--active']}
-						aria-label="Bullet list"
-						aria-pressed={isBulletList}
-						onmousedown={(event) => event.preventDefault()}
-						onclick={() => editor?.chain().focus().toggleBulletList().run()}
-					>
-						<Icon name="list" size={15} />
-					</button>
-					<button
-						type="button"
-						class={['fs-admin__richtext-btn', isOrderedList && 'fs-admin__richtext-btn--active']}
-						aria-label="Numbered list"
-						aria-pressed={isOrderedList}
-						onmousedown={(event) => event.preventDefault()}
-						onclick={() => editor?.chain().focus().toggleOrderedList().run()}
-					>
-						<Icon name="list-ordered" size={15} />
-					</button>
-					<button
-						type="button"
-						class={['fs-admin__richtext-btn', isBlockquote && 'fs-admin__richtext-btn--active']}
-						aria-label="Quote"
-						aria-pressed={isBlockquote}
-						onmousedown={(event) => event.preventDefault()}
-						onclick={() => editor?.chain().focus().toggleBlockquote().run()}
-					>
-						<Icon name="quote" size={15} />
-					</button>
-				</div>
-			{/if}
-			<!-- TipTap mounts its contenteditable (role=textbox, aria-label) into this host. -->
-			<div bind:this={editorEl} class="fs-admin__richtext-host"></div>
-			<!-- Read-only submits the original stored value untouched. -->
-			<input
-				type="hidden"
-				name={`data.${field.identifier}`}
-				value={readOnly ? (typeof base === 'string' ? base : '') : richTextHtml}
-			/>
-		</div>
+		<textarea
+			class={['fs-admin__textarea', compact && 'fs-admin__textarea--compact']}
+			{placeholder}
+			readonly={readOnly}
+			{...formField.as('text', stringValue)}
+			{id}
+		></textarea>
 	{:else if field.type === 'group'}
 		<fieldset class="fs-admin__nested">
 			<legend class="fs-admin__nested-legend">{getFieldLabel(field)}</legend>
@@ -445,7 +278,7 @@
 			{/each}
 			{#if !readOnly}
 				<button type="button" class="fs-admin__array-add" onclick={addArrayRow}>
-					<Icon name="plus" />
+					<Plus size={16} class="fs-admin__icon" aria-hidden="true" focusable="false" />
 					Add item
 				</button>
 			{/if}
@@ -497,7 +330,7 @@
 	{/if}
 	{#each formField.issues() ?? [] as issue, index (`${issue.message}-${index}`)}
 		<p class="fs-admin__field-error">
-			<Icon name="alert" size={13} />
+			<CircleAlert size={13} class="fs-admin__icon" aria-hidden="true" focusable="false" />
 			<span>{issue.message}</span>
 		</p>
 	{/each}

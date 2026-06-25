@@ -103,8 +103,7 @@ In dev, the Vite plugin regenerates types automatically as you edit collections.
 3. **Admin route** (`src/routes/admin/[...segments]/+page.svelte`) renders
    `<FieldstoneAdmin {remotes} />` from `@hugo-hsi-dev/ui` (+ `@hugo-hsi-dev/ui/admin.css`).
 4. **Auth** (`src/lib/auth.ts` + `src/hooks.server.ts`) protects `/admin` and serves
-   `/api/auth/*` (Better Auth, email + password). An optional REST API mounts at
-   `src/routes/api/[...path]/+server.ts` via `createFieldstoneRest`.
+   `/api/auth/*` (Better Auth, email + password).
 
 ## Contributing
 
@@ -126,9 +125,8 @@ packages/
   runtime/        Local API (find/create/update/delete, hooks, access)
   vite-plugin/    virtual $fieldstone-config + generated types
   remotes/        SvelteKit remote functions for the admin
-  admin-runtime/  REST handler + admin glue
+  admin-runtime/  admin glue + media serving
   ui/             admin UI (Svelte components + admin.css)
-  routes/         admin route helpers (path parsing)
   codegen/        type generation + schema push + the remotes barrel
   cli/            the `fieldstone` bin (init / generate / push) + scaffold templates
 test/minimal/     reference SvelteKit app exercising every feature

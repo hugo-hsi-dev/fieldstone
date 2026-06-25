@@ -1,45 +1,11 @@
-import type { CompiledColumn, SchemaPlan } from "./collection-model.ts";
-
-function renderColumn(column: CompiledColumn) {
-  const unique = column.unique ? ".unique()" : "";
-  const notNull = column.required ? ".notNull()" : "";
-
-  if (column.sourceExpression === "text") {
-    return `\t${column.identifier}: text(${JSON.stringify(column.columnName)})${notNull}${unique},`;
-  }
-
-  if (column.sourceExpression === "json") {
-    return `\t${column.identifier}: text(${JSON.stringify(column.columnName)}, { mode: 'json' })${notNull}${unique},`;
-  }
-
-  if (column.sourceExpression === "number") {
-    return `\t${column.identifier}: real(${JSON.stringify(column.columnName)})${notNull}${unique},`;
-  }
-
-  if (column.sourceExpression === "dateValue") {
-    return `\t${column.identifier}: integer(${JSON.stringify(column.columnName)}, { mode: 'timestamp' })${notNull}${unique},`;
-  }
-
-  if (column.sourceExpression === "boolean") {
-    return `\t${column.identifier}: integer(${JSON.stringify(column.columnName)}, { mode: 'boolean' }).notNull().default(false),`;
-  }
-
-  if (column.sourceExpression === "uuidTextPrimaryKey") {
-    return `\t${column.identifier}: text(${JSON.stringify(column.columnName)})
-\t\t.primaryKey()
-\t\t.$defaultFn(() => crypto.randomUUID()),`;
-  }
-
-  return `\t${column.identifier}: integer(${JSON.stringify(column.columnName)}, { mode: 'timestamp' })
-\t\t.notNull()
-\t\t.$defaultFn(() => new Date())${column.identifier === "createdAt" ? "," : ""}`;
-}
+import type { SchemaPlan } from "./collection-model.js";
+import { renderColumnSource } from "./column-renderers.js";
 
 export function createDrizzleSchemaSource(schemaPlan: SchemaPlan) {
   const tableDeclarations = [...schemaPlan.collections, ...schemaPlan.globals]
     .map((collection) => {
       return `export const ${collection.tableIdentifier} = sqliteTable(${JSON.stringify(collection.slug)}, {
-${collection.columns.map(renderColumn).join("\n")}
+${collection.columns.map(renderColumnSource).join("\n")}
 });`;
     })
     .join("\n\n");
