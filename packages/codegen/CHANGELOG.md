@@ -1,5 +1,12 @@
 # @hugo-hsi-dev/codegen
 
+## 0.3.0
+
+### Patch Changes
+
+- @hugo-hsi-dev/compiler@0.3.0
+- @hugo-hsi-dev/schema@0.3.0
+
 ## 0.2.0
 
 ### Patch Changes
