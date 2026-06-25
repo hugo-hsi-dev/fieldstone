@@ -1,72 +1,92 @@
 /* ==========================================================================
    Fieldstone admin — design tokens + shared building blocks
-   "Refined neutral": monochrome zinc surfaces, one restrained indigo accent,
-   carefully tuned light AND dark themes. Theme is selected via a
-   `.dark` class on <html> (see app.html + theme module).
+   A quiet, content-first admin: a precise neutral base, one restrained violet
+   accent, hairline borders over shadows, Geist as the primary typeface.
+   Carefully tuned light AND dark themes, selected via a `.dark` class on
+   <html> (see app.html + theme module).
    ========================================================================== */
+
+@import 'https://fonts.googleapis.com/css2?family=Geist:wght@300..700&display=swap';
 
 /* ---------- Light theme (default) ---------------------------------------- */
 :root {
 	color-scheme: light;
 
-	/* Surfaces (layered, light → up) */
-	--fs-admin-bg: #fafafa;
+	/* Surfaces (layered, app → up) */
+	--fs-admin-bg: #f7f7f8;
 	--fs-admin-panel: #ffffff;
+	--fs-admin-sidebar: #f4f4f5;
 	--fs-admin-raised: #ffffff;
 	--fs-admin-inset: #f4f4f5;
+	--fs-admin-subtle: #fafafb; /* table head, read-only wells */
 	--fs-admin-hover: #f4f4f5;
-	--fs-admin-active: #e4e4e7;
+	--fs-admin-row-hover: #faf9fe; /* faint violet wash on table/list rows */
+	--fs-admin-active: #e8e8ea; /* neutral pressed (buttons) */
+
+	/* Form fields read as outlined wells on the surface, not filled holes */
+	--fs-admin-field-bg: #ffffff;
+	--fs-admin-field-border: #e0e0e3;
 
 	/* Text */
-	--fs-admin-text: #18181b;
-	--fs-admin-text-strong: #09090b;
-	--fs-admin-muted: #52525b;
-	--fs-admin-faint: #6f6f78; /* disabled + literal "Empty" — AA at small text */
+	--fs-admin-text: #1a1a1e;
+	--fs-admin-text-strong: #15151a;
+	--fs-admin-muted: #6b6b73;
+	--fs-admin-faint: #9a9aa2; /* disabled + literal "Empty" — AA at small text */
 
 	/* Borders (hairline → strong → stronger) */
-	--fs-admin-border: #e4e4e7;
-	--fs-admin-border-strong: #d4d4d8;
-	--fs-admin-border-stronger: #a1a1aa;
+	--fs-admin-border: #e7e7ea;
+	--fs-admin-border-strong: #e0e0e3;
+	--fs-admin-border-stronger: #c7c7cc;
 
-	/* Primary (monochrome near-black) */
-	--fs-admin-primary: #18181b;
-	--fs-admin-primary-hover: #27272a;
-	--fs-admin-primary-active: #3f3f46;
-	--fs-admin-primary-fg: #fafafa;
+	/* Primary — the violet accent (primary actions, checkbox, links, ring) */
+	--fs-admin-primary: #6d5ae6;
+	--fs-admin-primary-hover: #5b48d4;
+	--fs-admin-primary-active: #5040c0;
+	--fs-admin-primary-fg: #ffffff;
 
-	/* Accent — the one chromatic color (indigo): nav-active / links / ring */
-	--fs-admin-accent: #4f46e5;
-	--fs-admin-accent-hover: #4338ca;
+	/* Accent — same violet hue; tints carry nav-active + selected states */
+	--fs-admin-accent: #6d5ae6;
+	--fs-admin-accent-hover: #5b48d4;
 	--fs-admin-accent-fg: #ffffff;
-	--fs-admin-accent-bg: #eef2ff;
-	--fs-admin-accent-border: #c7d2fe;
+	--fs-admin-accent-text: #4a3bc4; /* label color on a tinted active row */
+	--fs-admin-accent-bg: #ece9fb;
+	--fs-admin-accent-tint: #f3f1fd;
+	--fs-admin-accent-border: #ddd6fa;
 
 	/* Status — danger */
-	--fs-admin-danger: #dc2626;
-	--fs-admin-danger-hover: #b91c1c;
+	--fs-admin-danger: #d6453d;
+	--fs-admin-danger-hover: #c33a33;
 	--fs-admin-danger-fg: #ffffff;
-	--fs-admin-danger-bg: #fef2f2;
-	--fs-admin-danger-border: #fecaca;
-	--fs-admin-danger-ring: rgba(220, 38, 38, 0.3);
+	--fs-admin-danger-text: #b13a33;
+	--fs-admin-danger-bg: #fbeae9;
+	--fs-admin-danger-border: #f2cecb;
+	--fs-admin-danger-ring: rgba(214, 69, 61, 0.3);
 
-	/* Status — success */
-	--fs-admin-success: #15803d;
+	/* Status — success / published */
+	--fs-admin-success: #1d7a56;
 	--fs-admin-success-fg: #ffffff;
-	--fs-admin-success-bg: #f0fdf4;
-	--fs-admin-success-border: #bbf7d0;
+	--fs-admin-success-bg: #e7f4ee;
+	--fs-admin-success-border: #c8e6d8;
+	--fs-admin-success-dot: #2f9e6e;
+
+	/* Status — neutral / draft */
+	--fs-admin-neutral-text: #5a5a62;
+	--fs-admin-neutral-bg: #f0f0f2;
+	--fs-admin-neutral-border: #e1e1e4;
+	--fs-admin-neutral-dot: #9a9aa2;
 
 	/* Status — warning */
-	--fs-admin-warning: #b45309;
+	--fs-admin-warning: #9a6a12;
 	--fs-admin-warning-fg: #ffffff;
-	--fs-admin-warning-bg: #fffbeb;
-	--fs-admin-warning-border: #fde68a;
+	--fs-admin-warning-bg: #fbf2e0;
+	--fs-admin-warning-border: #f0e0bc;
 
 	/* Focus ring */
-	--fs-admin-ring: #4f46e5;
-	--fs-admin-ring-alpha: rgba(79, 70, 229, 0.45);
+	--fs-admin-ring: #6d5ae6;
+	--fs-admin-ring-alpha: rgba(109, 90, 230, 0.3);
 
 	/* Overlay + shadow channels */
-	--fs-admin-overlay: rgba(9, 9, 11, 0.45);
+	--fs-admin-overlay: rgba(20, 20, 30, 0.4);
 	--fs-admin-shadow-color: 240 6% 10%;
 	--fs-admin-raised-highlight: rgba(255, 255, 255, 0);
 
@@ -85,60 +105,77 @@
 	color-scheme: dark;
 
 	/* Surfaces — each layer steps UP in lightness as it rises. No pure black. */
-	--fs-admin-bg: #09090b;
-	--fs-admin-panel: #131316;
-	--fs-admin-raised: #1c1c20;
-	--fs-admin-inset: #1a1a1d; /* above panel so input wells don't read as holes */
-	--fs-admin-hover: #1c1c20;
-	--fs-admin-active: #27272a;
+	--fs-admin-bg: #0d0e10;
+	--fs-admin-panel: #16171a;
+	--fs-admin-sidebar: #0f1012;
+	--fs-admin-raised: #1c1d21;
+	--fs-admin-inset: #1b1c20; /* above panel so input wells don't read as holes */
+	--fs-admin-subtle: #131418;
+	--fs-admin-hover: #1b1c20;
+	--fs-admin-row-hover: #1b1c20;
+	--fs-admin-active: #2a2b30;
+
+	/* Form fields */
+	--fs-admin-field-bg: #16171a;
+	--fs-admin-field-border: #2a2b30;
 
 	/* Text */
-	--fs-admin-text: #e4e4e7;
-	--fs-admin-text-strong: #fafafa;
-	--fs-admin-muted: #a1a1aa;
-	--fs-admin-faint: #8a8a93; /* disabled + "Empty" — AA at small text */
+	--fs-admin-text: #f2f2f4;
+	--fs-admin-text-strong: #f4f4f6;
+	--fs-admin-muted: #9a9ba1;
+	--fs-admin-faint: #66676d; /* disabled + "Empty" — AA at small text */
 
 	/* Borders — must stay visible on near-black */
-	--fs-admin-border: #27272a;
-	--fs-admin-border-strong: #3f3f46;
-	--fs-admin-border-stronger: #52525b;
+	--fs-admin-border: #232428;
+	--fs-admin-border-strong: #2a2b30;
+	--fs-admin-border-stronger: #3a3b40;
 
-	/* Primary — inverts to near-white */
-	--fs-admin-primary: #fafafa;
-	--fs-admin-primary-hover: #e4e4e7;
-	--fs-admin-primary-active: #d4d4d8;
-	--fs-admin-primary-fg: #18181b;
+	/* Primary — the violet accent stays saturated on dark */
+	--fs-admin-primary: #6d5ae6;
+	--fs-admin-primary-hover: #7d6cf0;
+	--fs-admin-primary-active: #5b48d4;
+	--fs-admin-primary-fg: #ffffff;
 
-	/* Accent — lighter indigo for dark contrast */
-	--fs-admin-accent: #a5b4fc;
-	--fs-admin-accent-hover: #c7d2fe;
-	--fs-admin-accent-fg: #1e1b4b;
-	--fs-admin-accent-bg: #1e1b4b;
-	--fs-admin-accent-border: #3730a3;
+	/* Accent — a lighter violet for text/links/icons on dark */
+	--fs-admin-accent: #a99cf7;
+	--fs-admin-accent-hover: #c2b8fb;
+	--fs-admin-accent-fg: #0d0e10;
+	--fs-admin-accent-text: #f2f2f4; /* active nav label reads white on tint */
+	--fs-admin-accent-bg: #1b1c20;
+	--fs-admin-accent-tint: #241f3a;
+	--fs-admin-accent-border: #3a3656;
 
 	/* Status — danger */
-	--fs-admin-danger: #f87171;
-	--fs-admin-danger-hover: #fca5a5;
-	--fs-admin-danger-fg: #18181b;
-	--fs-admin-danger-bg: #2a1416;
-	--fs-admin-danger-border: #5b1d1d;
-	--fs-admin-danger-ring: rgba(248, 113, 113, 0.4);
+	--fs-admin-danger: #f06a62;
+	--fs-admin-danger-hover: #f4837c;
+	--fs-admin-danger-fg: #0d0e10;
+	--fs-admin-danger-text: #f06a62;
+	--fs-admin-danger-bg: #2c1614;
+	--fs-admin-danger-border: #4a201d;
+	--fs-admin-danger-ring: rgba(240, 106, 98, 0.4);
 
-	/* Status — success */
-	--fs-admin-success: #4ade80;
+	/* Status — success / published */
+	--fs-admin-success: #5fd3a3;
 	--fs-admin-success-fg: #052e16;
-	--fs-admin-success-bg: #0f2417;
-	--fs-admin-success-border: #14532d;
+	--fs-admin-success-bg: #11271e;
+	--fs-admin-success-border: #1d4536;
+	--fs-admin-success-dot: #34b87f;
+
+	/* Status — neutral / draft */
+	--fs-admin-neutral-text: #b6b7be;
+	--fs-admin-neutral-bg: #222327;
+	--fs-admin-neutral-border: #2f3036;
+	--fs-admin-neutral-dot: #7c7d85;
 
 	/* Status — warning */
-	--fs-admin-warning: #fbbf24;
+	--fs-admin-warning: #e0a93a;
 	--fs-admin-warning-fg: #1c1917;
-	--fs-admin-warning-bg: #2a1f0a;
-	--fs-admin-warning-border: #5a3d12;
+	--fs-admin-warning-bg: #2a2113;
+	--fs-admin-warning-border: #463716;
 
 	/* Focus ring */
-	--fs-admin-ring: #818cf8;
-	--fs-admin-ring-alpha: rgba(129, 140, 248, 0.55);
+	--fs-admin-ring: #8b7df5;
+	--fs-admin-ring-alpha: rgba(139, 125, 245, 0.5);
 
 	/* Overlay + shadow channels */
 	--fs-admin-overlay: rgba(0, 0, 0, 0.65);
@@ -154,7 +191,8 @@
 /* ---------- Theme-independent scales ------------------------------------- */
 :root {
 	--fs-admin-font-sans:
-		-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+		'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+		sans-serif;
 	--fs-admin-font-mono:
 		ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
 
@@ -170,11 +208,11 @@
 	--fs-space-12: 3rem;
 	--fs-space-16: 4rem;
 
-	/* Radii (single base + derivatives) */
-	--fs-radius: 0.5rem;
-	--fs-radius-sm: calc(var(--fs-radius) - 2px);
-	--fs-radius-md: var(--fs-radius);
-	--fs-radius-lg: calc(var(--fs-radius) + 4px);
+	/* Radii — design caps at 8px: 5 controls · 7 cards · 8 dialogs */
+	--fs-radius-sm: 5px; /* inputs, buttons, chips, pills */
+	--fs-radius-md: 7px; /* panels, cards, tables */
+	--fs-radius-lg: 8px; /* dialogs */
+	--fs-radius: var(--fs-radius-md);
 	--fs-radius-full: 9999px;
 
 	/* Control heights */
@@ -183,8 +221,8 @@
 	--fs-control-h-lg: 2.5rem;
 
 	/* Layout */
-	--fs-header-h: 3.5rem;
-	--fs-sidebar-w: 15rem;
+	--fs-header-h: 3.25rem;
+	--fs-sidebar-w: 14.25rem;
 
 	/* Motion */
 	--fs-dur-fast: 120ms;
@@ -217,7 +255,7 @@
 	background: var(--fs-admin-bg);
 	color: var(--fs-admin-text);
 	font-family: var(--fs-admin-font-sans);
-	font-size: 0.875rem;
+	font-size: 0.8125rem; /* 13px body — design baseline */
 	line-height: 1.5;
 	-webkit-font-smoothing: antialiased;
 	text-rendering: optimizeLegibility;
@@ -271,10 +309,10 @@
 	border-radius: var(--fs-radius-sm);
 	background: var(--fs-admin-panel);
 	color: var(--fs-admin-text);
-	border-color: var(--fs-admin-border-strong);
+	border-color: var(--fs-admin-field-border);
 	font-family: inherit;
-	font-size: 0.875rem;
-	font-weight: 500;
+	font-size: 0.8125rem;
+	font-weight: 600;
 	line-height: 1;
 	white-space: nowrap;
 	text-decoration: none;
@@ -399,16 +437,18 @@
    ========================================================================== */
 .fs-admin__label {
 	display: inline-block;
-	color: var(--fs-admin-text);
-	font-size: 0.8125rem;
-	font-weight: 500;
-	line-height: 1.25rem;
+	color: var(--fs-admin-muted);
+	font-size: 0.6875rem; /* 11px caps — design field label */
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	line-height: 1rem;
 }
 
 /* The required marker is a real aria-hidden element inside the label (see
    Label.svelte) so it never folds into the control's accessible name. */
 .fs-admin__required {
-	color: var(--fs-admin-danger);
+	color: var(--fs-admin-accent);
 }
 
 .fs-admin__field {
@@ -438,9 +478,9 @@
 
 .fs-admin__field-description {
 	margin: 0;
-	color: var(--fs-admin-muted);
-	font-size: 0.8125rem;
-	line-height: 1.25rem;
+	color: var(--fs-admin-faint);
+	font-size: 0.71875rem;
+	line-height: 1.1rem;
 }
 
 .fs-admin__field-error {
@@ -448,9 +488,10 @@
 	align-items: center;
 	gap: var(--fs-space-1);
 	margin: 0;
-	color: var(--fs-admin-danger);
-	font-size: 0.8125rem;
-	line-height: 1.25rem;
+	color: var(--fs-admin-danger-text);
+	font-size: 0.71875rem;
+	font-weight: 500;
+	line-height: 1.1rem;
 }
 
 /* ==========================================================================
@@ -462,13 +503,13 @@
 	width: 100%;
 	box-sizing: border-box;
 	min-height: var(--fs-control-h);
-	border: 1px solid var(--fs-admin-border-strong);
+	border: 1px solid var(--fs-admin-field-border);
 	border-radius: var(--fs-radius-sm);
 	padding: 0.5rem 0.75rem;
 	font: inherit;
-	font-size: 0.875rem;
+	font-size: 0.8125rem;
 	color: var(--fs-admin-text);
-	background: var(--fs-admin-inset);
+	background: var(--fs-admin-field-bg);
 	transition:
 		background var(--fs-dur) var(--fs-ease),
 		border-color var(--fs-dur) var(--fs-ease),
@@ -497,15 +538,15 @@
 
 .fs-admin__input:read-only,
 .fs-admin__textarea:read-only {
-	background: var(--fs-admin-inset);
-	color: var(--fs-admin-faint);
+	background: var(--fs-admin-subtle);
+	color: var(--fs-admin-muted);
 	border-color: var(--fs-admin-border);
 	cursor: not-allowed;
 }
 
 .fs-admin__input:read-only:focus,
 .fs-admin__textarea:read-only:focus {
-	background: var(--fs-admin-inset);
+	background: var(--fs-admin-subtle);
 	border-color: var(--fs-admin-border);
 	box-shadow: none;
 }
@@ -545,13 +586,13 @@
 	width: 100%;
 	box-sizing: border-box;
 	min-height: 6rem;
-	border: 1px solid var(--fs-admin-border-strong);
+	border: 1px solid var(--fs-admin-field-border);
 	border-radius: var(--fs-radius-sm);
 	padding: 0.25rem;
 	font: inherit;
-	font-size: 0.875rem;
+	font-size: 0.8125rem;
 	color: var(--fs-admin-text);
-	background: var(--fs-admin-inset);
+	background: var(--fs-admin-field-bg);
 	transition:
 		border-color var(--fs-dur) var(--fs-ease),
 		box-shadow var(--fs-dur) var(--fs-ease);
@@ -600,6 +641,76 @@
 }
 
 /* ==========================================================================
+   Status pills (published / draft / warning / danger)
+   ========================================================================== */
+.fs-admin__status {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.375rem;
+	border: 1px solid var(--fs-admin-neutral-border);
+	background: var(--fs-admin-neutral-bg);
+	color: var(--fs-admin-neutral-text);
+	border-radius: var(--fs-radius-sm);
+	padding: 0.125rem 0.5rem;
+	font-size: 0.71875rem; /* ~11.5px */
+	font-weight: 600;
+	line-height: 1.2;
+	white-space: nowrap;
+}
+
+.fs-admin__status-dot {
+	width: 0.375rem;
+	height: 0.375rem;
+	border-radius: var(--fs-radius-full);
+	background: var(--fs-admin-neutral-dot);
+	flex: none;
+}
+
+.fs-admin__status--success {
+	border-color: var(--fs-admin-success-border);
+	background: var(--fs-admin-success-bg);
+	color: var(--fs-admin-success);
+}
+
+.fs-admin__status--success .fs-admin__status-dot {
+	background: var(--fs-admin-success-dot);
+}
+
+.fs-admin__status--warning {
+	border-color: var(--fs-admin-warning-border);
+	background: var(--fs-admin-warning-bg);
+	color: var(--fs-admin-warning);
+}
+
+.fs-admin__status--warning .fs-admin__status-dot {
+	background: var(--fs-admin-warning);
+}
+
+.fs-admin__status--danger {
+	border-color: var(--fs-admin-danger-border);
+	background: var(--fs-admin-danger-bg);
+	color: var(--fs-admin-danger-text);
+}
+
+.fs-admin__status--danger .fs-admin__status-dot {
+	background: var(--fs-admin-danger);
+}
+
+/* Relationship value tokens — a stored id shown as a compact chip */
+.fs-admin__chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.375rem;
+	border-radius: var(--fs-radius-sm);
+	background: var(--fs-admin-inset);
+	color: var(--fs-admin-text);
+	padding: 0.125rem 0.5rem;
+	font-size: 0.71875rem;
+	font-weight: 500;
+	white-space: nowrap;
+}
+
+/* ==========================================================================
    Panels, forms, nested fieldsets (shared)
    ========================================================================== */
 .fs-admin__panel {
@@ -625,13 +736,16 @@
 	border-top: 1px solid var(--fs-admin-border);
 }
 
+/* Group/array containment by indent + a hairline rule, never nested cards. */
 .fs-admin__nested {
 	display: grid;
 	gap: var(--fs-space-4);
-	border: 1px solid var(--fs-admin-border);
-	border-radius: var(--fs-radius-md);
-	padding: var(--fs-space-4) var(--fs-space-5);
+	border: none;
+	border-left: 2px solid var(--fs-admin-border-strong);
+	border-radius: 0;
+	padding: var(--fs-space-1) 0 var(--fs-space-1) var(--fs-space-4);
 	margin: 0;
+	min-inline-size: 0;
 }
 
 .fs-admin__nested-fields {
@@ -640,18 +754,20 @@
 }
 
 .fs-admin__nested-legend {
-	padding: 0 var(--fs-space-1);
-	color: var(--fs-admin-text);
-	font-size: 0.8125rem;
+	padding: 0;
+	color: var(--fs-admin-muted);
+	font-size: 0.6875rem;
 	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
 }
 
 .fs-admin__array-row {
 	display: grid;
 	gap: var(--fs-space-3);
-	background: var(--fs-admin-inset);
+	background: var(--fs-admin-subtle);
 	border: 1px solid var(--fs-admin-border);
-	border-radius: var(--fs-radius-md);
+	border-radius: var(--fs-radius-sm);
 	padding: var(--fs-space-4);
 }
 
@@ -742,11 +858,11 @@
 .fs-admin__empty-icon {
 	display: grid;
 	place-items: center;
-	width: 2.75rem;
-	height: 2.75rem;
-	border-radius: var(--fs-radius-full);
-	background: var(--fs-admin-inset);
-	color: var(--fs-admin-muted);
+	width: 2.5rem;
+	height: 2.5rem;
+	border-radius: var(--fs-radius-lg);
+	background: var(--fs-admin-accent-tint);
+	color: var(--fs-admin-accent);
 }
 
 .fs-admin__empty-title {

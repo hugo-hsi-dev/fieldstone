@@ -41,6 +41,15 @@ export function getFieldLabel(field: { name: string; label?: string }) {
 	return field.label ?? titleCase(field.name);
 }
 
+// Two-letter monogram for collection/global icon chips (e.g. "Articles" → "Ar",
+// "Site Settings" → "Si"). The first two alphanumerics of the label, cased Xx.
+export function abbrev(label: string): string {
+	const letters = label.replace(/[^a-zA-Z0-9]/g, '');
+	if (!letters) return '?';
+	const two = letters.slice(0, 2);
+	return two.charAt(0).toUpperCase() + two.slice(1).toLowerCase();
+}
+
 export function getFieldValue(document: Record<string, unknown>, fieldName: string) {
 	const value = document[fieldName];
 	if (value instanceof Date) return value.toLocaleString();

@@ -238,7 +238,6 @@
 		></textarea>
 	{:else if field.type === 'group'}
 		<fieldset class="fs-admin__nested">
-			<legend class="fs-admin__nested-legend">{getFieldLabel(field)}</legend>
 			<NestedFields
 				fields={field.fields}
 				bind:value={groupState}
@@ -250,7 +249,6 @@
 		<input type="hidden" name={`data.${field.identifier}`} value={JSON.stringify(groupState)} />
 	{:else if field.type === 'array'}
 		<fieldset class="fs-admin__nested">
-			<legend class="fs-admin__nested-legend">{getFieldLabel(field)}</legend>
 			<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -- keyed by arrayKeys, bound by index -->
 			{#each arrayState as entry, index (arrayKeys[index])}
 				<div class="fs-admin__array-row">
