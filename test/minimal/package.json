@@ -15,23 +15,23 @@
 	},
 	"devDependencies": {
 		"@hugo-hsi-dev/cli": "workspace:*",
-		"@playwright/test": "^1.60.0",
+		"@playwright/test": "^1.61.1",
 		"@sveltejs/adapter-auto": "^7.0.1",
-		"@sveltejs/kit": "^2.63.0",
+		"@sveltejs/kit": "^2.68.0",
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
 		"@types/node": "^24",
 		"sharp": "^0.35.0",
-		"svelte": "^5.56.1",
+		"svelte": "^5.56.4",
 		"typescript": "^6.0.3",
-		"vite": "^8.0.16"
+		"vite": "^8.1.0"
 	},
 	"dependencies": {
 		"@hugo-hsi-dev/admin-runtime": "workspace:*",
 		"@hugo-hsi-dev/schema": "workspace:*",
 		"@hugo-hsi-dev/ui": "workspace:*",
 		"@hugo-hsi-dev/vite-plugin": "workspace:*",
-		"@libsql/client": "^0.15.15",
-		"better-auth": "^1.6.19",
+		"@libsql/client": "^0.17.4",
+		"better-auth": "^1.6.22",
 		"drizzle-orm": "^0.45.2"
 	}
 }
